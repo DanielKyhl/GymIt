@@ -4,7 +4,7 @@ import { Link } from "expo-router";
 export default function Welcome() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>GymIt 💪</Text>
+      <Text style={styles.title}>GymIt</Text>
 
       <Link href="/login" asChild>
         <Button title="Log In" onPress={() => {}} />
