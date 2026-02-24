@@ -1,6 +1,8 @@
 import { View, Text, StyleSheet, Button } from "react-native";
 import { useState } from "react";
 
+
+
 export default function HomeScreen() {
   const [workouts, setWorkouts] = useState(0);
 
