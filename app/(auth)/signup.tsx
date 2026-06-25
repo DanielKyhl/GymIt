@@ -1,9 +1,11 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Button, StyleSheet, Text, TextInput, View } from 'react-native';
+import {useAuth} from '../../context/AuthContext';
 
 export default function Signup() {
     const router = useRouter();
+    const { signup } = useAuth();
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -26,7 +28,8 @@ export default function Signup() {
             return;
         }
         setError("");
-        router.replace("/welcome");
+        signup(email, password);
+        router.replace("/(tabs)");
     };
     return (
         <View style={styles.container}>

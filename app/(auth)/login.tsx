@@ -1,13 +1,37 @@
 import { Link } from 'expo-router';
+import {useState} from 'react';
+import {useRouter}  from 'expo-router';
+import {useAuth} from '../../context/AuthContext';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 export default function Login() { 
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const router = useRouter();
+    const { login } = useAuth();
+    const handleLogin = () => {
+        const sucess = login(email, password);
+        if (sucess) {
+            router.replace('/(tabs)');
+        } else { 
+            alert ('Wrong email or password');
+        }
+    };
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Login</Text>
-            <TextInput style={styles.input} placeholder="Email" />
-            <TextInput style={styles.input} placeholder="Password" secureTextEntry />
-            <Pressable style={styles.button}>
+            <TextInput style={styles.input} 
+            placeholder = "Email"
+            value = {email}
+            onChangeText = {setEmail}
+            />
+            <TextInput style={styles.input} 
+            placeholder = "Password"
+            secureTextEntry
+            value = {password}
+            onChangeText = {setPassword}   
+            />
+            <Pressable style={styles.button} onPress={handleLogin}>
                 <Text style={styles.buttonText}>Log In</Text>
             </Pressable>
             <Link href="/welcome" asChild>
