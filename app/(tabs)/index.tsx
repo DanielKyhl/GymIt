@@ -1,10 +1,12 @@
-import { View, Text, StyleSheet, Button } from "react-native";
 import { useState } from "react";
+import { Button, StyleSheet, Text, View } from "react-native";
+import {useAuth} from "../../context/AuthContext";
 
 
 
 export default function HomeScreen() {
   const [workouts, setWorkouts] = useState(0);
+  const {user, logout} = useAuth();
 
   return (
     <View style={styles.container}>
@@ -17,7 +19,14 @@ export default function HomeScreen() {
       <Button
         title="Add Workout"
         onPress={() => setWorkouts(workouts + 1)}
+
+        
       />
+      {user ? (
+      <Text style={styles.counter}>Logged in as: {user.email}</Text>
+      ) : null}
+
+      <Button title="Log Out" onPress={logout} />
     </View>
   );
 }
