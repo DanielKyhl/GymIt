@@ -1,5 +1,5 @@
-import {createContext, useState, useEffect, ReactNode, useContext} from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 
 type User = {
     email: string;
@@ -20,23 +20,29 @@ export const AuthProvider = ({children}: {children: ReactNode}) => {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const loadUser = async () => {
-            const savedUser = await AsyncStorage.getItem("user");
-            if (savedUser) {
-                setUser(JSON.parse(savedUser));
-            }
-            setIsLoading(false);
-        };
-        loadUser();
-    }, []);
+    const loadData = async () => {
+        const savedUser = await AsyncStorage.getItem("user");
+        if (savedUser) {
+            setUser(JSON.parse(savedUser));
+        }
+        const savedUsers = await AsyncStorage.getItem("registeredUsers");
+        if (savedUsers) {
+            setRegisteredUsers(JSON.parse(savedUsers));
+        }
+        setIsLoading(false);
+    };
+    loadData();
+}, []);
 
-    const signup = (email: string, password: string) => {
+ const signup = (email: string, password: string) => {
     const alreadyExists = registeredUsers.some((u) => u.email === email);
     if (alreadyExists) {
         alert("An account with that email already exists.");
         return;
     }
-    setRegisteredUsers([...registeredUsers, {email, password}]);
+    const updatedUsers = [...registeredUsers, {email, password}];
+    setRegisteredUsers(updatedUsers);
+    AsyncStorage.setItem("registeredUsers", JSON.stringify(updatedUsers));
     setUser({email, password});
     AsyncStorage.setItem("user", JSON.stringify({email, password}));
 };
