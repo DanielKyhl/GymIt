@@ -16,7 +16,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({children}: {children: ReactNode}) => {
     const [user, setUser] = useState<User | null>(null);
-    const [registeredUsers, setRegisteredUsers] = useState<User | null>(null);
+    const [registeredUsers, setRegisteredUsers] = useState<User[]> ([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -31,18 +31,26 @@ export const AuthProvider = ({children}: {children: ReactNode}) => {
     }, []);
 
     const signup = (email: string, password: string) => {
-        setRegisteredUsers ({email, password});
-        setUser({email, password});
-        AsyncStorage.setItem("user", JSON.stringify({email, password}));
-    };
+    const alreadyExists = registeredUsers.some((u) => u.email === email);
+    if (alreadyExists) {
+        alert("An account with that email already exists.");
+        return;
+    }
+    setRegisteredUsers([...registeredUsers, {email, password}]);
+    setUser({email, password});
+    AsyncStorage.setItem("user", JSON.stringify({email, password}));
+};
     const login = (email: string, password: string) => {
-        if (registeredUsers && registeredUsers.email === email && registeredUsers.password === password) {
-            setUser({email, password});
-            AsyncStorage.setItem("user", JSON.stringify({email, password}));
-            return true;
-        }
-        return false;
-    };
+    const match = registeredUsers.find(
+        (u) => u.email === email && u.password === password
+    );
+    if (match) {
+        setUser(match);
+        AsyncStorage.setItem("user", JSON.stringify(match));
+        return true;
+    }
+    return false;
+};
     const logout = () => {
         setUser(null);
         AsyncStorage.removeItem("user");
