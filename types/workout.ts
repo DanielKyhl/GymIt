@@ -1,3 +1,10 @@
+export type Exercise = {
+  id: string;
+  name: string;
+  equipment: string | null;
+  primaryMuscle: string[];
+  category: string;
+}
 // One set performed within an exercise (e.g. 60kg x 8 reps)
 export type WorkoutSet = {
   weight: number;
