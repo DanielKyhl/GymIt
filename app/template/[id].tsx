@@ -40,7 +40,7 @@ export default function TemplateDetail() {
         )}
       />
 
-      <Pressable style={styles.startButton} onPress={() => {}}>
+      <Pressable style={styles.startButton} onPress={() => router.push(`/workout/${template.id}`)}>
         <Text style={styles.startText}>Start workout</Text>
       </Pressable>
     </View>
