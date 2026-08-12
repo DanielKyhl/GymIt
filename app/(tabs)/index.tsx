@@ -1,5 +1,5 @@
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useAuth } from "../../context/AuthContext";
 import { getTemplates } from "../../lib/storage";
@@ -10,9 +10,11 @@ export default function HomeScreen() {
   const { logout } = useAuth();
   const [templates, setTemplates] = useState<Template[]>([]);
 
-  useEffect(() => {
-    getTemplates().then(setTemplates);
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      getTemplates().then(setTemplates);
+    }, [])
+  );
 
   return (
     <View style={styles.container}>

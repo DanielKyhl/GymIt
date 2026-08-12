@@ -9,9 +9,9 @@ export async function getWorkouts(): Promise<Workout[]> {
     return saved ? JSON.parse(saved) : [];
 }
 
-export async function saveWorkouts(workout: Workout[]): Promise<void> {
+export async function saveWorkout(workout: Workout): Promise<void> {
     const workouts = await getWorkouts();
-    const updated = [workouts, ...workouts];
+    const updated = [workout, ...workouts];
     await AsyncStorage.setItem(WORKOUTS_KEY, JSON.stringify(updated));
 }
 
@@ -20,7 +20,7 @@ export async function getTemplates(): Promise<Template[]> {
     return saved ? JSON.parse(saved) : [];
 }
 
-export async function saveTemplates(template: Template[]): Promise<void> {
+export async function saveTemplate(template: Template): Promise<void> {
     const templates = await getTemplates();
     const updated = [...templates, template];
     await AsyncStorage.setItem(TEMPLATES_KEY, JSON.stringify(updated));
