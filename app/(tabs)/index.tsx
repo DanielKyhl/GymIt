@@ -37,7 +37,7 @@ export default function HomeScreen() {
           </Text>
         }
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.card}>
+          <TouchableOpacity style={styles.card} onPress={() => router.push(`/template/${item.id}`)}>
             <Text style={styles.cardTitle}>{item.name}</Text>
             <Text style={styles.cardSub}>{item.exercises.length} exercises</Text>
           </TouchableOpacity>
