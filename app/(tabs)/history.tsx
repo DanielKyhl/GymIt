@@ -1,6 +1,6 @@
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { getWorkouts } from "../../lib/storage";
 import { Workout } from "../../types/workout";
 
@@ -10,6 +10,7 @@ function formatDate(iso: string) {
 }
 
 export default function History() {
+  const router = useRouter();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
 
   useFocusEffect(
@@ -32,12 +33,15 @@ export default function History() {
         renderItem={({ item }) => {
           const totalSets = item.exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
           return (
-            <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => router.push(`/workout-log/${item.id}`)}
+            >
               <Text style={styles.cardTitle}>{item.name}</Text>
               <Text style={styles.cardSub}>
                 {formatDate(item.date)} · {Math.round(item.durationSeconds / 60)} min · {totalSets} sets
               </Text>
-            </View>
+            </TouchableOpacity>
           );
         }}
       />
