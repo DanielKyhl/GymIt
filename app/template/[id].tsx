@@ -1,7 +1,7 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { getTemplates } from "../../lib/storage";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
+import { Alert, FlatList, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { deleteTemplate, getTemplates } from "../../lib/storage";
 import { Template } from "../../types/workout";
 
 export default function TemplateDetail() {
@@ -9,12 +9,33 @@ export default function TemplateDetail() {
   const router = useRouter();
   const [template, setTemplate] = useState<Template | null>(null);
 
-  useEffect(() => {
-    getTemplates().then((templates) => {
-      const found = templates.find((t) => t.id === id);
-      setTemplate(found ?? null);
-    });
-  }, [id]);
+  useFocusEffect(
+    useCallback(() => {
+      getTemplates().then((templates) => {
+        setTemplate(templates.find((t) => t.id === id) ?? null);
+      });
+    }, [id])
+  );
+
+  const doDelete = async () => {
+    await deleteTemplate(id);
+    router.back();
+  };
+
+  const handleDelete = () => {
+    if (Platform.OS === "web") {
+      if (window.confirm("Delete this template?")) doDelete();
+      return;
+    }
+    Alert.alert(
+      "Delete template",
+      "Are you sure you want to delete this template?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: doDelete },
+      ]
+    );
+  };
 
   if (!template) {
     return (
@@ -43,6 +64,18 @@ export default function TemplateDetail() {
       <Pressable style={styles.startButton} onPress={() => router.push(`/workout/${template.id}`)}>
         <Text style={styles.startText}>Start workout</Text>
       </Pressable>
+
+      <View style={styles.actionRow}>
+        <Pressable
+          style={styles.editButton}
+          onPress={() => router.push({ pathname: "/create-template", params: { id: template.id } })}
+        >
+          <Text style={styles.editText}>Edit</Text>
+        </Pressable>
+        <Pressable style={styles.deleteButton} onPress={handleDelete}>
+          <Text style={styles.deleteText}>Delete</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -59,4 +92,13 @@ const styles = StyleSheet.create({
     alignItems: "center", marginTop: 12,
   },
   startText: { color: "white", fontSize: 16, fontWeight: "500" },
+  actionRow: { flexDirection: "row", gap: 10, marginTop: 10 },
+  editButton: {
+    flex: 1, backgroundColor: "#1c1c1e", borderRadius: 12, padding: 14, alignItems: "center",
+  },
+  editText: { color: "white", fontSize: 15, fontWeight: "500" },
+  deleteButton: {
+    flex: 1, backgroundColor: "#2c1a1a", borderRadius: 12, padding: 14, alignItems: "center",
+  },
+  deleteText: { color: "#e24b4a", fontSize: 15, fontWeight: "500" },
 });

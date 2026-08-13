@@ -28,6 +28,18 @@ export async function saveTemplate(template: Template): Promise<void> {
     await AsyncStorage.setItem(TEMPLATES_KEY, JSON.stringify(updated));
 }
 
+export async function updateTemplate(template: Template): Promise<void> {
+    const templates = await getTemplates();
+    const updated = templates.map((t) => (t.id === template.id ? template : t));
+    await AsyncStorage.setItem(TEMPLATES_KEY, JSON.stringify(updated));
+}
+
+export async function deleteTemplate(id: string): Promise<void> {
+    const templates = await getTemplates();
+    const updated = templates.filter((t) => t.id !== id);
+    await AsyncStorage.setItem(TEMPLATES_KEY, JSON.stringify(updated));
+}
+
 // Add the beginner templates once, on first launch. Guarded by a flag so
 // deleting a premade template won't make it come back on the next launch.
 export async function seedPremadeTemplates(): Promise<void> {

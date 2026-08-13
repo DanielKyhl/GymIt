@@ -1,16 +1,29 @@
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { searchExercises } from "../lib/exercises";
-import { saveTemplate } from "../lib/storage";
+import { getTemplates, saveTemplate, updateTemplate } from "../lib/storage";
 
 export default function CreateTemplate() {
   const router = useRouter();
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const isEditing = !!id;
   const [name, setName] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [query, setQuery] = useState("");
 
   const results = searchExercises(query).slice(0, 30);
+
+  useEffect(() => {
+    if (!id) return;
+    getTemplates().then((templates) => {
+      const found = templates.find((t) => t.id === id);
+      if (found) {
+        setName(found.name);
+        setSelected(found.exercises.map((e) => e.name));
+      }
+    });
+  }, [id]);
 
   const addExercise = (exerciseName: string) => {
     if (!selected.includes(exerciseName)) {
@@ -24,11 +37,12 @@ export default function CreateTemplate() {
 
   const handleSave = async () => {
     if (!name.trim() || selected.length === 0) return;
-    await saveTemplate({
-      id: Date.now().toString(),
-      name: name.trim(),
-      exercises: selected.map((n) => ({ name: n })),
-    });
+    const exercises = selected.map((n) => ({ name: n }));
+    if (isEditing) {
+      await updateTemplate({ id: id!, name: name.trim(), exercises });
+    } else {
+      await saveTemplate({ id: Date.now().toString(), name: name.trim(), exercises });
+    }
     router.back();
   };
 
@@ -71,7 +85,7 @@ export default function CreateTemplate() {
       />
 
       <Pressable style={styles.saveButton} onPress={handleSave}>
-        <Text style={styles.saveText}>Save template</Text>
+        <Text style={styles.saveText}>{isEditing ? "Save changes" : "Save template"}</Text>
       </Pressable>
     </View>
   );
