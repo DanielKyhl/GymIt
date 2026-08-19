@@ -5,6 +5,7 @@ import { PREMADE_TEMPLATES } from './premadeTemplates';
 const WORKOUTS_KEY = 'workouts';
 const TEMPLATES_KEY = 'templates';
 const SEEDED_KEY = 'premadeSeeded';
+const WEEKLY_GOAL_KEY = 'weeklyGoal';
 
 export async function getWorkouts(): Promise<Workout[]> {
     const saved = await AsyncStorage.getItem(WORKOUTS_KEY);
@@ -38,6 +39,15 @@ export async function deleteTemplate(id: string): Promise<void> {
     const templates = await getTemplates();
     const updated = templates.filter((t) => t.id !== id);
     await AsyncStorage.setItem(TEMPLATES_KEY, JSON.stringify(updated));
+}
+
+export async function getWeeklyGoal(): Promise<number> {
+    const saved = await AsyncStorage.getItem(WEEKLY_GOAL_KEY);
+    return saved ? Number(saved) : 3;
+}
+
+export async function setWeeklyGoal(goal: number): Promise<void> {
+    await AsyncStorage.setItem(WEEKLY_GOAL_KEY, String(goal));
 }
 
 // Add the beginner templates once, on first launch. Guarded by a flag so
