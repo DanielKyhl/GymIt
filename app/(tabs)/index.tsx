@@ -31,9 +31,14 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>GymIt 💪</Text>
-        <Pressable onPress={logout}>
-          <Text style={styles.logout}>Log out</Text>
-        </Pressable>
+        <View style={styles.headerRight}>
+          <Pressable onPress={() => router.push("/settings")}>
+            <Text style={styles.gear}>⚙</Text>
+          </Pressable>
+          <Pressable onPress={logout}>
+            <Text style={styles.logout}>Log out</Text>
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.statsCard}>
@@ -96,6 +101,8 @@ const styles = StyleSheet.create({
   },
   title: { color: "white", fontSize: 28, fontWeight: "bold" },
   logout: { color: "#8a8a8e", fontSize: 14 },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 16 },
+  gear: { color: "white", fontSize: 20 },
   statsCard: { backgroundColor: "#1c1c1e", borderRadius: 14, padding: 16, marginBottom: 24 },
   levelRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 },
   levelText: { color: "white", fontSize: 20, fontWeight: "bold" },
