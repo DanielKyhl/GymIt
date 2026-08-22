@@ -6,6 +6,7 @@ const WORKOUTS_KEY = 'workouts';
 const TEMPLATES_KEY = 'templates';
 const SEEDED_KEY = 'premadeSeeded';
 const WEEKLY_GOAL_KEY = 'weeklyGoal';
+const BODY_GENDER_KEY = 'bodyGender';
 
 export async function getWorkouts(): Promise<Workout[]> {
     const saved = await AsyncStorage.getItem(WORKOUTS_KEY);
@@ -48,6 +49,15 @@ export async function getWeeklyGoal(): Promise<number> {
 
 export async function setWeeklyGoal(goal: number): Promise<void> {
     await AsyncStorage.setItem(WEEKLY_GOAL_KEY, String(goal));
+}
+
+export async function getBodyGender(): Promise<"male" | "female"> {
+    const saved = await AsyncStorage.getItem(BODY_GENDER_KEY);
+    return saved === "female" ? "female" : "male";
+}
+
+export async function setBodyGender(gender: "male" | "female"): Promise<void> {
+    await AsyncStorage.setItem(BODY_GENDER_KEY, gender);
 }
 
 // Add the beginner templates once, on first launch. Guarded by a flag so

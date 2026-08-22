@@ -3,6 +3,7 @@ export type Exercise = {
   name: string;
   equipment: string | null;
   primaryMuscles: string[];
+  secondaryMuscles: string[];
   category: string;
 }
 // One set performed within an exercise (e.g. 60kg x 8 reps)
