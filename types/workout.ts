@@ -7,10 +7,13 @@ export type Exercise = {
   category: string;
 }
 // One set performed within an exercise (e.g. 60kg x 8 reps)
+export type SetType = "normal" | "warmup";
+
 export type WorkoutSet = {
   weight: number;
   reps: number;
   done: boolean;
+  type?: SetType; // defaults to "normal" when absent
 };
 
 // An exercise as performed in a workout, with all its sets
@@ -39,4 +42,5 @@ export type Template = {
   id: string;
   name: string;
   exercises: TemplateExercise[];
+  restSeconds?: number; // rest timer between sets; falls back to the global default
 };

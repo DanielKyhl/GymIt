@@ -2,6 +2,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useAuth } from "../../context/AuthContext";
+import { plural } from "../../lib/format";
 import { computeXP, levelInfo, thisWeekCount } from "../../lib/gamification";
 import { getTemplates, getWeeklyGoal, getWorkouts } from "../../lib/storage";
 import { Template, Workout } from "../../types/workout";
@@ -47,7 +48,7 @@ export default function HomeScreen() {
           <Pressable onPress={() => router.push("/weekly-goal")}>
             <Text style={styles.miniStat}>This week  {weekCount}/{weeklyGoal}  ⚙</Text>
           </Pressable>
-          <Text style={styles.miniStat}>{workouts.length} total workouts</Text>
+          <Text style={styles.miniStat}>{plural(workouts.length, "workout")} total</Text>
         </View>
       </View>
 
@@ -70,7 +71,7 @@ export default function HomeScreen() {
         renderItem={({ item }) => (
           <TouchableOpacity style={styles.card} onPress={() => router.push(`/template/${item.id}`)}>
             <Text style={styles.cardTitle}>{item.name}</Text>
-            <Text style={styles.cardSub}>{item.exercises.length} exercises</Text>
+            <Text style={styles.cardSub}>{plural(item.exercises.length, "exercise")}</Text>
           </TouchableOpacity>
         )}
       />

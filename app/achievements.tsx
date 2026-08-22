@@ -41,7 +41,7 @@ export default function Achievements() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#111", padding: 20, paddingTop: 60 },
+  container: { flex: 1, backgroundColor: "#111", padding: 20, paddingTop: 16 },
   title: { color: "white", fontSize: 28, fontWeight: "bold", marginBottom: 4 },
   subtitle: { color: "#8a8a8e", fontSize: 14, marginBottom: 20 },
   list: { gap: 10 },

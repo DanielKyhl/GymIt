@@ -23,8 +23,9 @@ function buildContext(workouts: Workout[], weeklyGoal: number) {
     if (hour < earliestHour) earliestHour = hour;
     if (hour > latestHour) latestHour = hour;
     w.exercises.forEach((ex) => {
-      if (ex.sets.length > 0) exerciseNames.add(ex.name);
-      ex.sets.forEach((s) => {
+      const working = ex.sets.filter((s) => s.type !== "warmup");
+      if (working.length > 0) exerciseNames.add(ex.name);
+      working.forEach((s) => {
         totalVolume += s.weight * s.reps;
         totalReps += s.reps;
       });

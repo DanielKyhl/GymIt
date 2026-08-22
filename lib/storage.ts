@@ -7,6 +7,8 @@ const TEMPLATES_KEY = 'templates';
 const SEEDED_KEY = 'premadeSeeded';
 const WEEKLY_GOAL_KEY = 'weeklyGoal';
 const BODY_GENDER_KEY = 'bodyGender';
+const DEFAULT_UNIT_KEY = 'defaultUnit';
+const DEFAULT_REST_KEY = 'defaultRest';
 
 export async function getWorkouts(): Promise<Workout[]> {
     const saved = await AsyncStorage.getItem(WORKOUTS_KEY);
@@ -58,6 +60,24 @@ export async function getBodyGender(): Promise<"male" | "female"> {
 
 export async function setBodyGender(gender: "male" | "female"): Promise<void> {
     await AsyncStorage.setItem(BODY_GENDER_KEY, gender);
+}
+
+export async function getDefaultUnit(): Promise<"kg" | "lb"> {
+    const saved = await AsyncStorage.getItem(DEFAULT_UNIT_KEY);
+    return saved === "lb" ? "lb" : "kg";
+}
+
+export async function setDefaultUnit(unit: "kg" | "lb"): Promise<void> {
+    await AsyncStorage.setItem(DEFAULT_UNIT_KEY, unit);
+}
+
+export async function getDefaultRest(): Promise<number> {
+    const saved = await AsyncStorage.getItem(DEFAULT_REST_KEY);
+    return saved ? Number(saved) : 90;
+}
+
+export async function setDefaultRest(seconds: number): Promise<void> {
+    await AsyncStorage.setItem(DEFAULT_REST_KEY, String(seconds));
 }
 
 // Add the beginner templates once, on first launch. Guarded by a flag so

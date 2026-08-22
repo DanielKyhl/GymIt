@@ -1,6 +1,7 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { plural } from "../../lib/format";
 import { getWorkouts } from "../../lib/storage";
 import { ExerciseSummary, getTrainedExercises } from "../../lib/stats";
 
@@ -34,7 +35,7 @@ export default function Progress() {
           >
             <Text style={styles.cardTitle}>{item.name}</Text>
             <Text style={styles.cardSub}>
-              Best {item.bestWeight} · est. 1RM {item.best1RM} · {item.sessionCount} sessions
+              Best {item.bestWeight} · est. 1RM {item.best1RM} · {plural(item.sessionCount, "session")}
             </Text>
           </TouchableOpacity>
         )}

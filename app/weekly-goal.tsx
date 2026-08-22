@@ -42,7 +42,7 @@ export default function WeeklyGoalScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#111", padding: 20, paddingTop: 60 },
+  container: { flex: 1, backgroundColor: "#111", padding: 20, paddingTop: 16 },
   title: { color: "white", fontSize: 26, fontWeight: "bold", marginBottom: 8 },
   subtitle: { color: "#8a8a8e", fontSize: 15, marginBottom: 28, lineHeight: 21 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },

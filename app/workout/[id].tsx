@@ -1,8 +1,10 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { getTemplates, saveWorkout } from "../../lib/storage";
-import { Template, Workout, WorkoutExercise } from "../../types/workout";
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { searchExercises } from "../../lib/exercises";
+import { getLastPerformance } from "../../lib/stats";
+import { getDefaultRest, getDefaultUnit, getTemplates, getWorkouts, saveWorkout } from "../../lib/storage";
+import { Template, Workout, WorkoutExercise, WorkoutSet } from "../../types/workout";
 
 function formatTime(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
@@ -19,16 +21,27 @@ export default function ActiveWorkout() {
   const [seconds, setSeconds] = useState(0);
   const [unit, setUnit] = useState<"kg" | "lb">("kg");
   const [rest, setRest] = useState(0);
+  const [restDuration, setRestDuration] = useState(90);
+  const [pastWorkouts, setPastWorkouts] = useState<Workout[]>([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [addQuery, setAddQuery] = useState("");
 
   useEffect(() => {
-    getTemplates().then((templates) => {
+    getTemplates().then(async (templates) => {
       const found = templates.find((t) => t.id === id) ?? null;
       setTemplate(found);
       if (found) {
         setExercises(found.exercises.map((e) => ({ name: e.name, sets: [] })));
+        const def = await getDefaultRest();
+        setRestDuration(found.restSeconds ?? def);
+        setPastWorkouts(await getWorkouts());
       }
     });
   }, [id]);
+
+  useEffect(() => {
+    getDefaultUnit().then(setUnit);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => setSeconds((s) => s + 1), 1000);
@@ -41,6 +54,12 @@ export default function ActiveWorkout() {
     const interval = setInterval(() => setRest((r) => Math.max(0, r - 1)), 1000);
     return () => clearInterval(interval);
   }, [resting]);
+
+  const addExerciseToWorkout = (name: string) => {
+    setExercises((prev) => [...prev, { name, sets: [] }]);
+    setShowAdd(false);
+    setAddQuery("");
+  };
 
   const addSet = (exIndex: number) => {
     setExercises((prev) =>
@@ -71,7 +90,22 @@ export default function ActiveWorkout() {
           : ex
       )
     );
-    if (!wasDone) setRest(90);
+    if (!wasDone) setRest(restDuration);
+  };
+
+  const toggleSetType = (exIndex: number, setIndex: number) => {
+    setExercises((prev) =>
+      prev.map((ex, i) =>
+        i === exIndex
+          ? {
+              ...ex,
+              sets: ex.sets.map((s, j) =>
+                j === setIndex ? { ...s, type: s.type === "warmup" ? "normal" : "warmup" } : s
+              ),
+            }
+          : ex
+      )
+    );
   };
 
   const handleEnd = async () => {
@@ -85,6 +119,18 @@ export default function ActiveWorkout() {
       exercises,
     });
     router.replace("/(tabs)");
+  };
+
+  const handleDiscard = () => {
+    const proceed = () => router.replace("/(tabs)");
+    if (Platform.OS === "web") {
+      if (window.confirm("Discard this workout? Nothing will be saved.")) proceed();
+      return;
+    }
+    Alert.alert("Discard workout", "Nothing will be saved.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Discard", style: "destructive", onPress: proceed },
+    ]);
   };
 
   if (!template) {
@@ -115,6 +161,8 @@ export default function ActiveWorkout() {
         </Pressable>
       </View>
 
+      <Text style={styles.tip}>Tip: tap a set&apos;s number to mark it a warm-up (W)</Text>
+
       {rest > 0 && (
         <View style={styles.restBanner}>
           <Text style={styles.restText}>Rest {formatTime(rest)}</Text>
@@ -125,51 +173,93 @@ export default function ActiveWorkout() {
       )}
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-        {exercises.map((ex, exIndex) => (
-          <View style={styles.exerciseCard} key={ex.name + exIndex}>
-            <Text style={styles.exerciseName}>{ex.name}</Text>
+        {exercises.map((ex, exIndex) => {
+          const prev = getLastPerformance(pastWorkouts, ex.name);
+          return (
+            <View style={styles.exerciseCard} key={ex.name + exIndex}>
+              <Text style={styles.exerciseName}>{ex.name}</Text>
 
-            {ex.sets.map((set, setIndex) => (
-              <View style={styles.setRow} key={setIndex}>
-                <Text style={styles.setNum}>{setIndex + 1}</Text>
-                <TextInput
-                  style={styles.setInput}
-                  keyboardType="numeric"
-                  placeholder={unit}
-                  placeholderTextColor="#8a8a8e"
-                  value={set.weight ? String(set.weight) : ""}
-                  onChangeText={(v) => updateSet(exIndex, setIndex, "weight", Number(v) || 0)}
-                />
-                <TextInput
-                  style={styles.setInput}
-                  keyboardType="numeric"
-                  placeholder="reps"
-                  placeholderTextColor="#8a8a8e"
-                  value={set.reps ? String(set.reps) : ""}
-                  onChangeText={(v) => updateSet(exIndex, setIndex, "reps", Number(v) || 0)}
-                />
-                <Pressable onPress={() => toggleDone(exIndex, setIndex)}>
-                  <Text style={styles.check}>{set.done ? "✓" : "○"}</Text>
-                </Pressable>
+              <View style={styles.setRow}>
+                <Text style={[styles.setNum, styles.colHead]}>Set</Text>
+                <Text style={[styles.prev, styles.colHead]}>Prev</Text>
+                <Text style={[styles.colHead, styles.colFlex]}>{unit}</Text>
+                <Text style={[styles.colHead, styles.colFlex]}>Reps</Text>
+                <Text style={[styles.colHead, { width: 30 }]}>✓</Text>
               </View>
-            ))}
 
-            <Pressable onPress={() => addSet(exIndex)}>
-              <Text style={styles.addSet}>+ Add set</Text>
-            </Pressable>
+              {ex.sets.map((set, setIndex) => (
+                <View style={styles.setRow} key={setIndex}>
+                  <Pressable onPress={() => toggleSetType(exIndex, setIndex)}>
+                    <Text style={[styles.setNum, set.type === "warmup" && styles.warmupNum]}>
+                      {set.type === "warmup" ? "W" : setIndex + 1}
+                    </Text>
+                  </Pressable>
+                  <Text style={styles.prev}>
+                    {prev[setIndex] ? `${prev[setIndex].weight}×${prev[setIndex].reps}` : "–"}
+                  </Text>
+                  <TextInput
+                    style={styles.setInput}
+                    keyboardType="numeric"
+                    placeholder={prev[setIndex] ? String(prev[setIndex].weight) : unit}
+                    placeholderTextColor="#8a8a8e"
+                    value={set.weight ? String(set.weight) : ""}
+                    onChangeText={(v) => updateSet(exIndex, setIndex, "weight", Number(v) || 0)}
+                  />
+                  <TextInput
+                    style={styles.setInput}
+                    keyboardType="numeric"
+                    placeholder={prev[setIndex] ? String(prev[setIndex].reps) : "reps"}
+                    placeholderTextColor="#8a8a8e"
+                    value={set.reps ? String(set.reps) : ""}
+                    onChangeText={(v) => updateSet(exIndex, setIndex, "reps", Number(v) || 0)}
+                  />
+                  <Pressable onPress={() => toggleDone(exIndex, setIndex)}>
+                    <Text style={styles.check}>{set.done ? "✓" : "○"}</Text>
+                  </Pressable>
+                </View>
+              ))}
+
+              <Pressable onPress={() => addSet(exIndex)}>
+                <Text style={styles.addSet}>+ Add set</Text>
+              </Pressable>
+            </View>
+          );
+        })}
+
+        {showAdd ? (
+          <View style={styles.addBox}>
+            <TextInput
+              style={styles.addSearch}
+              placeholder="Search exercise to add"
+              placeholderTextColor="#8a8a8e"
+              value={addQuery}
+              onChangeText={setAddQuery}
+            />
+            {searchExercises(addQuery).slice(0, 8).map((e) => (
+              <Pressable key={e.id} style={styles.addResult} onPress={() => addExerciseToWorkout(e.name)}>
+                <Text style={styles.addResultText}>{e.name}</Text>
+              </Pressable>
+            ))}
           </View>
-        ))}
+        ) : (
+          <Pressable style={styles.addExerciseBtn} onPress={() => setShowAdd(true)}>
+            <Text style={styles.addExerciseText}>+ Add exercise</Text>
+          </Pressable>
+        )}
       </ScrollView>
 
       <Pressable style={styles.endButton} onPress={handleEnd}>
         <Text style={styles.endText}>End workout</Text>
+      </Pressable>
+      <Pressable style={styles.discardBtn} onPress={handleDiscard}>
+        <Text style={styles.discardText}>Discard workout</Text>
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#111", padding: 20, paddingTop: 60 },
+  container: { flex: 1, backgroundColor: "#111", padding: 20, paddingTop: 16 },
   name: { color: "white", fontSize: 22, fontWeight: "500", textAlign: "center" },
   timer: { color: "#007AFF", fontSize: 48, fontWeight: "bold", textAlign: "center", marginBottom: 16 },
   scroll: { flex: 1 },
@@ -177,10 +267,24 @@ const styles = StyleSheet.create({
   exerciseCard: { backgroundColor: "#1c1c1e", borderRadius: 12, padding: 14 },
   exerciseName: { color: "white", fontSize: 16, fontWeight: "500", marginBottom: 10 },
   setRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
-  setNum: { color: "#8a8a8e", fontSize: 14, width: 20 },
+  setNum: { color: "#8a8a8e", fontSize: 14, width: 24, textAlign: "center" },
+  warmupNum: { color: "#e6b800", fontWeight: "bold" },
+  prev: { color: "#6a6a6e", fontSize: 12, width: 50, textAlign: "center" },
+  colHead: { color: "#6a6a6e", fontSize: 11 },
+  colFlex: { flex: 1, textAlign: "center" },
+  tip: { color: "#6a6a6e", fontSize: 11, textAlign: "center", marginBottom: 10 },
   setInput: { flex: 1, backgroundColor: "#2c2c2e", color: "white", textAlign: "center", padding: 8, borderRadius: 6 },
   check: { color: "#1d9e75", fontSize: 22, width: 30, textAlign: "center" },
   addSet: { color: "#007AFF", fontSize: 14, marginTop: 4 },
+  addExerciseBtn: {
+    alignItems: "center", paddingVertical: 12, borderWidth: 0.5, borderColor: "#48484a",
+    borderRadius: 10, borderStyle: "dashed",
+  },
+  addExerciseText: { color: "#007AFF", fontSize: 15 },
+  addBox: { backgroundColor: "#1c1c1e", borderRadius: 12, padding: 12 },
+  addSearch: { backgroundColor: "#2c2c2e", color: "white", padding: 10, borderRadius: 8, marginBottom: 8 },
+  addResult: { paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: "#2c2c2e" },
+  addResultText: { color: "white", fontSize: 14 },
   unitToggle: { flexDirection: "row", justifyContent: "center", gap: 8, marginBottom: 12 },
   unitButton: { paddingVertical: 6, paddingHorizontal: 20, borderRadius: 8, backgroundColor: "#1c1c1e" },
   unitActive: { backgroundColor: "#007AFF" },
@@ -190,4 +294,6 @@ const styles = StyleSheet.create({
   skipText: { color: "#8a8a8e", fontSize: 14 },
   endButton: { backgroundColor: "#c0392b", borderRadius: 12, padding: 16, alignItems: "center", marginTop: 12 },
   endText: { color: "white", fontSize: 16, fontWeight: "500" },
+  discardBtn: { alignItems: "center", paddingVertical: 10, marginTop: 2 },
+  discardText: { color: "#8a8a8e", fontSize: 14 },
 });

@@ -69,7 +69,7 @@ export default function ExerciseProgress() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#111" },
-  content: { padding: 20, paddingTop: 60 },
+  content: { padding: 20, paddingTop: 16 },
   title: { color: "white", fontSize: 24, fontWeight: "bold", marginBottom: 20 },
   statsRow: { flexDirection: "row", gap: 10, marginBottom: 24 },
   statCard: { flex: 1, backgroundColor: "#1c1c1e", borderRadius: 12, padding: 14, alignItems: "center" },

@@ -1,6 +1,7 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { Alert, FlatList, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { plural } from "../../lib/format";
 import { deleteTemplate, getTemplates } from "../../lib/storage";
 import { Template } from "../../types/workout";
 
@@ -48,7 +49,7 @@ export default function TemplateDetail() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{template.name}</Text>
-      <Text style={styles.subtitle}>{template.exercises.length} exercises</Text>
+      <Text style={styles.subtitle}>{plural(template.exercises.length, "exercise")}</Text>
 
       <FlatList
         data={template.exercises}
@@ -81,7 +82,7 @@ export default function TemplateDetail() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#111", padding: 20, paddingTop: 60 },
+  container: { flex: 1, backgroundColor: "#111", padding: 20, paddingTop: 16 },
   title: { color: "white", fontSize: 28, fontWeight: "bold", marginBottom: 4 },
   subtitle: { color: "#8a8a8e", fontSize: 14, marginBottom: 24 },
   list: { gap: 10 },

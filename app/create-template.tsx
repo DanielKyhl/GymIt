@@ -11,6 +11,7 @@ export default function CreateTemplate() {
   const [name, setName] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [query, setQuery] = useState("");
+  const [rest, setRest] = useState("90");
 
   const results = searchExercises(query).slice(0, 30);
 
@@ -21,6 +22,7 @@ export default function CreateTemplate() {
       if (found) {
         setName(found.name);
         setSelected(found.exercises.map((e) => e.name));
+        setRest(String(found.restSeconds ?? 90));
       }
     });
   }, [id]);
@@ -38,10 +40,11 @@ export default function CreateTemplate() {
   const handleSave = async () => {
     if (!name.trim() || selected.length === 0) return;
     const exercises = selected.map((n) => ({ name: n }));
+    const restSeconds = Number(rest) || 90;
     if (isEditing) {
-      await updateTemplate({ id: id!, name: name.trim(), exercises });
+      await updateTemplate({ id: id!, name: name.trim(), exercises, restSeconds });
     } else {
-      await saveTemplate({ id: Date.now().toString(), name: name.trim(), exercises });
+      await saveTemplate({ id: Date.now().toString(), name: name.trim(), exercises, restSeconds });
     }
     router.back();
   };
@@ -55,6 +58,17 @@ export default function CreateTemplate() {
         value={name}
         onChangeText={setName}
       />
+
+      <View style={styles.restRow}>
+        <Text style={styles.restLabel}>Rest between sets</Text>
+        <TextInput
+          style={styles.restInput}
+          keyboardType="numeric"
+          value={rest}
+          onChangeText={setRest}
+        />
+        <Text style={styles.restUnit}>sec</Text>
+      </View>
 
       {selected.length > 0 && (
         <View style={styles.selectedBox}>
@@ -92,11 +106,18 @@ export default function CreateTemplate() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#111", padding: 20, paddingTop: 60 },
+  container: { flex: 1, backgroundColor: "#111", padding: 20, paddingTop: 16 },
   nameInput: {
     backgroundColor: "#1c1c1e", color: "white", fontSize: 18,
     padding: 14, borderRadius: 10, marginBottom: 14,
   },
+  restRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 },
+  restLabel: { color: "white", fontSize: 15, flex: 1 },
+  restInput: {
+    backgroundColor: "#1c1c1e", color: "white", fontSize: 16, textAlign: "center",
+    paddingVertical: 8, width: 64, borderRadius: 8,
+  },
+  restUnit: { color: "#8a8a8e", fontSize: 14 },
   selectedBox: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 },
   chip: { backgroundColor: "#0a3d62", paddingVertical: 6, paddingHorizontal: 12, borderRadius: 16 },
   chipText: { color: "#9fd3ff", fontSize: 13 },

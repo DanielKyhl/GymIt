@@ -17,12 +17,14 @@ function weekKey(iso: string): string {
 }
 
 // The single best estimated 1RM logged for an exercise in one workout.
-function sessionBest1RM(sets: { weight: number; reps: number }[]): number {
+function sessionBest1RM(sets: { weight: number; reps: number; type?: string }[]): number {
   let best = 0;
-  sets.forEach((s) => {
-    const oneRM = estimate1RM(s.weight, s.reps);
-    if (oneRM > best) best = oneRM;
-  });
+  sets
+    .filter((s) => s.type !== "warmup")
+    .forEach((s) => {
+      const oneRM = estimate1RM(s.weight, s.reps);
+      if (oneRM > best) best = oneRM;
+    });
   return best;
 }
 
@@ -67,7 +69,7 @@ export function computeXP(workouts: Workout[], weeklyGoal: number): number {
     xp += XP_PER_WORKOUT;
     w.exercises.forEach((ex) => {
       ex.sets.forEach((s) => {
-        if (s.done) xp += XP_PER_SET;
+        if (s.done && s.type !== "warmup") xp += XP_PER_SET;
       });
     });
   });

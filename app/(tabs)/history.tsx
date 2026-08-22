@@ -1,6 +1,7 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { plural } from "../../lib/format";
 import { getWorkouts } from "../../lib/storage";
 import { Workout } from "../../types/workout";
 
@@ -39,7 +40,7 @@ export default function History() {
             >
               <Text style={styles.cardTitle}>{item.name}</Text>
               <Text style={styles.cardSub}>
-                {formatDate(item.date)} · {Math.round(item.durationSeconds / 60)} min · {totalSets} sets
+                {formatDate(item.date)} · {Math.round(item.durationSeconds / 60)} min · {plural(totalSets, "set")}
               </Text>
             </TouchableOpacity>
           );

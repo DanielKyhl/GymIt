@@ -1,4 +1,4 @@
-import { Workout } from "../types/workout";
+import { Workout, WorkoutSet } from "../types/workout";
 
 // Epley formula: estimate a one-rep max from a weight lifted for some reps.
 // 1RM = weight * (1 + reps / 30). One rep just returns the weight.
@@ -21,10 +21,12 @@ export function getExerciseSessions(workouts: Workout[], name: string): Exercise
   // Stored newest-first, so reverse for a left-to-right timeline.
   [...workouts].reverse().forEach((w) => {
     const ex = w.exercises.find((e) => e.name === name);
-    if (!ex || ex.sets.length === 0) return;
+    if (!ex) return;
+    const working = ex.sets.filter((s) => s.type !== "warmup");
+    if (working.length === 0) return;
     let topWeight = 0;
     let best1RM = 0;
-    ex.sets.forEach((s) => {
+    working.forEach((s) => {
       if (s.weight > topWeight) topWeight = s.weight;
       const oneRM = estimate1RM(s.weight, s.reps);
       if (oneRM > best1RM) best1RM = oneRM;
@@ -46,11 +48,12 @@ export function getTrainedExercises(workouts: Workout[]): ExerciseSummary[] {
   const map = new Map<string, ExerciseSummary>();
   workouts.forEach((w) => {
     w.exercises.forEach((ex) => {
-      if (ex.sets.length === 0) return;
+      const working = ex.sets.filter((s) => s.type !== "warmup");
+      if (working.length === 0) return;
       const summary =
         map.get(ex.name) ?? { name: ex.name, bestWeight: 0, best1RM: 0, sessionCount: 0 };
       summary.sessionCount += 1;
-      ex.sets.forEach((s) => {
+      working.forEach((s) => {
         if (s.weight > summary.bestWeight) summary.bestWeight = s.weight;
         const oneRM = estimate1RM(s.weight, s.reps);
         if (oneRM > summary.best1RM) summary.best1RM = oneRM;
@@ -59,4 +62,17 @@ export function getTrainedExercises(workouts: Workout[]): ExerciseSummary[] {
     });
   });
   return [...map.values()].sort((a, b) => b.sessionCount - a.sessionCount);
+}
+
+// The working sets from the most recent past workout that included this
+// exercise — used to show "previous" hints while logging.
+export function getLastPerformance(workouts: Workout[], name: string): WorkoutSet[] {
+  for (const w of workouts) {
+    const ex = w.exercises.find((e) => e.name === name);
+    if (ex) {
+      const working = ex.sets.filter((s) => s.type !== "warmup");
+      if (working.length > 0) return working;
+    }
+  }
+  return [];
 }
