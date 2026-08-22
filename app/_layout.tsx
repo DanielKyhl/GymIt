@@ -36,6 +36,7 @@ export default function RootLayout() {
           <Stack.Screen name="workout-log/[id]" options={{ title: 'Workout' }} />
           <Stack.Screen name="exercise-progress/[name]" options={{ title: 'Progress' }} />
           <Stack.Screen name="create-template" options={{ title: 'New template' }} />
+          <Stack.Screen name="workout-summary" options={{ headerShown: false }} />
           <Stack.Screen name="weekly-goal" options={{ title: 'Weekly goal' }} />
           <Stack.Screen name="achievements" options={{ title: 'Achievements' }} />
         </Stack>

@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { searchExercises } from "../../lib/exercises";
 import { getLastPerformance } from "../../lib/stats";
-import { getDefaultRest, getDefaultUnit, getTemplates, getWorkouts, saveWorkout } from "../../lib/storage";
+import { summarizeWorkout } from "../../lib/summary";
+import { getDefaultRest, getDefaultUnit, getTemplates, getWeeklyGoal, getWorkouts, saveWorkout } from "../../lib/storage";
 import { Template, Workout, WorkoutExercise, WorkoutSet } from "../../types/workout";
 
 function formatTime(totalSeconds: number) {
@@ -110,15 +111,27 @@ export default function ActiveWorkout() {
 
   const handleEnd = async () => {
     if (!template) return;
-    await saveWorkout({
+    const workout: Workout = {
       id: Date.now().toString(),
       name: template.name,
       date: new Date().toISOString(),
       durationSeconds: seconds,
       unit,
       exercises,
+    };
+    await saveWorkout(workout);
+    const goal = await getWeeklyGoal();
+    const s = summarizeWorkout(pastWorkouts, workout, goal);
+    router.replace({
+      pathname: "/workout-summary",
+      params: {
+        xp: String(s.xpGained),
+        level: String(s.levelAfter),
+        leveledUp: s.leveledUp ? "1" : "0",
+        prs: String(s.newPRs),
+        achievements: JSON.stringify(s.newAchievements),
+      },
     });
-    router.replace("/(tabs)");
   };
 
   const handleDiscard = () => {
