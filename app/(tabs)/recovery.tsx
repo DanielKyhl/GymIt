@@ -142,4 +142,7 @@ const styles = StyleSheet.create({
   rowLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   rowName: { color: "white", fontSize: 15 },
   rowStat: { color: "#8a8a8e", fontSize: 14 },
+    selCard: { backgroundColor: "#1c1c1e", borderRadius: 12, padding: 16, alignItems: "center", marginTop: 14 },
+  selName: { color: "white", fontSize: 18, fontWeight: "500", marginBottom: 4 },
+  selStat: { color: "#8a8a8e", fontSize: 15 },
 });
