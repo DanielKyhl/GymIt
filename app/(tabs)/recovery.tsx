@@ -1,7 +1,7 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
-import Body from "react-native-body-highlighter";
+import Body, { Slug } from "react-native-body-highlighter";
 import {
   COLOR_PARTIAL,
   COLOR_RECOVERED,
@@ -17,6 +17,7 @@ export default function Recovery() {
   const [recovery, setRecovery] = useState<MuscleRecovery[]>([]);
   const [gender, setGender] = useState<"male" | "female">("male");
   const [side, setSide] = useState<"front" | "back">("front");
+  const [selected, setSelected] = useState<Slug | null>(null);
 
   const flip = () => setSide((s) => (s === "front" ? "back" : "front"));
 
@@ -39,6 +40,7 @@ export default function Recovery() {
   const recovering = recovery
     .filter((m) => m.fraction < 1)
     .sort((a, b) => a.fraction - b.fraction);
+    const sel = recovery.find((m) => m.slug === selected);
 
   const pageWidth = width - 40;
 
@@ -60,15 +62,25 @@ export default function Recovery() {
           <Text style={styles.genderText}>Female</Text>
         </Pressable>
       </View>
-
+      
+      
       <View style={[styles.bodyWrap, { width: pageWidth }]}>
-        <Body side={side} gender={gender} scale={1.05} data={colored} />
+        <Body onBodyPartPress={(part) => setSelected(part.slug ?? null)} side={side} gender={gender} scale={1.4} data={colored} />
       </View>
+
 
       <Pressable style={styles.turnBtn} onPress={flip}>
         <Text style={styles.turnText}>⟳ Turn around · showing {side}</Text>
       </Pressable>
 
+{sel && (
+  <View style={styles.selCard}>
+    <Text style={styles.selName}>{slugLabel(sel.slug)}</Text>
+    <Text style={styles.selStat}>
+      {sel.fraction >= 1 ? "Recovered ✓" : `~${sel.hoursLeft}h until recovered`}
+    </Text>
+  </View>
+)}
       <View style={styles.legend}>
         <View style={styles.legendItem}>
           <View style={[styles.dot, { backgroundColor: COLOR_RECOVERED }]} />
@@ -111,7 +123,7 @@ const styles = StyleSheet.create({
   genderActive: { backgroundColor: "#007AFF" },
   genderText: { color: "white", fontSize: 14 },
   hint: { color: "#8a8a8e", fontSize: 12, textAlign: "center", marginBottom: 6 },
-  bodyWrap: { height: 340, alignItems: "center", justifyContent: "center", alignSelf: "center" },
+  bodyWrap: { height: 420, alignItems: "center", justifyContent: "center", alignSelf: "center" },
   turnBtn: {
     alignSelf: "center", backgroundColor: "#1c1c1e", borderRadius: 10,
     paddingVertical: 8, paddingHorizontal: 18, marginTop: 8,
