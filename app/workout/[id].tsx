@@ -33,7 +33,12 @@ export default function ActiveWorkout() {
       const found = templates.find((t) => t.id === id) ?? null;
       setTemplate(found);
       if (found) {
-        setExercises(found.exercises.map((e) => ({ name: e.name, sets: [] })));
+                setExercises(
+          found.exercises.map((e) => ({
+            name: e.name,
+            sets: (e.sets ?? []).map((s) => ({ ...s, done: false })),
+          }))
+        );
         const def = await getDefaultRest();
         setDefaultRest(found.restSeconds ?? def);
         setPastWorkouts(await getWorkouts());

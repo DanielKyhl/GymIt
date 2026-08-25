@@ -58,6 +58,11 @@ export default function TemplateDetail() {
         renderItem={({ item }) => (
           <View style={styles.row}>
             <Text style={styles.rowText}>{item.name}</Text>
+            <Text style={styles.rowSub}>
+              {item.sets && item.sets.length > 0
+                ? item.sets.map((s) => `${s.weight}×${s.reps}`).join("   ")
+                : "No sets planned"}
+            </Text>
           </View>
         )}
       />
@@ -88,6 +93,7 @@ const styles = StyleSheet.create({
   list: { gap: 10 },
   row: { backgroundColor: "#1c1c1e", borderRadius: 12, padding: 16 },
   rowText: { color: "white", fontSize: 16 },
+  rowSub: { color: "#8a8a8e", fontSize: 13, marginTop: 4 },
   startButton: {
     backgroundColor: "#007AFF", borderRadius: 12, padding: 16,
     alignItems: "center", marginTop: 12,

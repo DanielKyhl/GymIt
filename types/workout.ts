@@ -33,9 +33,18 @@ export type Workout = {
   exercises: WorkoutExercise[];
 };
 
-// One exercise inside a template (just the plan, no weights/reps yet)
+// A planned set inside a template (like a WorkoutSet, but with no "done").
+export type TemplateSet = {
+  weight: number;
+  reps: number;
+  restSeconds?: number;
+  type?: SetType;
+};
+
+// One exercise inside a template, with its planned sets.
 export type TemplateExercise = {
   name: string;
+  sets?: TemplateSet[]; // optional — older templates were name-only
 };
 
 // A reusable template: a named list of exercises to train
