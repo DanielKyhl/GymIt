@@ -76,3 +76,7 @@ export function getLastPerformance(workouts: Workout[], name: string): WorkoutSe
   }
   return [];
 }
+export function lastUsedDate(workouts: Workout[], name: string): string | null {
+  const match = workouts.find((w) => w.name === name);
+  return match ? match.date : null;
+}

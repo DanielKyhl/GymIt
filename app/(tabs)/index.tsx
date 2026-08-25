@@ -1,9 +1,10 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useAuth } from "../../context/AuthContext";
-import { plural } from "../../lib/format";
+import { plural, relativeDay } from "../../lib/format";
 import { computeXP, levelInfo, thisWeekCount } from "../../lib/gamification";
+import { lastUsedDate } from "../../lib/stats";
 import { getTemplates, getWeeklyGoal, getWorkouts } from "../../lib/storage";
 import { Template, Workout } from "../../types/workout";
 
@@ -27,8 +28,32 @@ export default function HomeScreen() {
   const weekCount = thisWeekCount(workouts);
   const progress = isMax ? 1 : Math.min(1, xpIntoLevel / xpForNext);
 
+  const custom = templates.filter((t) => !t.id.startsWith("premade-"));
+  const premade = templates.filter((t) => t.id.startsWith("premade-"));
+
+  const renderCard = (item: Template) => {
+    const used = lastUsedDate(workouts, item.name);
+    const preview = item.exercises.map((e) => e.name).join(", ");
+    return (
+      <TouchableOpacity
+        key={item.id}
+        style={styles.card}
+        onPress={() => router.push(`/template/${item.id}`)}
+      >
+        <Text style={styles.cardTitle}>{item.name}</Text>
+        <Text style={styles.cardPreview} numberOfLines={2}>
+          {preview || "No exercises"}
+        </Text>
+        <View style={styles.cardMeta}>
+          <Text style={styles.clock}>🕒</Text>
+          <Text style={styles.cardMetaText}>{used ? relativeDay(used) : "Never used"}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Text style={styles.title}>GymIt 💪</Text>
         <View style={styles.headerRight}>
@@ -63,36 +88,29 @@ export default function HomeScreen() {
       </Pressable>
 
       <Text style={styles.sectionTitle}>Your templates</Text>
+      {custom.length === 0 ? (
+        <Text style={styles.empty}>No templates yet. Create your first one below.</Text>
+      ) : (
+        <View style={styles.list}>{custom.map(renderCard)}</View>
+      )}
 
-      <FlatList
-        data={templates}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <Text style={styles.empty}>
-            No templates yet. Create your first one below.
-          </Text>
-        }
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.card} onPress={() => router.push(`/template/${item.id}`)}>
-            <Text style={styles.cardTitle}>{item.name}</Text>
-            <Text style={styles.cardSub}>{plural(item.exercises.length, "exercise")}</Text>
-          </TouchableOpacity>
-        )}
-      />
-
-      <Pressable
-        style={styles.createButton}
-        onPress={() => router.push("/create-template")}
-      >
+      <Pressable style={styles.createButton} onPress={() => router.push("/create-template")}>
         <Text style={styles.createButtonText}>+ Create template</Text>
       </Pressable>
-    </View>
+
+      {premade.length > 0 && (
+        <>
+          <Text style={[styles.sectionTitle, styles.sectionSpacer]}>Example templates</Text>
+          <View style={styles.list}>{premade.map(renderCard)}</View>
+        </>
+      )}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#111", padding: 20, paddingTop: 60 },
+  container: { flex: 1, backgroundColor: "#111" },
+  content: { padding: 20, paddingTop: 60, paddingBottom: 40 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -118,11 +136,18 @@ const styles = StyleSheet.create({
   achievementsText: { color: "white", fontSize: 15, fontWeight: "500" },
   achievementsChevron: { color: "#8a8a8e", fontSize: 20 },
   sectionTitle: { color: "#8a8a8e", fontSize: 13, marginBottom: 12, textTransform: "uppercase" },
-  list: { gap: 10 },
-  empty: { color: "#8a8a8e", fontSize: 15, textAlign: "center", marginTop: 40 },
-  card: { backgroundColor: "#1c1c1e", borderRadius: 12, padding: 16 },
-  cardTitle: { color: "white", fontSize: 17, fontWeight: "500", marginBottom: 4 },
-  cardSub: { color: "#8a8a8e", fontSize: 13 },
+  sectionSpacer: { marginTop: 28 },
+  list: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 12 },
+  empty: { color: "#8a8a8e", fontSize: 15, textAlign: "center", marginTop: 20, marginBottom: 8 },
+  card: {
+    width: "48%", minHeight: 140, backgroundColor: "#1c1c1e",
+    borderRadius: 24, borderWidth: 1, borderColor: "#333", padding: 16,
+  },
+  cardTitle: { color: "white", fontSize: 16, fontWeight: "600", marginBottom: 8 },
+  cardPreview: { color: "#8a8a8e", fontSize: 12, lineHeight: 17, marginBottom: 12 },
+  cardMeta: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: "auto" },
+  clock: { fontSize: 13 },
+  cardMetaText: { color: "#8a8a8e", fontSize: 12 },
   createButton: {
     backgroundColor: "#007AFF",
     borderRadius: 12,
