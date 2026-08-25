@@ -21,8 +21,9 @@ export default function ActiveWorkout() {
   const [exercises, setExercises] = useState<WorkoutExercise[]>([]);
   const [seconds, setSeconds] = useState(0);
   const [unit, setUnit] = useState<"kg" | "lb">("kg");
-  const [rest, setRest] = useState(0);
-  const [restDuration, setRestDuration] = useState(90);
+  const [defaultRest, setDefaultRest] = useState(120);
+  const [restTarget, setRestTarget] = useState<number | null>(null);
+  const [restElapsed, setRestElapsed] = useState(0);
   const [pastWorkouts, setPastWorkouts] = useState<Workout[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [addQuery, setAddQuery] = useState("");
@@ -34,7 +35,7 @@ export default function ActiveWorkout() {
       if (found) {
         setExercises(found.exercises.map((e) => ({ name: e.name, sets: [] })));
         const def = await getDefaultRest();
-        setRestDuration(found.restSeconds ?? def);
+        setDefaultRest(found.restSeconds ?? def);
         setPastWorkouts(await getWorkouts());
       }
     });
@@ -49,12 +50,11 @@ export default function ActiveWorkout() {
     return () => clearInterval(interval);
   }, []);
 
-  const resting = rest > 0;
   useEffect(() => {
-    if (!resting) return;
-    const interval = setInterval(() => setRest((r) => Math.max(0, r - 1)), 1000);
+    if (restTarget === null) return;
+    const interval = setInterval(() => setRestElapsed((e) => e + 1), 1000);
     return () => clearInterval(interval);
-  }, [resting]);
+  }, [restTarget]);
 
   const addExerciseToWorkout = (name: string) => {
     setExercises((prev) => [...prev, { name, sets: [] }]);
@@ -66,7 +66,7 @@ export default function ActiveWorkout() {
     setExercises((prev) =>
       prev.map((ex, i) =>
         i === exIndex
-          ? { ...ex, sets: [...ex.sets, { weight: 0, reps: 0, done: false }] }
+          ? { ...ex, sets: [...ex.sets, { weight: 0, reps: 0, done: false, restSeconds: defaultRest }] }
           : ex
       )
     );
@@ -82,6 +82,16 @@ export default function ActiveWorkout() {
     );
   };
 
+  const setRestForSet = (exIndex: number, setIndex: number, seconds: number) => {
+    setExercises((prev) =>
+      prev.map((ex, i) =>
+        i === exIndex
+          ? { ...ex, sets: ex.sets.map((s, j) => (j === setIndex ? { ...s, restSeconds: seconds } : s)) }
+          : ex
+      )
+    );
+  };
+
   const toggleDone = (exIndex: number, setIndex: number) => {
     const wasDone = exercises[exIndex].sets[setIndex].done;
     setExercises((prev) =>
@@ -91,7 +101,13 @@ export default function ActiveWorkout() {
           : ex
       )
     );
-    if (!wasDone) setRest(restDuration);
+    if (!wasDone) {
+      const r = exercises[exIndex].sets[setIndex].restSeconds;
+      if (r && r > 0) {
+        setRestTarget(r);
+        setRestElapsed(0);
+      }
+    }
   };
 
   const toggleSetType = (exIndex: number, setIndex: number) => {
@@ -159,28 +175,15 @@ export default function ActiveWorkout() {
       <Text style={styles.name}>{template.name}</Text>
       <Text style={styles.timer}>{formatTime(seconds)}</Text>
 
-      <View style={styles.unitToggle}>
-        <Pressable
-          style={[styles.unitButton, unit === "kg" && styles.unitActive]}
-          onPress={() => setUnit("kg")}
-        >
-          <Text style={styles.unitText}>kg</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.unitButton, unit === "lb" && styles.unitActive]}
-          onPress={() => setUnit("lb")}
-        >
-          <Text style={styles.unitText}>lb</Text>
-        </Pressable>
-      </View>
-
       <Text style={styles.tip}>Tip: tap a set&apos;s number to mark it a warm-up (W)</Text>
 
-      {rest > 0 && (
-        <View style={styles.restBanner}>
-          <Text style={styles.restText}>Rest {formatTime(rest)}</Text>
-          <Pressable onPress={() => setRest(0)}>
-            <Text style={styles.skipText}>Skip</Text>
+      {restTarget !== null && (
+        <View style={[styles.restBanner, restElapsed >= restTarget && styles.restBannerOver]}>
+          <Text style={[styles.restText, restElapsed >= restTarget && styles.restTextOver]}>
+            Rest {formatTime(restElapsed)} / {formatTime(restTarget)}
+          </Text>
+          <Pressable onPress={() => setRestTarget(null)}>
+            <Text style={styles.skipText}>Done</Text>
           </Pressable>
         </View>
       )}
@@ -201,34 +204,56 @@ export default function ActiveWorkout() {
               </View>
 
               {ex.sets.map((set, setIndex) => (
-                <View style={styles.setRow} key={setIndex}>
-                  <Pressable onPress={() => toggleSetType(exIndex, setIndex)}>
-                    <Text style={[styles.setNum, set.type === "warmup" && styles.warmupNum]}>
-                      {set.type === "warmup" ? "W" : setIndex + 1}
+                <View key={setIndex}>
+                  <View style={styles.setRow}>
+                    <Pressable onPress={() => toggleSetType(exIndex, setIndex)}>
+                      <Text style={[styles.setNum, set.type === "warmup" && styles.warmupNum]}>
+                        {set.type === "warmup" ? "W" : setIndex + 1}
+                      </Text>
+                    </Pressable>
+                    <Text style={styles.prev}>
+                      {prev[setIndex] ? `${prev[setIndex].weight} × ${prev[setIndex].reps}` : "–"}
                     </Text>
-                  </Pressable>
-                  <Text style={styles.prev}>
-                    {prev[setIndex] ? `${prev[setIndex].weight}×${prev[setIndex].reps}` : "–"}
-                  </Text>
-                  <TextInput
-                    style={styles.setInput}
-                    keyboardType="numeric"
-                    placeholder={prev[setIndex] ? String(prev[setIndex].weight) : unit}
-                    placeholderTextColor="#8a8a8e"
-                    value={set.weight ? String(set.weight) : ""}
-                    onChangeText={(v) => updateSet(exIndex, setIndex, "weight", Number(v) || 0)}
-                  />
-                  <TextInput
-                    style={styles.setInput}
-                    keyboardType="numeric"
-                    placeholder={prev[setIndex] ? String(prev[setIndex].reps) : "reps"}
-                    placeholderTextColor="#8a8a8e"
-                    value={set.reps ? String(set.reps) : ""}
-                    onChangeText={(v) => updateSet(exIndex, setIndex, "reps", Number(v) || 0)}
-                  />
-                  <Pressable onPress={() => toggleDone(exIndex, setIndex)}>
-                    <Text style={styles.check}>{set.done ? "✓" : "○"}</Text>
-                  </Pressable>
+                    <TextInput
+                      style={styles.setInput}
+                      keyboardType="numeric"
+                      placeholder={prev[setIndex] ? String(prev[setIndex].weight) : unit}
+                      placeholderTextColor="#8a8a8e"
+                      value={set.weight ? String(set.weight) : ""}
+                      onChangeText={(v) => updateSet(exIndex, setIndex, "weight", Number(v) || 0)}
+                    />
+                    <TextInput
+                      style={styles.setInput}
+                      keyboardType="numeric"
+                      placeholder={prev[setIndex] ? String(prev[setIndex].reps) : "reps"}
+                      placeholderTextColor="#8a8a8e"
+                      value={set.reps ? String(set.reps) : ""}
+                      onChangeText={(v) => updateSet(exIndex, setIndex, "reps", Number(v) || 0)}
+                    />
+                    <Pressable onPress={() => toggleDone(exIndex, setIndex)}>
+                      <Text style={styles.check}>{set.done ? "✓" : "○"}</Text>
+                    </Pressable>
+                  </View>
+
+                  {set.restSeconds ? (
+                    <View style={styles.restEditRow}>
+                      <Text style={styles.restEditLabel}>⏱ Rest</Text>
+                      <TextInput
+                        style={styles.restEditInput}
+                        keyboardType="numeric"
+                        value={String(set.restSeconds)}
+                        onChangeText={(v) => setRestForSet(exIndex, setIndex, Number(v) || 0)}
+                      />
+                      <Text style={styles.restEditUnit}>s</Text>
+                      <Pressable onPress={() => setRestForSet(exIndex, setIndex, 0)}>
+                        <Text style={styles.restDelete}>✕</Text>
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <Pressable onPress={() => setRestForSet(exIndex, setIndex, defaultRest)}>
+                      <Text style={styles.addRest}>+ Add rest</Text>
+                    </Pressable>
+                  )}
                 </View>
               ))}
 
@@ -282,11 +307,11 @@ const styles = StyleSheet.create({
   setRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
   setNum: { color: "#8a8a8e", fontSize: 14, width: 24, textAlign: "center" },
   warmupNum: { color: "#e6b800", fontWeight: "bold" },
-  prev: { color: "#6a6a6e", fontSize: 12, width: 50, textAlign: "center" },
+  prev: { flex: 1, color: "#6a6a6e", fontSize: 13, paddingLeft: 4 },
   colHead: { color: "#6a6a6e", fontSize: 11 },
-  colFlex: { flex: 1, textAlign: "center" },
+  colFlex: { width: 56, textAlign: "center" },
   tip: { color: "#6a6a6e", fontSize: 11, textAlign: "center", marginBottom: 10 },
-  setInput: { flex: 1, backgroundColor: "#2c2c2e", color: "white", textAlign: "center", padding: 8, borderRadius: 6 },
+  setInput: { width: 56, backgroundColor: "#2c2c2e", color: "white", textAlign: "center", padding: 8, borderRadius: 6 },
   check: { color: "#1d9e75", fontSize: 22, width: 30, textAlign: "center" },
   addSet: { color: "#007AFF", fontSize: 14, marginTop: 4 },
   addExerciseBtn: {
@@ -298,13 +323,17 @@ const styles = StyleSheet.create({
   addSearch: { backgroundColor: "#2c2c2e", color: "white", padding: 10, borderRadius: 8, marginBottom: 8 },
   addResult: { paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: "#2c2c2e" },
   addResultText: { color: "white", fontSize: 14 },
-  unitToggle: { flexDirection: "row", justifyContent: "center", gap: 8, marginBottom: 12 },
-  unitButton: { paddingVertical: 6, paddingHorizontal: 20, borderRadius: 8, backgroundColor: "#1c1c1e" },
-  unitActive: { backgroundColor: "#007AFF" },
-  unitText: { color: "white", fontSize: 14 },
   restBanner: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#2c2c1a", borderRadius: 10, padding: 12, marginBottom: 12 },
   restText: { color: "#fac775", fontSize: 16, fontWeight: "500" },
+  restBannerOver: { backgroundColor: "#3a1a1a" },
+  restTextOver: { color: "#e24b4a" },
   skipText: { color: "#8a8a8e", fontSize: 14 },
+  restEditRow: { flexDirection: "row", alignItems: "center", gap: 6, marginLeft: 24, marginBottom: 10 },
+  restEditLabel: { color: "#6a6a6e", fontSize: 12 },
+  restEditInput: { backgroundColor: "#2c2c2e", color: "#d0d0d0", fontSize: 12, textAlign: "center", paddingVertical: 4, width: 46, borderRadius: 6 },
+  restEditUnit: { color: "#6a6a6e", fontSize: 12 },
+  restDelete: { color: "#6a6a6e", fontSize: 14, marginLeft: 4 },
+  addRest: { color: "#007AFF", fontSize: 12, marginLeft: 24, marginBottom: 10 },
   endButton: { backgroundColor: "#c0392b", borderRadius: 12, padding: 16, alignItems: "center", marginTop: 12 },
   endText: { color: "white", fontSize: 16, fontWeight: "500" },
   discardBtn: { alignItems: "center", paddingVertical: 10, marginTop: 2 },

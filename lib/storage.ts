@@ -73,7 +73,7 @@ export async function setDefaultUnit(unit: "kg" | "lb"): Promise<void> {
 
 export async function getDefaultRest(): Promise<number> {
     const saved = await AsyncStorage.getItem(DEFAULT_REST_KEY);
-    return saved ? Number(saved) : 90;
+    return saved ? Number(saved) : 120;
 }
 
 export async function setDefaultRest(seconds: number): Promise<void> {

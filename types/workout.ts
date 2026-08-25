@@ -14,6 +14,7 @@ export type WorkoutSet = {
   reps: number;
   done: boolean;
   type?: SetType; // defaults to "normal" when absent
+  restSeconds?: number; // rest to take after this set; 0/undefined = no rest
 };
 
 // An exercise as performed in a workout, with all its sets
