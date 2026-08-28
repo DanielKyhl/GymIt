@@ -151,6 +151,8 @@ export default function ActiveWorkout() {
         leveledUp: s.leveledUp ? "1" : "0",
         prs: String(s.newPRs),
         achievements: JSON.stringify(s.newAchievements),
+        volume: String(s.volume),
+        unit,
       },
     });
   };

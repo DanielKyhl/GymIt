@@ -80,3 +80,18 @@ export function lastUsedDate(workouts: Workout[], name: string): string | null {
   const match = workouts.find((w) => w.name === name);
   return match ? match.date : null;
 }
+export function workoutVolume(workout: Workout): number {
+  let volume = 0;
+  workout.exercises.forEach((ex) => {
+    ex.sets
+      .filter((s) => s.type !== "warmup")
+      .forEach((s) => {
+        volume += s.weight * s.reps;
+      });
+  });
+  return volume;
+}
+
+export function getVolumeHistory(workouts: Workout[]): { date: string; volume: number }[] {
+  return [...workouts].reverse().map((w) => ({ date: w.date, volume: workoutVolume(w) }));
+}

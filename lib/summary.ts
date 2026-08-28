@@ -1,6 +1,7 @@
 import { Workout } from "../types/workout";
 import { getAchievements } from "./achievements";
 import { computeXP, countPRs, levelInfo } from "./gamification";
+import { workoutVolume } from "./stats";
 
 export type WorkoutSummary = {
   xpGained: number;
@@ -8,6 +9,7 @@ export type WorkoutSummary = {
   leveledUp: boolean;
   newPRs: number;
   newAchievements: string[];
+  volume: number;
 };
 
 // Compare stats before vs after this workout to see what the user just earned.
@@ -38,5 +40,6 @@ export function summarizeWorkout(
     leveledUp: levelAfter > levelBefore,
     newPRs: countPRs(after) - countPRs(pastWorkouts),
     newAchievements,
+    volume: workoutVolume(newWorkout),
   };
 }

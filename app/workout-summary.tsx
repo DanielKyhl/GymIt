@@ -9,12 +9,16 @@ export default function WorkoutSummary() {
     leveledUp?: string;
     prs?: string;
     achievements?: string;
+    volume?: string;
+    unit?: string;
   }>();
 
   const xp = Number(params.xp ?? 0);
   const level = Number(params.level ?? 1);
   const leveledUp = params.leveledUp === "1";
   const prs = Number(params.prs ?? 0);
+  const volume = Number(params.volume ?? 0);
+  const unit = params.unit ?? "kg";
   let achievements: string[] = [];
   try {
     achievements = params.achievements ? JSON.parse(params.achievements) : [];
@@ -30,6 +34,11 @@ export default function WorkoutSummary() {
       <View style={styles.xpCard}>
         <Text style={styles.xpValue}>+{xp}</Text>
         <Text style={styles.xpLabel}>XP earned</Text>
+      </View>
+
+      <View style={styles.volumeCard}>
+        <Text style={styles.volumeValue}>{volume.toLocaleString()} {unit}</Text>
+        <Text style={styles.volumeLabel}>Total weight lifted</Text>
       </View>
 
       {leveledUp && (
@@ -76,6 +85,9 @@ const styles = StyleSheet.create({
   },
   xpValue: { color: "#9fd3ff", fontSize: 44, fontWeight: "bold" },
   xpLabel: { color: "#9fd3ff", fontSize: 14, marginTop: 2 },
+  volumeCard: { backgroundColor: "#1c1c1e", borderRadius: 16, paddingVertical: 20, alignItems: "center", marginBottom: 16, width: "100%" },
+  volumeValue: { color: "white", fontSize: 28, fontWeight: "bold" },
+  volumeLabel: { color: "#8a8a8e", fontSize: 13, marginTop: 2 },
   levelCard: { backgroundColor: "#1c1c1e", borderRadius: 12, padding: 16, marginBottom: 12, width: "100%" },
   levelText: { color: "#fac775", fontSize: 16, fontWeight: "500", textAlign: "center" },
   prCard: { backgroundColor: "#1c1c1e", borderRadius: 12, padding: 16, marginBottom: 12, width: "100%" },
