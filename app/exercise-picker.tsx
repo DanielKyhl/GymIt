@@ -11,7 +11,7 @@ export default function ExercisePicker() {
             <TextInput
                 style={styles.search}
                 placeholder="Search exercises"
-                placeholderTextColor="#8a8a8e"
+                placeholderTextColor="#8C8A86"
                 value={query}
                 onChangeText={setQuery}
             />
@@ -33,15 +33,15 @@ export default function ExercisePicker() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: "#111", padding: 16 },
+    container: { flex: 1, backgroundColor: "#131313", padding: 16 },
     search: {
-        backgroundColor: "#1c1c1e",
-        color: "white",
+        backgroundColor: "#1C1C1C",
+        color: "#F2F0EC",
         padding: 12,
         borderRadius: 8,
         marginBottom: 12,
     },
-    row: { paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: "#2c2c2e" },
-    name: { color: "white", fontSize: 15 },
-    detail: { color: "#8a8a8e", fontSize: 12, marginTop: 2, textTransform: "capitalize" },
+    row: { paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: "#272727" },
+    name: { color: "#F2F0EC", fontSize: 15 },
+    detail: { color: "#8C8A86", fontSize: 12, marginTop: 2, textTransform: "capitalize" },
 });

@@ -95,3 +95,13 @@ export function workoutVolume(workout: Workout): number {
 export function getVolumeHistory(workouts: Workout[]): { date: string; volume: number }[] {
   return [...workouts].reverse().map((w) => ({ date: w.date, volume: workoutVolume(w) }));
 }
+export function getVolumeByTemplate(
+  workouts: Workout[]
+): { name: string; points: { date: string; volume: number }[] }[] {
+  const groups: Record<string, { date: string; volume: number }[]> = {};
+  [...workouts].reverse().forEach((w) => {
+    if (!groups[w.name]) groups[w.name] = [];
+    groups[w.name].push({ date: w.date, volume: workoutVolume(w) });
+  });
+  return Object.entries(groups).map(([name, points]) => ({ name, points }));
+}

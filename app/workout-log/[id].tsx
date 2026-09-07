@@ -54,12 +54,12 @@ export default function WorkoutLogDetail() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#111", padding: 20, paddingTop: 16 },
-  title: { color: "white", fontSize: 28, fontWeight: "bold", marginBottom: 4 },
-  sub: { color: "#8a8a8e", fontSize: 14, marginBottom: 20 },
+  container: { flex: 1, backgroundColor: "#131313", padding: 20, paddingTop: 16 },
+  title: { color: "#F2F0EC", fontSize: 28, fontWeight: "bold", marginBottom: 4 },
+  sub: { color: "#8C8A86", fontSize: 14, marginBottom: 20 },
   list: { gap: 12 },
-  card: { backgroundColor: "#1c1c1e", borderRadius: 12, padding: 16 },
-  exName: { color: "white", fontSize: 16, fontWeight: "500", marginBottom: 8 },
-  noSets: { color: "#8a8a8e", fontSize: 13 },
-  setLine: { color: "#d0d0d0", fontSize: 14, marginBottom: 4 },
+  card: { backgroundColor: "#1C1C1C", borderRadius: 12, padding: 16 },
+  exName: { color: "#F2F0EC", fontSize: 16, fontWeight: "500", marginBottom: 8 },
+  noSets: { color: "#8C8A86", fontSize: 13 },
+  setLine: { color: "#B5B1AA", fontSize: 14, marginBottom: 4 },
 });

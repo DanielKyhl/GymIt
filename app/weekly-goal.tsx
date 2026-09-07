@@ -42,15 +42,15 @@ export default function WeeklyGoalScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#111", padding: 20, paddingTop: 16 },
-  title: { color: "white", fontSize: 26, fontWeight: "bold", marginBottom: 8 },
-  subtitle: { color: "#8a8a8e", fontSize: 15, marginBottom: 28, lineHeight: 21 },
+  container: { flex: 1, backgroundColor: "#131313", padding: 20, paddingTop: 16 },
+  title: { color: "#F2F0EC", fontSize: 26, fontWeight: "bold", marginBottom: 8 },
+  subtitle: { color: "#8C8A86", fontSize: 15, marginBottom: 28, lineHeight: 21 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   option: {
-    width: 56, height: 56, borderRadius: 12, backgroundColor: "#1c1c1e",
+    width: 56, height: 56, borderRadius: 12, backgroundColor: "#1C1C1C",
     alignItems: "center", justifyContent: "center",
   },
-  optionActive: { backgroundColor: "#007AFF" },
-  optionText: { color: "white", fontSize: 20, fontWeight: "500" },
-  optionTextActive: { color: "white" },
+  optionActive: { backgroundColor: "#3A3A3A" },
+  optionText: { color: "#F2F0EC", fontSize: 20, fontWeight: "500" },
+  optionTextActive: { color: "#F2F0EC" },
 });

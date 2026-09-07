@@ -23,8 +23,8 @@ export default function RootLayout() {
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack
           screenOptions={{
-            headerStyle: { backgroundColor: '#111' },
-            headerTintColor: '#fff',
+            headerStyle: { backgroundColor: '#131313' },
+            headerTintColor: '#F2F0EC',
             headerShadowVisible: false,
           }}
         >

@@ -20,12 +20,12 @@ export default function Welcome() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#111",
+    backgroundColor: "#131313",
     justifyContent: "center",
     alignItems: "center",
   },
   title: {
-    color: "white",
+    color: "#F2F0EC",
     fontSize: 32,
     marginBottom: 40,
   },

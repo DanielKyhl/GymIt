@@ -225,7 +225,7 @@ export default function ActiveWorkout() {
                       style={styles.setInput}
                       keyboardType="numeric"
                       placeholder={prev[setIndex] ? String(prev[setIndex].weight) : unit}
-                      placeholderTextColor="#8a8a8e"
+                      placeholderTextColor="#8C8A86"
                       value={set.weight ? String(set.weight) : ""}
                       onChangeText={(v) => updateSet(exIndex, setIndex, "weight", Number(v) || 0)}
                     />
@@ -233,7 +233,7 @@ export default function ActiveWorkout() {
                       style={styles.setInput}
                       keyboardType="numeric"
                       placeholder={prev[setIndex] ? String(prev[setIndex].reps) : "reps"}
-                      placeholderTextColor="#8a8a8e"
+                      placeholderTextColor="#8C8A86"
                       value={set.reps ? String(set.reps) : ""}
                       onChangeText={(v) => updateSet(exIndex, setIndex, "reps", Number(v) || 0)}
                     />
@@ -276,7 +276,7 @@ export default function ActiveWorkout() {
             <TextInput
               style={styles.addSearch}
               placeholder="Search exercise to add"
-              placeholderTextColor="#8a8a8e"
+              placeholderTextColor="#8C8A86"
               value={addQuery}
               onChangeText={setAddQuery}
             />
@@ -304,45 +304,45 @@ export default function ActiveWorkout() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#111", padding: 20, paddingTop: 16 },
-  name: { color: "white", fontSize: 22, fontWeight: "500", textAlign: "center" },
-  timer: { color: "#007AFF", fontSize: 48, fontWeight: "bold", textAlign: "center", marginBottom: 16 },
+  container: { flex: 1, backgroundColor: "#131313", padding: 20, paddingTop: 16 },
+  name: { color: "#F2F0EC", fontSize: 22, fontWeight: "500", textAlign: "center" },
+  timer: { color: "#D9D5CE", fontSize: 48, fontWeight: "bold", textAlign: "center", marginBottom: 16 },
   scroll: { flex: 1 },
   scrollContent: { gap: 12, paddingBottom: 12 },
-  exerciseCard: { backgroundColor: "#1c1c1e", borderRadius: 12, padding: 14 },
-  exerciseName: { color: "white", fontSize: 16, fontWeight: "500", marginBottom: 10 },
+  exerciseCard: { backgroundColor: "#1C1C1C", borderRadius: 12, padding: 14 },
+  exerciseName: { color: "#F2F0EC", fontSize: 16, fontWeight: "500", marginBottom: 10 },
   setRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
-  setNum: { color: "#8a8a8e", fontSize: 14, width: 24, textAlign: "center" },
+  setNum: { color: "#8C8A86", fontSize: 14, width: 24, textAlign: "center" },
   warmupNum: { color: "#e6b800", fontWeight: "bold" },
-  prev: { flex: 1, color: "#6a6a6e", fontSize: 13, paddingLeft: 4 },
-  colHead: { color: "#6a6a6e", fontSize: 11 },
+  prev: { flex: 1, color: "#6E6C68", fontSize: 13, paddingLeft: 4 },
+  colHead: { color: "#6E6C68", fontSize: 11 },
   colFlex: { width: 56, textAlign: "center" },
-  tip: { color: "#6a6a6e", fontSize: 11, textAlign: "center", marginBottom: 10 },
-  setInput: { width: 56, backgroundColor: "#2c2c2e", color: "white", textAlign: "center", padding: 8, borderRadius: 6 },
+  tip: { color: "#6E6C68", fontSize: 11, textAlign: "center", marginBottom: 10 },
+  setInput: { width: 56, backgroundColor: "#272727", color: "#F2F0EC", textAlign: "center", padding: 8, borderRadius: 6 },
   check: { color: "#1d9e75", fontSize: 22, width: 30, textAlign: "center" },
-  addSet: { color: "#007AFF", fontSize: 14, marginTop: 4 },
+  addSet: { color: "#D9D5CE", fontSize: 14, marginTop: 4 },
   addExerciseBtn: {
-    alignItems: "center", paddingVertical: 12, borderWidth: 0.5, borderColor: "#48484a",
+    alignItems: "center", paddingVertical: 12, borderWidth: 0.5, borderColor: "#272727",
     borderRadius: 10, borderStyle: "dashed",
   },
-  addExerciseText: { color: "#007AFF", fontSize: 15 },
-  addBox: { backgroundColor: "#1c1c1e", borderRadius: 12, padding: 12 },
-  addSearch: { backgroundColor: "#2c2c2e", color: "white", padding: 10, borderRadius: 8, marginBottom: 8 },
-  addResult: { paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: "#2c2c2e" },
-  addResultText: { color: "white", fontSize: 14 },
-  restBanner: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#2c2c1a", borderRadius: 10, padding: 12, marginBottom: 12 },
+  addExerciseText: { color: "#D9D5CE", fontSize: 15 },
+  addBox: { backgroundColor: "#1C1C1C", borderRadius: 12, padding: 12 },
+  addSearch: { backgroundColor: "#272727", color: "#F2F0EC", padding: 10, borderRadius: 8, marginBottom: 8 },
+  addResult: { paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: "#272727" },
+  addResultText: { color: "#F2F0EC", fontSize: 14 },
+  restBanner: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#1C1C1C", borderRadius: 10, padding: 12, marginBottom: 12 },
   restText: { color: "#fac775", fontSize: 16, fontWeight: "500" },
-  restBannerOver: { backgroundColor: "#3a1a1a" },
-  restTextOver: { color: "#e24b4a" },
-  skipText: { color: "#8a8a8e", fontSize: 14 },
+  restBannerOver: { backgroundColor: "#3A2020" },
+  restTextOver: { color: "#E5544B" },
+  skipText: { color: "#8C8A86", fontSize: 14 },
   restEditRow: { flexDirection: "row", alignItems: "center", gap: 6, marginLeft: 24, marginBottom: 10 },
-  restEditLabel: { color: "#6a6a6e", fontSize: 12 },
-  restEditInput: { backgroundColor: "#2c2c2e", color: "#d0d0d0", fontSize: 12, textAlign: "center", paddingVertical: 4, width: 46, borderRadius: 6 },
-  restEditUnit: { color: "#6a6a6e", fontSize: 12 },
-  restDelete: { color: "#6a6a6e", fontSize: 14, marginLeft: 4 },
-  addRest: { color: "#007AFF", fontSize: 12, marginLeft: 24, marginBottom: 10 },
-  endButton: { backgroundColor: "#c0392b", borderRadius: 12, padding: 16, alignItems: "center", marginTop: 12 },
-  endText: { color: "white", fontSize: 16, fontWeight: "500" },
+  restEditLabel: { color: "#6E6C68", fontSize: 12 },
+  restEditInput: { backgroundColor: "#272727", color: "#B5B1AA", fontSize: 12, textAlign: "center", paddingVertical: 4, width: 46, borderRadius: 6 },
+  restEditUnit: { color: "#6E6C68", fontSize: 12 },
+  restDelete: { color: "#6E6C68", fontSize: 14, marginLeft: 4 },
+  addRest: { color: "#D9D5CE", fontSize: 12, marginLeft: 24, marginBottom: 10 },
+  endButton: { backgroundColor: "#D9D5CE", borderRadius: 12, padding: 16, alignItems: "center", marginTop: 12 },
+  endText: { color: "#171614", fontSize: 16, fontWeight: "500" },
   discardBtn: { alignItems: "center", paddingVertical: 10, marginTop: 2 },
-  discardText: { color: "#8a8a8e", fontSize: 14 },
+  discardText: { color: "#8C8A86", fontSize: 14 },
 });

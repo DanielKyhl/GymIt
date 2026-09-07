@@ -51,11 +51,11 @@ export default function History() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#111", padding: 20, paddingTop: 60 },
-  title: { color: "white", fontSize: 28, fontWeight: "bold", marginBottom: 20 },
+  container: { flex: 1, backgroundColor: "#131313", padding: 20, paddingTop: 60 },
+  title: { color: "#F2F0EC", fontSize: 28, fontWeight: "bold", marginBottom: 20 },
   list: { gap: 10 },
-  empty: { color: "#8a8a8e", fontSize: 15, textAlign: "center", marginTop: 40 },
-  card: { backgroundColor: "#1c1c1e", borderRadius: 12, padding: 16 },
-  cardTitle: { color: "white", fontSize: 17, fontWeight: "500", marginBottom: 4 },
-  cardSub: { color: "#8a8a8e", fontSize: 13 },
+  empty: { color: "#8C8A86", fontSize: 15, textAlign: "center", marginTop: 40 },
+  card: { backgroundColor: "#1C1C1C", borderRadius: 12, padding: 16 },
+  cardTitle: { color: "#F2F0EC", fontSize: 17, fontWeight: "500", marginBottom: 4 },
+  cardSub: { color: "#8C8A86", fontSize: 13 },
 });

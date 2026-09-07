@@ -4,7 +4,7 @@ import { exercises } from "./exercises";
 
 export const COLOR_RECOVERED = "#1d9e75"; // green
 export const COLOR_PARTIAL = "#e6b800"; // yellow
-export const COLOR_TRAINED = "#e24b4a"; // red
+export const COLOR_TRAINED = "#E5544B"; // red
 
 // Approximate hours to fully recover. Small groups 36h (24-48 avg),
 // chest/back/legs 60h (48-72 avg). Secondary involvement recovers faster.

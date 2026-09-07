@@ -68,26 +68,26 @@ export default function ExerciseProgress() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#111" },
+  container: { flex: 1, backgroundColor: "#131313" },
   content: { padding: 20, paddingTop: 16 },
-  title: { color: "white", fontSize: 24, fontWeight: "bold", marginBottom: 20 },
+  title: { color: "#F2F0EC", fontSize: 24, fontWeight: "bold", marginBottom: 20 },
   statsRow: { flexDirection: "row", gap: 10, marginBottom: 24 },
-  statCard: { flex: 1, backgroundColor: "#1c1c1e", borderRadius: 12, padding: 14, alignItems: "center" },
-  statLabel: { color: "#8a8a8e", fontSize: 12, marginBottom: 6 },
-  statValue: { color: "white", fontSize: 22, fontWeight: "bold" },
-  section: { color: "#8a8a8e", fontSize: 13, textTransform: "uppercase", marginBottom: 12, marginTop: 8 },
-  empty: { color: "#8a8a8e", fontSize: 14, marginBottom: 20 },
+  statCard: { flex: 1, backgroundColor: "#1C1C1C", borderRadius: 12, padding: 14, alignItems: "center" },
+  statLabel: { color: "#8C8A86", fontSize: 12, marginBottom: 6 },
+  statValue: { color: "#F2F0EC", fontSize: 22, fontWeight: "bold" },
+  section: { color: "#8C8A86", fontSize: 13, textTransform: "uppercase", marginBottom: 12, marginTop: 8 },
+  empty: { color: "#8C8A86", fontSize: 14, marginBottom: 20 },
   chart: {
     flexDirection: "row", alignItems: "flex-end", gap: 8,
     height: 180, marginBottom: 24, paddingTop: 10,
   },
   barWrap: { alignItems: "center", flex: 1 },
-  bar: { width: "70%", backgroundColor: "#007AFF", borderRadius: 4 },
-  barLabel: { color: "#8a8a8e", fontSize: 10, marginTop: 6 },
+  bar: { width: "70%", backgroundColor: "#D9D5CE", borderRadius: 4 },
+  barLabel: { color: "#8C8A86", fontSize: 10, marginTop: 6 },
   sessionRow: {
     flexDirection: "row", justifyContent: "space-between",
-    borderBottomWidth: 0.5, borderBottomColor: "#2c2c2e", paddingVertical: 12,
+    borderBottomWidth: 0.5, borderBottomColor: "#272727", paddingVertical: 12,
   },
-  sessionDate: { color: "white", fontSize: 14 },
-  sessionStat: { color: "#8a8a8e", fontSize: 14 },
+  sessionDate: { color: "#F2F0EC", fontSize: 14 },
+  sessionStat: { color: "#8C8A86", fontSize: 14 },
 });

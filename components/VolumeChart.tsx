@@ -8,9 +8,9 @@ function shortDate(iso: string) {
   return `${d.getDate()}/${d.getMonth() + 1}`;
 }
 
-export function VolumeChart({ data }: { data: Point[] }) {
+export function VolumeChart({ data, width: fixedWidth }: { data: Point[]; width?: number }) {
   const { width } = useWindowDimensions();
-  const chartWidth = Math.min(width - 40, 600);
+  const chartWidth = fixedWidth ?? Math.min(width - 40, 600);
   const chartHeight = 190;
   const padTop = 28;
   const padBottom = 26;
@@ -29,17 +29,17 @@ export function VolumeChart({ data }: { data: Point[] }) {
   return (
     <View>
       <Svg width={chartWidth} height={chartHeight}>
-        <Line x1={padSide} y1={baseY} x2={chartWidth - padSide} y2={baseY} stroke="#2c2c2e" strokeWidth={1} />
+        <Line x1={padSide} y1={baseY} x2={chartWidth - padSide} y2={baseY} stroke="#272727" strokeWidth={1} />
 
-        {n > 1 && <Polyline points={points} fill="none" stroke="#1d9e75" strokeWidth={2.5} />}
+        {n > 1 && <Polyline points={points} fill="none" stroke="#D9D5CE" strokeWidth={2.5} />}
 
         {data.map((d, i) => (
           <G key={i}>
-            <Circle cx={x(i)} cy={y(d.volume)} r={4} fill="#1d9e75" />
+            <Circle cx={x(i)} cy={y(d.volume)} r={4} fill="#D9D5CE" />
             <SvgText
               x={x(i)}
               y={y(d.volume) - 10}
-              fill="#e6e6e6"
+              fill="#D9D5CE"
               fontSize="11"
               fontWeight="500"
               textAnchor="middle"
@@ -47,7 +47,7 @@ export function VolumeChart({ data }: { data: Point[] }) {
               {d.volume.toLocaleString()}
             </SvgText>
             {(i === 0 || i === n - 1) && (
-              <SvgText x={x(i)} y={baseY + 15} fill="#8a8a8e" fontSize="10" textAnchor="middle">
+              <SvgText x={x(i)} y={baseY + 15} fill="#8C8A86" fontSize="10" textAnchor="middle">
                 {shortDate(d.date)}
               </SvgText>
             )}

@@ -44,12 +44,12 @@ export default function Login() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#111',
+        backgroundColor: '#131313',
         justifyContent: 'center',
         alignItems: 'center',
     },
     title: {
-        color: 'white',
+        color: '#F2F0EC',
         fontSize: 32,
         marginBottom: 40,
     },
@@ -57,23 +57,23 @@ const styles = StyleSheet.create({
         width: '80%',
         padding: 10,
         marginBottom: 20,
-        backgroundColor: '#222',
-        color: 'white',
+        backgroundColor: '#1C1C1C',
+        color: '#F2F0EC',
         borderRadius: 5,
     },
     button: {
-        backgroundColor: '#007AFF',
+        backgroundColor: "#D9D5CE",
         paddingVertical: 10,
         paddingHorizontal: 40,
         borderRadius: 5,
         marginBottom: 20,
     },
     buttonText: {
-        color: 'white',
+        color: "#171614",
         fontSize: 18,
     },
     link: {
-        color: '#007AFF',
+        color: '#D9D5CE',
         fontSize: 16,
     },
 });

@@ -91,7 +91,7 @@ export default function CreateTemplate() {
       <TextInput
         style={styles.nameInput}
         placeholder="Template name"
-        placeholderTextColor="#8a8a8e"
+        placeholderTextColor="#8C8A86"
         value={name}
         onChangeText={setName}
       />
@@ -120,7 +120,7 @@ export default function CreateTemplate() {
                 style={styles.cell}
                 keyboardType="numeric"
                 placeholder="0"
-                placeholderTextColor="#8a8a8e"
+                placeholderTextColor="#8C8A86"
                 value={set.weight ? String(set.weight) : ""}
                 onChangeText={(v) => updateSet(exIndex, setIndex, "weight", Number(v) || 0)}
               />
@@ -128,7 +128,7 @@ export default function CreateTemplate() {
                 style={styles.cell}
                 keyboardType="numeric"
                 placeholder="0"
-                placeholderTextColor="#8a8a8e"
+                placeholderTextColor="#8C8A86"
                 value={set.reps ? String(set.reps) : ""}
                 onChangeText={(v) => updateSet(exIndex, setIndex, "reps", Number(v) || 0)}
               />
@@ -136,7 +136,7 @@ export default function CreateTemplate() {
                 style={styles.cell}
                 keyboardType="numeric"
                 placeholder="0"
-                placeholderTextColor="#8a8a8e"
+                placeholderTextColor="#8C8A86"
                 value={set.restSeconds ? String(set.restSeconds) : ""}
                 onChangeText={(v) => setRestForSet(exIndex, setIndex, Number(v) || 0)}
               />
@@ -157,7 +157,7 @@ export default function CreateTemplate() {
           <TextInput
             style={styles.addSearch}
             placeholder="Search exercise to add"
-            placeholderTextColor="#8a8a8e"
+            placeholderTextColor="#8C8A86"
             value={addQuery}
             onChangeText={setAddQuery}
           />
@@ -181,38 +181,38 @@ export default function CreateTemplate() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#111" },
+  container: { flex: 1, backgroundColor: "#131313" },
   content: { padding: 20, paddingTop: 16, paddingBottom: 40 },
   nameInput: {
-    backgroundColor: "#1c1c1e", color: "white", fontSize: 18,
+    backgroundColor: "#1C1C1C", color: "#F2F0EC", fontSize: 18,
     padding: 14, borderRadius: 10, marginBottom: 16,
   },
-  exerciseCard: { backgroundColor: "#1c1c1e", borderRadius: 12, padding: 14, marginBottom: 12 },
+  exerciseCard: { backgroundColor: "#1C1C1C", borderRadius: 12, padding: 14, marginBottom: 12 },
   exHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
-  exerciseName: { color: "white", fontSize: 16, fontWeight: "500", flex: 1 },
-  remove: { color: "#e24b4a", fontSize: 13 },
+  exerciseName: { color: "#F2F0EC", fontSize: 16, fontWeight: "500", flex: 1 },
+  remove: { color: "#E5544B", fontSize: 13 },
   setRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
-  setNum: { color: "#8a8a8e", fontSize: 14, width: 28, textAlign: "center" },
-  colHead: { color: "#6a6a6e", fontSize: 11 },
+  setNum: { color: "#8C8A86", fontSize: 14, width: 28, textAlign: "center" },
+  colHead: { color: "#6E6C68", fontSize: 11 },
   colCell: { width: 60, textAlign: "center" },
   cell: {
-    width: 60, backgroundColor: "#2c2c2e", color: "white", textAlign: "center",
+    width: 60, backgroundColor: "#272727", color: "#F2F0EC", textAlign: "center",
     padding: 8, borderRadius: 6,
   },
-  removeSet: { color: "#6a6a6e", fontSize: 16, width: 24, textAlign: "center" },
-  addSet: { color: "#007AFF", fontSize: 14, marginTop: 4 },
+  removeSet: { color: "#6E6C68", fontSize: 16, width: 24, textAlign: "center" },
+  addSet: { color: "#D9D5CE", fontSize: 14, marginTop: 4 },
   addExerciseBtn: {
-    alignItems: "center", paddingVertical: 12, borderWidth: 0.5, borderColor: "#48484a",
+    alignItems: "center", paddingVertical: 12, borderWidth: 0.5, borderColor: "#272727",
     borderRadius: 10, borderStyle: "dashed", marginBottom: 12,
   },
-  addExerciseText: { color: "#007AFF", fontSize: 15 },
-  addBox: { backgroundColor: "#1c1c1e", borderRadius: 12, padding: 12, marginBottom: 12 },
-  addSearch: { backgroundColor: "#2c2c2e", color: "white", padding: 10, borderRadius: 8, marginBottom: 8 },
-  addResult: { paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: "#2c2c2e" },
-  addResultText: { color: "white", fontSize: 14 },
+  addExerciseText: { color: "#D9D5CE", fontSize: 15 },
+  addBox: { backgroundColor: "#1C1C1C", borderRadius: 12, padding: 12, marginBottom: 12 },
+  addSearch: { backgroundColor: "#272727", color: "#F2F0EC", padding: 10, borderRadius: 8, marginBottom: 8 },
+  addResult: { paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: "#272727" },
+  addResultText: { color: "#F2F0EC", fontSize: 14 },
   saveButton: {
-    backgroundColor: "#007AFF", borderRadius: 12, padding: 16,
+    backgroundColor: "#D9D5CE", borderRadius: 12, padding: 16,
     alignItems: "center", marginTop: 4,
   },
-  saveText: { color: "white", fontSize: 16, fontWeight: "500" },
+  saveText: { color: "#171614", fontSize: 16, fontWeight: "500" },
 });
