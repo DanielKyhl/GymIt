@@ -8,12 +8,15 @@ export const XP_WEEKLY_GOAL_BONUS = 100;
 export const DEFAULT_WEEKLY_GOAL = 3;
 
 // Identify a week by the date of its Monday, e.g. "2026-08-17".
+// All local time — mixing local getters with toISOString() (UTC) would put a
+// late-night workout in the previous week.
 function weekKey(iso: string): string {
   const d = new Date(iso);
   const dayFromMonday = (d.getDay() + 6) % 7; // Sun=6 ... Mon=0
-  const monday = new Date(d);
-  monday.setDate(d.getDate() - dayFromMonday);
-  return monday.toISOString().slice(0, 10);
+  const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - dayFromMonday);
+  const month = String(monday.getMonth() + 1).padStart(2, "0");
+  const day = String(monday.getDate()).padStart(2, "0");
+  return `${monday.getFullYear()}-${month}-${day}`;
 }
 
 // The single best estimated 1RM logged for an exercise in one workout.

@@ -23,11 +23,12 @@ export default function WeeklyGoalScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Weekly goal</Text>
       <Text style={styles.subtitle}>
-        How many workouts per week are you aiming for? Hit it to earn bonus XP.
+        How many workouts per week are you aiming for? Two sessions in one day
+        count as two. Hit your goal to earn bonus XP.
       </Text>
 
       <View style={styles.grid}>
-        {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+        {Array.from({ length: 14 }, (_, i) => i + 1).map((n) => (
           <Pressable
             key={n}
             style={[styles.option, goal === n && styles.optionActive]}
