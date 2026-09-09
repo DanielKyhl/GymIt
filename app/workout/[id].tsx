@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { searchExercises } from "../../lib/exercises";
+import { ExercisePicker } from "../../components/ExercisePicker";
 import { getLastPerformance } from "../../lib/stats";
 import { summarizeWorkout } from "../../lib/summary";
 import { getDefaultRest, getDefaultUnit, getTemplates, getWeeklyGoal, getWorkouts, saveWorkout } from "../../lib/storage";
@@ -26,7 +26,6 @@ export default function ActiveWorkout() {
   const [restElapsed, setRestElapsed] = useState(0);
   const [pastWorkouts, setPastWorkouts] = useState<Workout[]>([]);
   const [showAdd, setShowAdd] = useState(false);
-  const [addQuery, setAddQuery] = useState("");
 
   useEffect(() => {
     getTemplates().then(async (templates) => {
@@ -64,7 +63,6 @@ export default function ActiveWorkout() {
   const addExerciseToWorkout = (name: string) => {
     setExercises((prev) => [...prev, { name, sets: [] }]);
     setShowAdd(false);
-    setAddQuery("");
   };
 
   const addSet = (exIndex: number) => {
@@ -271,27 +269,16 @@ export default function ActiveWorkout() {
           );
         })}
 
-        {showAdd ? (
-          <View style={styles.addBox}>
-            <TextInput
-              style={styles.addSearch}
-              placeholder="Search exercise to add"
-              placeholderTextColor="#8C8A86"
-              value={addQuery}
-              onChangeText={setAddQuery}
-            />
-            {searchExercises(addQuery).slice(0, 8).map((e) => (
-              <Pressable key={e.id} style={styles.addResult} onPress={() => addExerciseToWorkout(e.name)}>
-                <Text style={styles.addResultText}>{e.name}</Text>
-              </Pressable>
-            ))}
-          </View>
-        ) : (
-          <Pressable style={styles.addExerciseBtn} onPress={() => setShowAdd(true)}>
-            <Text style={styles.addExerciseText}>+ Add exercise</Text>
-          </Pressable>
-        )}
+        <Pressable style={styles.addExerciseBtn} onPress={() => setShowAdd(true)}>
+          <Text style={styles.addExerciseText}>+ Add exercise</Text>
+        </Pressable>
       </ScrollView>
+
+      <ExercisePicker
+        visible={showAdd}
+        onClose={() => setShowAdd(false)}
+        onSelect={addExerciseToWorkout}
+      />
 
       <Pressable style={styles.endButton} onPress={handleEnd}>
         <Text style={styles.endText}>End workout</Text>
@@ -326,10 +313,6 @@ const styles = StyleSheet.create({
     borderRadius: 10, borderStyle: "dashed",
   },
   addExerciseText: { color: "#D9D5CE", fontSize: 15 },
-  addBox: { backgroundColor: "#1C1C1C", borderRadius: 12, padding: 12 },
-  addSearch: { backgroundColor: "#272727", color: "#F2F0EC", padding: 10, borderRadius: 8, marginBottom: 8 },
-  addResult: { paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: "#272727" },
-  addResultText: { color: "#F2F0EC", fontSize: 14 },
   restBanner: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#1C1C1C", borderRadius: 10, padding: 12, marginBottom: 12 },
   restText: { color: "#fac775", fontSize: 16, fontWeight: "500" },
   restBannerOver: { backgroundColor: "#3A2020" },

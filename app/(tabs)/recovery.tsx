@@ -98,7 +98,7 @@ export default function Recovery() {
 
       <Text style={styles.section}>Still recovering</Text>
       {recovering.length === 0 ? (
-        <Text style={styles.empty}>Everything's recovered — go train! 💪</Text>
+        <Text style={styles.empty}>Everything's recovered</Text>
       ) : (
         recovering.map((m) => (
           <View key={m.slug} style={styles.row}>

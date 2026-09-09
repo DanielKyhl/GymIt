@@ -5,6 +5,12 @@ export type Exercise = {
   primaryMuscles: string[];
   secondaryMuscles: string[];
   category: string;
+  // Extra fields carried by the bundled free-exercise-db data.
+  images: string[]; // repo-relative paths, e.g. "Barbell_Curl/0.jpg"
+  instructions: string[]; // one string per step
+  level: string; // beginner | intermediate | expert
+  mechanic: string | null; // compound | isolation
+  force: string | null; // push | pull | static
 }
 // One set performed within an exercise (e.g. 60kg x 8 reps)
 export type SetType = "normal" | "warmup";

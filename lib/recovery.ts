@@ -1,6 +1,7 @@
 import { Slug } from "react-native-body-highlighter";
 import { Workout } from "../types/workout";
 import { exercises } from "./exercises";
+import { stabiliserMuscles } from "./muscleCorrections";
 
 export const COLOR_RECOVERED = "#1d9e75"; // green
 export const COLOR_PARTIAL = "#e6b800"; // yellow
@@ -56,10 +57,14 @@ const toSlugs = (names: string[] | undefined): Slug[] =>
 
 const muscleMap: Record<string, { primary: Slug[]; secondary: Slug[] }> = {};
 exercises.forEach((e) => {
-  muscleMap[e.name] = {
-    primary: toSlugs(e.primaryMuscles),
-    secondary: toSlugs(e.secondaryMuscles),
-  };
+  const primary = toSlugs(e.primaryMuscles);
+  const secondary = new Set(toSlugs(e.secondaryMuscles));
+  // Stabilisers the source data omits (core bracing, anti-rotation). Skipped
+  // where the muscle is already the point of the exercise.
+  stabiliserMuscles(e).forEach((s) => {
+    if (!primary.includes(s)) secondary.add(s);
+  });
+  muscleMap[e.name] = { primary, secondary: [...secondary] };
 });
 
 export type MuscleRecovery = {

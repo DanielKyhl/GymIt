@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { searchExercises } from "../lib/exercises";
+import { ExercisePicker } from "../components/ExercisePicker";
 import { getDefaultRest, getDefaultUnit, getTemplates, saveTemplate, updateTemplate } from "../lib/storage";
 import { TemplateExercise } from "../types/workout";
 
@@ -14,7 +14,6 @@ export default function CreateTemplate() {
   const [unit, setUnit] = useState<"kg" | "lb">("kg");
   const [defaultRest, setDefaultRest] = useState(120);
   const [showAdd, setShowAdd] = useState(false);
-  const [addQuery, setAddQuery] = useState("");
 
   useEffect(() => {
     getDefaultUnit().then(setUnit);
@@ -38,7 +37,6 @@ export default function CreateTemplate() {
       { name: exName, sets: [{ weight: 0, reps: 0, restSeconds: defaultRest }] },
     ]);
     setShowAdd(false);
-    setAddQuery("");
   };
   const removeExercise = (exIndex: number) => {
     setExercises((prev) => prev.filter((_, i) => i !== exIndex));
@@ -152,26 +150,15 @@ export default function CreateTemplate() {
         </View>
       ))}
 
-      {showAdd ? (
-        <View style={styles.addBox}>
-          <TextInput
-            style={styles.addSearch}
-            placeholder="Search exercise to add"
-            placeholderTextColor="#8C8A86"
-            value={addQuery}
-            onChangeText={setAddQuery}
-          />
-          {searchExercises(addQuery).slice(0, 8).map((e) => (
-            <Pressable key={e.id} style={styles.addResult} onPress={() => addExercise(e.name)}>
-              <Text style={styles.addResultText}>{e.name}</Text>
-            </Pressable>
-          ))}
-        </View>
-      ) : (
-        <Pressable style={styles.addExerciseBtn} onPress={() => setShowAdd(true)}>
-          <Text style={styles.addExerciseText}>+ Add exercise</Text>
-        </Pressable>
-      )}
+      <Pressable style={styles.addExerciseBtn} onPress={() => setShowAdd(true)}>
+        <Text style={styles.addExerciseText}>+ Add exercise</Text>
+      </Pressable>
+
+      <ExercisePicker
+        visible={showAdd}
+        onClose={() => setShowAdd(false)}
+        onSelect={addExercise}
+      />
 
       <Pressable style={styles.saveButton} onPress={handleSave}>
         <Text style={styles.saveText}>{isEditing ? "Save changes" : "Save template"}</Text>
@@ -206,10 +193,6 @@ const styles = StyleSheet.create({
     borderRadius: 10, borderStyle: "dashed", marginBottom: 12,
   },
   addExerciseText: { color: "#D9D5CE", fontSize: 15 },
-  addBox: { backgroundColor: "#1C1C1C", borderRadius: 12, padding: 12, marginBottom: 12 },
-  addSearch: { backgroundColor: "#272727", color: "#F2F0EC", padding: 10, borderRadius: 8, marginBottom: 8 },
-  addResult: { paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: "#272727" },
-  addResultText: { color: "#F2F0EC", fontSize: 14 },
   saveButton: {
     backgroundColor: "#D9D5CE", borderRadius: 12, padding: 16,
     alignItems: "center", marginTop: 4,

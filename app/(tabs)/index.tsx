@@ -55,7 +55,7 @@ export default function HomeScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.title}>GymIt 💪</Text>
+        <Text style={styles.title}>GymIt</Text>
         <View style={styles.headerRight}>
           <Pressable onPress={() => router.push("/settings")}>
             <Text style={styles.gear}>⚙</Text>
