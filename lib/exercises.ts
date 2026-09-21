@@ -11,6 +11,21 @@ export const exercises = (exercisesData as unknown as Exercise[])
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name));
 
+// Exercises where you move your own body weight (pull-ups, push-ups, dips...).
+// Sets for these start at the user's body weight. A few lack an equipment
+// value but say "Bodyweight" in the name. Stretches are excluded: holding a
+// stretch isn't lifting your body weight, so it shouldn't add volume.
+const BODYWEIGHT = new Set(
+    exercises
+        .filter((e) => e.equipment === 'body only' || /\bbodyweight\b/i.test(e.name))
+        .filter((e) => e.category !== 'stretching')
+        .map((e) => e.name)
+);
+
+export function isBodyweight(name: string): boolean {
+    return BODYWEIGHT.has(name);
+}
+
 export function searchExercises(query: string): Exercise[] {
     const q = query.trim().toLowerCase();
     if (!q) return exercises;

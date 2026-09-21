@@ -2,8 +2,13 @@
 export function plural(count: number, word: string): string {
   return `${count} ${word}${count === 1 ? "" : "s"}`;
 }
-export function relativeDay(iso:string): string {
-  const days = Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24));
+
+// Calendar days, not 24-hour blocks: a workout at 9pm yesterday is
+// "Yesterday" even though it was under 24 hours ago.
+export function relativeDay(iso: string): string {
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  // Rounding absorbs the 23- and 25-hour days around daylight-saving changes.
+  const days = Math.round((startOfDay(new Date()) - startOfDay(new Date(iso))) / (1000 * 60 * 60 * 24));
   if (days <= 0) return "Today";
   if (days === 1) return "Yesterday";
   return `${days} days ago`;

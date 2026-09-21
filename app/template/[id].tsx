@@ -1,6 +1,7 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { Alert, FlatList, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { isBodyweight } from "../../lib/exercises";
 import { plural } from "../../lib/format";
 import { deleteTemplate, getTemplates } from "../../lib/storage";
 import { Template } from "../../types/workout";
@@ -60,7 +61,7 @@ export default function TemplateDetail() {
             <Text style={styles.rowText}>{item.name}</Text>
             <Text style={styles.rowSub}>
               {item.sets && item.sets.length > 0
-                ? item.sets.map((s) => `${s.weight}×${s.reps}`).join("   ")
+                ? item.sets.map((s) => `${!s.weight && isBodyweight(item.name) ? "BW" : s.weight}×${s.reps}`).join("   ")
                 : "No sets planned"}
             </Text>
           </View>

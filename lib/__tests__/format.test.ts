@@ -40,9 +40,20 @@ describe("relativeDay", () => {
     expect(relativeDay(daysAgo(-3))).toBe("Today");
   });
 
-  test("buckets by elapsed hours, not calendar days", () => {
-    // 20 hours earlier is the previous calendar day, but under 24h elapsed.
+  test("counts calendar days, not 24-hour blocks", () => {
+    // NOW is 14:00 in Copenhagen. 20 hours earlier is 18:00 the day before:
+    // under 24 hours ago, but still yesterday.
     const twentyHoursAgo = new Date(new Date(NOW).getTime() - 20 * 60 * 60 * 1000);
-    expect(relativeDay(twentyHoursAgo.toISOString())).toBe("Today");
+    expect(relativeDay(twentyHoursAgo.toISOString())).toBe("Yesterday");
+  });
+
+  test("an hour before midnight is yesterday once midnight has passed", () => {
+    jest.setSystemTime(new Date("2026-09-08T22:30:00.000Z")); // 00:30 on the 9th
+    expect(relativeDay("2026-09-08T21:30:00.000Z")).toBe("Yesterday"); // 23:30 on the 8th
+  });
+
+  test("earlier the same day is still today", () => {
+    jest.setSystemTime(new Date("2026-09-08T21:30:00.000Z")); // 23:30
+    expect(relativeDay("2026-09-07T22:30:00.000Z")).toBe("Today"); // 00:30, 23 hours earlier
   });
 });

@@ -13,7 +13,7 @@ import {
 import { getBodyGender, getWorkouts, setBodyGender } from "../../lib/storage";
 
 export default function Recovery() {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const [recovery, setRecovery] = useState<MuscleRecovery[]>([]);
   const [gender, setGender] = useState<"male" | "female">("male");
   const [side, setSide] = useState<"front" | "back">("front");
@@ -43,6 +43,12 @@ export default function Recovery() {
     const sel = recovery.find((m) => m.slug === selected);
 
   const pageWidth = width - 40;
+  // The body library draws the figure 400 × scale tall and 200 × scale wide.
+  // Fit it to the space we actually have and give its box exactly that height;
+  // a fixed scale made it taller than the box on phones, spilling over the
+  // buttons above and below.
+  const bodyScale = Math.min(pageWidth / 200, (height * 0.55) / 400, 1.3);
+  const bodyHeight = 400 * bodyScale;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -64,8 +70,8 @@ export default function Recovery() {
       </View>
       
       
-      <View style={[styles.bodyWrap, { width: pageWidth }]}>
-        <Body onBodyPartPress={(part) => setSelected(part.slug ?? null)} side={side} gender={gender} scale={1.4} data={colored} />
+      <View style={[styles.bodyWrap, { width: pageWidth, height: bodyHeight }]}>
+        <Body onBodyPartPress={(part) => setSelected(part.slug ?? null)} side={side} gender={gender} scale={bodyScale} data={colored} />
       </View>
 
 
@@ -123,7 +129,9 @@ const styles = StyleSheet.create({
   genderActive: { backgroundColor: "#3A3A3A" },
   genderText: { color: "#F2F0EC", fontSize: 14 },
   hint: { color: "#8C8A86", fontSize: 12, textAlign: "center", marginBottom: 6 },
-  bodyWrap: { height: 420, alignItems: "center", justifyContent: "center", alignSelf: "center" },
+  // overflow hidden: even if the figure ever outgrows the box, it can't cover
+  // the gender toggle or the turn-around button.
+  bodyWrap: { alignItems: "center", justifyContent: "center", alignSelf: "center", overflow: "hidden" },
   turnBtn: {
     alignSelf: "center", backgroundColor: "#1C1C1C", borderRadius: 10,
     paddingVertical: 8, paddingHorizontal: 18, marginTop: 8,

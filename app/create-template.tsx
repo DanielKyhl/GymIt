@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { ExercisePicker } from "../components/ExercisePicker";
+import { isBodyweight } from "../lib/exercises";
 import { getDefaultRest, getDefaultUnit, getTemplates, saveTemplate, updateTemplate } from "../lib/storage";
 import { TemplateExercise } from "../types/workout";
 
@@ -114,14 +115,21 @@ export default function CreateTemplate() {
           {(ex.sets ?? []).map((set, setIndex) => (
             <View style={styles.setRow} key={setIndex}>
               <Text style={styles.setNum}>{setIndex + 1}</Text>
-              <TextInput
-                style={styles.cell}
-                keyboardType="numeric"
-                placeholder="0"
-                placeholderTextColor="#8C8A86"
-                value={set.weight ? String(set.weight) : ""}
-                onChangeText={(v) => updateSet(exIndex, setIndex, "weight", Number(v) || 0)}
-              />
+              {isBodyweight(ex.name) ? (
+                // Filled in with your body weight when the workout starts.
+                <View style={styles.bwCell}>
+                  <Text style={styles.bwText}>BW</Text>
+                </View>
+              ) : (
+                <TextInput
+                  style={styles.cell}
+                  keyboardType="numeric"
+                  placeholder="0"
+                  placeholderTextColor="#8C8A86"
+                  value={set.weight ? String(set.weight) : ""}
+                  onChangeText={(v) => updateSet(exIndex, setIndex, "weight", Number(v) || 0)}
+                />
+              )}
               <TextInput
                 style={styles.cell}
                 keyboardType="numeric"
@@ -186,6 +194,11 @@ const styles = StyleSheet.create({
     width: 60, backgroundColor: "#272727", color: "#F2F0EC", textAlign: "center",
     padding: 8, borderRadius: 6,
   },
+  bwCell: {
+    width: 60, paddingVertical: 8, borderRadius: 6, alignItems: "center",
+    borderWidth: 1, borderColor: "#272727",
+  },
+  bwText: { color: "#8C8A86", fontSize: 14 },
   removeSet: { color: "#6E6C68", fontSize: 16, width: 24, textAlign: "center" },
   addSet: { color: "#D9D5CE", fontSize: 14, marginTop: 4 },
   addExerciseBtn: {

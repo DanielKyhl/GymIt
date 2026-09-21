@@ -3,13 +3,16 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useAuth } from "../context/AuthContext";
+import { convertWeight, parseWeight } from "../lib/units";
 import {
   exportAll,
   getBodyGender,
+  getBodyWeight,
   getDefaultRest,
   getDefaultUnit,
   getWeeklyGoal,
   setBodyGender,
+  setBodyWeight,
   setDefaultRest,
   setDefaultUnit,
   setWeeklyGoal,
@@ -22,6 +25,7 @@ export default function Settings() {
   const [rest, setRestState] = useState("90");
   const [goal, setGoalState] = useState(3);
   const [gender, setGenderState] = useState<"male" | "female">("male");
+  const [weight, setWeightState] = useState("");
 
   useFocusEffect(
     useCallback(() => {
@@ -29,13 +33,28 @@ export default function Settings() {
       getDefaultRest().then((r) => setRestState(String(r)));
       getWeeklyGoal().then(setGoalState);
       getBodyGender().then(setGenderState);
+      // Shown in the current unit, even if it was entered in the other one.
+      Promise.all([getBodyWeight(), getDefaultUnit()]).then(([bw, u]) => {
+        setWeightState(bw ? String(convertWeight(bw.value, bw.unit, u)) : "");
+      });
     }, [])
   );
 
-  const chooseUnit = (u: "kg" | "lb") => { setUnitState(u); setDefaultUnit(u); };
+  const chooseUnit = (u: "kg" | "lb") => {
+    // Keep showing the same body weight, just expressed in the new unit.
+    const current = parseWeight(weight);
+    if (current && u !== unit) setWeightState(String(convertWeight(current, unit, u)));
+    setUnitState(u);
+    setDefaultUnit(u);
+  };
   const chooseGoal = (g: number) => { setGoalState(g); setWeeklyGoal(g); };
   const chooseGender = (g: "male" | "female") => { setGenderState(g); setBodyGender(g); };
   const saveRest = (v: string) => { setRestState(v); setDefaultRest(Number(v) || 90); };
+  const saveWeight = (v: string) => {
+    setWeightState(v);
+    const value = parseWeight(v);
+    if (value) setBodyWeight(value, unit);
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -70,6 +89,20 @@ export default function Settings() {
           </Pressable>
         ))}
       </View>
+
+      <Text style={styles.section}>Body weight</Text>
+      <View style={styles.restRow}>
+        <TextInput
+          style={styles.restInput}
+          keyboardType="decimal-pad"
+          placeholder="—"
+          placeholderTextColor="#6E6C68"
+          value={weight}
+          onChangeText={saveWeight}
+        />
+        <Text style={styles.restUnit}>{unit}</Text>
+      </View>
+      <Text style={[styles.hint, styles.fieldHint]}>Used as the weight for bodyweight exercises like pull-ups.</Text>
 
       <Text style={styles.section}>Default rest between sets</Text>
       <View style={styles.restRow}>
@@ -138,4 +171,5 @@ const styles = StyleSheet.create({
   goalBtn: { width: 44, height: 44, backgroundColor: "#1C1C1C", borderRadius: 10, alignItems: "center", justifyContent: "center" },
   action: { color: "#D9D5CE", fontSize: 15, marginBottom: 4 },
   hint: { color: "#8C8A86", fontSize: 12 },
+  fieldHint: { marginTop: 8 },
 });

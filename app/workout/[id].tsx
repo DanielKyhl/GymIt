@@ -2,9 +2,12 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { ExercisePicker } from "../../components/ExercisePicker";
+import { BodyWeight, startingWeight } from "../../lib/bodyweight";
+import { isBodyweight } from "../../lib/exercises";
 import { getLastPerformance } from "../../lib/stats";
 import { summarizeWorkout } from "../../lib/summary";
-import { getDefaultRest, getDefaultUnit, getTemplates, getWeeklyGoal, getWorkouts, saveWorkout } from "../../lib/storage";
+import { getBodyWeight, getDefaultRest, getDefaultUnit, getTemplates, getWeeklyGoal, getWorkouts, saveWorkout } from "../../lib/storage";
+import { convertWeight } from "../../lib/units";
 import { Template, Workout, WorkoutExercise, WorkoutSet } from "../../types/workout";
 
 function formatTime(totalSeconds: number) {
@@ -26,16 +29,25 @@ export default function ActiveWorkout() {
   const [restElapsed, setRestElapsed] = useState(0);
   const [pastWorkouts, setPastWorkouts] = useState<Workout[]>([]);
   const [showAdd, setShowAdd] = useState(false);
+  const [bodyWeight, setBodyWeightValue] = useState<BodyWeight | null>(null);
 
   useEffect(() => {
     getTemplates().then(async (templates) => {
       const found = templates.find((t) => t.id === id) ?? null;
       setTemplate(found);
       if (found) {
-                setExercises(
+        const [bw, u] = await Promise.all([getBodyWeight(), getDefaultUnit()]);
+        setBodyWeightValue(bw);
+        setExercises(
           found.exercises.map((e) => ({
             name: e.name,
-            sets: (e.sets ?? []).map((s) => ({ ...s, done: false })),
+            // Bodyweight exercises are saved in templates as "BW" (0) and
+            // start at your current body weight.
+            sets: (e.sets ?? []).map((s) => ({
+              ...s,
+              weight: s.weight || startingWeight(e.name, bw, u),
+              done: false,
+            })),
           }))
         );
         const def = await getDefaultRest();
@@ -69,7 +81,18 @@ export default function ActiveWorkout() {
     setExercises((prev) =>
       prev.map((ex, i) =>
         i === exIndex
-          ? { ...ex, sets: [...ex.sets, { weight: 0, reps: 0, done: false, restSeconds: defaultRest }] }
+          ? {
+              ...ex,
+              sets: [
+                ...ex.sets,
+                {
+                  weight: startingWeight(ex.name, bodyWeight, unit),
+                  reps: 0,
+                  done: false,
+                  restSeconds: defaultRest,
+                },
+              ],
+            }
           : ex
       )
     );
@@ -198,7 +221,14 @@ export default function ActiveWorkout() {
           const prev = getLastPerformance(pastWorkouts, ex.name);
           return (
             <View style={styles.exerciseCard} key={ex.name + exIndex}>
-              <Text style={styles.exerciseName}>{ex.name}</Text>
+              <Text style={[styles.exerciseName, isBodyweight(ex.name) && styles.exerciseNameTight]}>{ex.name}</Text>
+              {isBodyweight(ex.name) && (
+                <Text style={styles.bwNote}>
+                  {bodyWeight
+                    ? `Bodyweight · uses your ${convertWeight(bodyWeight.value, bodyWeight.unit, unit)} ${unit}`
+                    : "Bodyweight · add your weight in Settings"}
+                </Text>
+              )}
 
               <View style={styles.setRow}>
                 <Text style={[styles.setNum, styles.colHead]}>Set</Text>
@@ -217,7 +247,9 @@ export default function ActiveWorkout() {
                       </Text>
                     </Pressable>
                     <Text style={styles.prev}>
-                      {prev[setIndex] ? `${prev[setIndex].weight} × ${prev[setIndex].reps}` : "–"}
+                      {prev[setIndex]
+                        ? `${!prev[setIndex].weight && isBodyweight(ex.name) ? "BW" : prev[setIndex].weight} × ${prev[setIndex].reps}`
+                        : "–"}
                     </Text>
                     <TextInput
                       style={styles.setInput}
@@ -298,6 +330,8 @@ const styles = StyleSheet.create({
   scrollContent: { gap: 12, paddingBottom: 12 },
   exerciseCard: { backgroundColor: "#1C1C1C", borderRadius: 12, padding: 14 },
   exerciseName: { color: "#F2F0EC", fontSize: 16, fontWeight: "500", marginBottom: 10 },
+  exerciseNameTight: { marginBottom: 2 },
+  bwNote: { color: "#8C8A86", fontSize: 12, marginBottom: 10 },
   setRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
   setNum: { color: "#8C8A86", fontSize: 14, width: 24, textAlign: "center" },
   warmupNum: { color: "#e6b800", fontWeight: "bold" },

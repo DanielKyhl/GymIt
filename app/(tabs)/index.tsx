@@ -1,11 +1,20 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { BodyWeightPrompt } from "../../components/BodyWeightPrompt";
 import { useAuth } from "../../context/AuthContext";
 import { plural, relativeDay } from "../../lib/format";
 import { computeXP, levelInfo, thisWeekCount } from "../../lib/gamification";
 import { lastUsedDate } from "../../lib/stats";
-import { getTemplates, getWeeklyGoal, getWorkouts } from "../../lib/storage";
+import {
+  getDefaultUnit,
+  getTemplates,
+  getWeeklyGoal,
+  getWorkouts,
+  setBodyWeight,
+  shouldAskBodyWeight,
+  skipBodyWeight,
+} from "../../lib/storage";
 import { Template, Workout } from "../../types/workout";
 
 export default function HomeScreen() {
@@ -14,12 +23,16 @@ export default function HomeScreen() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [weeklyGoal, setWeeklyGoal] = useState(3);
+  const [askWeight, setAskWeight] = useState(false);
+  const [unit, setUnit] = useState<"kg" | "lb">("kg");
 
   useFocusEffect(
     useCallback(() => {
       getTemplates().then(setTemplates);
       getWorkouts().then(setWorkouts);
       getWeeklyGoal().then(setWeeklyGoal);
+      getDefaultUnit().then(setUnit);
+      shouldAskBodyWeight().then(setAskWeight);
     }, [])
   );
 
@@ -104,6 +117,18 @@ export default function HomeScreen() {
           <View style={styles.list}>{premade.map(renderCard)}</View>
         </>
       )}
+      <BodyWeightPrompt
+        visible={askWeight}
+        unit={unit}
+        onSave={(value) => {
+          setAskWeight(false);
+          setBodyWeight(value, unit);
+        }}
+        onLater={() => {
+          setAskWeight(false);
+          skipBodyWeight();
+        }}
+      />
     </ScrollView>
   );
 }

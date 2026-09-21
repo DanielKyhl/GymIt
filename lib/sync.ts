@@ -36,6 +36,14 @@ export function currentUid(): string | null {
   return auth.currentUser?.uid ?? null;
 }
 
+// Firebase restores the saved login asynchronously when the app starts. Reads
+// must wait for that: a screen opened first (a page refresh, a link) would
+// otherwise see "signed out" and load nothing.
+export async function readyUid(): Promise<string | null> {
+  await auth.authStateReady();
+  return currentUid();
+}
+
 // ---------------------------------------------------------------------------
 // Serialising writes. Two quick edits (typing "90" into the rest field fires
 // for "9" then "90") must apply in the order they were made, or the older one
