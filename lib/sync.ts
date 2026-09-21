@@ -309,3 +309,22 @@ export async function syncAll(uid: string): Promise<void> {
   }
   COLLECTIONS.forEach((c) => schedulePush(uid, c));
 }
+
+// ---------------------------------------------------------------------------
+// Account deletion
+
+// Deletes everything this account has in Firestore, then everything cached for
+// it on this device. Cloud first: if that fails (offline, or rules that don't
+// allow deletes yet), nothing local has been touched and the account is intact.
+export async function wipeAccount(uid: string): Promise<void> {
+  for (const coll of COLLECTIONS) {
+    const snap = await getDocsFromServer(collection(db, "users", uid, coll));
+    for (let i = 0; i < snap.docs.length; i += 400) {
+      const batch = writeBatch(db);
+      snap.docs.slice(i, i + 400).forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+    }
+  }
+  const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith(`gymit:${uid}:`));
+  await AsyncStorage.multiRemove(keys);
+}

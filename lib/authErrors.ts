@@ -22,6 +22,13 @@ export function authErrorMessage(error: unknown): string {
       return "No connection. Check your internet and try again.";
     case "auth/too-many-requests":
       return "Too many attempts. Wait a minute and try again.";
+    case "auth/missing-email":
+      return "Enter your email first.";
+    // Firestore, during account deletion.
+    case "permission-denied":
+      return "Your data couldn't be deleted. The database rules need updating (see firestore.rules).";
+    case "unavailable":
+      return "No connection. Check your internet and try again.";
     default:
       return "Something went wrong. Please try again.";
   }

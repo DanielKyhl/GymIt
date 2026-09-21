@@ -150,9 +150,9 @@ export default function HomeScreen() {
       <BodyWeightPrompt
         visible={askWeight}
         unit={unit}
-        onSave={(value) => {
+        onSave={(value, entered) => {
           setAskWeight(false);
-          setBodyWeight(value, unit);
+          setBodyWeight(value, entered);
         }}
         onLater={() => {
           setAskWeight(false);

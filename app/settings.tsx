@@ -1,8 +1,9 @@
 import * as Clipboard from "expo-clipboard";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useAuth } from "../context/AuthContext";
+import { authErrorMessage } from "../lib/authErrors";
 import { convertWeight, parseWeight } from "../lib/units";
 import {
   exportAll,
@@ -21,7 +22,11 @@ import { C } from "../constants/theme";
 
 export default function Settings() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, deleteAccount } = useAuth();
+  const [deleting, setDeleting] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [unit, setUnitState] = useState<"kg" | "lb">("kg");
   const [rest, setRestState] = useState("90");
   const [goal, setGoalState] = useState(3);
@@ -55,6 +60,29 @@ export default function Settings() {
     setWeightState(v);
     const value = parseWeight(v);
     if (value) setBodyWeight(value, unit);
+  };
+
+  const handleDelete = async () => {
+    if (!deletePassword) {
+      setDeleteError("Enter your password to confirm.");
+      return;
+    }
+    setDeleteError("");
+    setDeleteBusy(true);
+    try {
+      await deleteAccount(deletePassword);
+      setDeleting(false);
+      router.replace("/welcome");
+    } catch (e) {
+      // The email is already known here, so only the password can be wrong.
+      const code = (e as { code?: string })?.code;
+      setDeleteError(
+        code === "auth/invalid-credential" || code === "auth/wrong-password"
+          ? "That password isn't right."
+          : authErrorMessage(e)
+      );
+      setDeleteBusy(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -147,6 +175,48 @@ export default function Settings() {
         <Text style={styles.action}>Copy backup to clipboard</Text>
         <Text style={styles.hint}>Saves all your templates, workouts, and settings as text.</Text>
       </Pressable>
+
+      <Text style={styles.section}>Danger zone</Text>
+      <Pressable
+        style={[styles.card, styles.dangerCard]}
+        onPress={() => {
+          setDeletePassword("");
+          setDeleteError("");
+          setDeleting(true);
+        }}
+      >
+        <Text style={styles.dangerAction}>Delete account</Text>
+        <Text style={styles.hint}>Permanently deletes your account and every workout, template and setting.</Text>
+      </Pressable>
+
+      <Modal visible={deleting} transparent animationType="fade" onRequestClose={() => setDeleting(false)}>
+        <View style={styles.backdrop}>
+          <View style={styles.dialog}>
+            <Text style={styles.dialogTitle}>Delete your account?</Text>
+            <Text style={styles.dialogBody}>
+              This permanently deletes {user?.email ?? "your account"} and all your workouts, templates and
+              settings, on this phone and in the cloud. It can't be undone. Copy a backup first if you might want
+              your data later.
+            </Text>
+            <TextInput
+              style={styles.dialogInput}
+              placeholder="Your password"
+              placeholderTextColor={C.textFaint}
+              secureTextEntry
+              value={deletePassword}
+              onChangeText={setDeletePassword}
+              autoFocus
+            />
+            {deleteError ? <Text style={styles.dialogError}>{deleteError}</Text> : null}
+            <Pressable style={styles.deleteBtn} onPress={handleDelete} disabled={deleteBusy}>
+              {deleteBusy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.deleteBtnText}>Delete account</Text>}
+            </Pressable>
+            <Pressable style={styles.cancelBtn} onPress={() => setDeleting(false)} disabled={deleteBusy}>
+              <Text style={styles.cancelText}>Keep my account</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -172,5 +242,20 @@ const styles = StyleSheet.create({
   goalBtn: { width: 44, height: 44, backgroundColor: C.card, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   action: { color: C.accent, fontSize: 15, marginBottom: 4 },
   hint: { color: C.textMuted, fontSize: 12 },
+  dangerCard: { borderWidth: 1, borderColor: C.restOver },
+  dangerAction: { color: C.danger, fontSize: 15, fontWeight: "500", marginBottom: 4 },
+  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", padding: 20 },
+  dialog: { backgroundColor: C.card, borderRadius: 20, borderWidth: 1, borderColor: C.raised, padding: 20 },
+  dialogTitle: { color: C.text, fontSize: 20, fontWeight: "600", marginBottom: 8 },
+  dialogBody: { color: C.textSoft, fontSize: 14, lineHeight: 20, marginBottom: 16 },
+  dialogInput: {
+    backgroundColor: C.raised, color: C.text, fontSize: 16,
+    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 12,
+  },
+  dialogError: { color: C.danger, fontSize: 13, marginBottom: 12, lineHeight: 18 },
+  deleteBtn: { backgroundColor: C.danger, borderRadius: 12, paddingVertical: 14, alignItems: "center", minHeight: 50, justifyContent: "center" },
+  deleteBtnText: { color: "#FFFFFF", fontSize: 16, fontWeight: "600" },
+  cancelBtn: { alignItems: "center", paddingVertical: 14 },
+  cancelText: { color: C.textMuted, fontSize: 15 },
   fieldHint: { marginTop: 8 },
 });

@@ -1,34 +1,32 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Button, StyleSheet, Text, TextInput, View } from 'react-native';
-import {useAuth} from '../../context/AuthContext';
+import { View } from 'react-native';
+import { AuthHeading, AuthScreen, Field, FormMessage, PrimaryButton, SwitchLink } from '../../components/AuthUI';
+import { useAuth } from '../../context/AuthContext';
 import { authErrorMessage } from '../../lib/authErrors';
-import { C } from "../../constants/theme";
 
 export default function Signup() {
+    const router = useRouter();
     const { signup } = useAuth();
-
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
     const [busy, setBusy] = useState(false);
 
-    const validateEmail = (email: string) => {
-        return /\S+@\S+\.\S+/.test(email);
-    };
     const handleSignup = async () => {
-        if (!email || !password) {
-            setError("Please fill in all fields.");
+        if (!email.trim() || !password) {
+            setError('Enter an email and a password.');
             return;
         }
-        if (!validateEmail(email)) {
-            setError("Please enter a valid email address.");
+        if (!/\S+@\S+\.\S+/.test(email.trim())) {
+            setError("That email address isn't valid.");
             return;
         }
         if (password.length < 6) {
-            setError("Password must be at least 6 characters long.");
+            setError('Password must be at least 6 characters.');
             return;
         }
-        setError("");
+        setError('');
         setBusy(true);
         try {
             // On success the auth layout redirects once the account is ready.
@@ -38,59 +36,36 @@ export default function Signup() {
             setBusy(false);
         }
     };
+
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Sign Up</Text>
+        <AuthScreen back>
+            <AuthHeading title="Create your account" subtitle="Your workouts are backed up and synced across your devices." />
 
-            <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor={C.textMuted}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-             value={email}
-            onChangeText={setEmail}
+            <Field
+                label="Email"
+                placeholder="you@example.com"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                keyboardType="email-address"
+                value={email}
+                onChangeText={setEmail}
+            />
+            <Field
+                label="Password"
+                placeholder="Choose a password"
+                hint="At least 6 characters."
+                secureTextEntry
+                autoComplete="new-password"
+                value={password}
+                onChangeText={setPassword}
+                onSubmitEditing={handleSignup}
             />
 
-            <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor={C.textMuted}
-            secureTextEntry
-            value = {password}
-            onChangeText={setPassword}
-            />
-            {error ? <Text style={styles.error}>{error}</Text> : null}
-            <Button
-                title={busy ? "Creating account…" : "Create Account"}
-                onPress={handleSignup}
-                disabled={busy}
-            />
-        </View>
+            <View style={{ height: 8 }} />
+            <FormMessage error={error} />
+            <PrimaryButton label="Create account" onPress={handleSignup} busy={busy} />
+            <SwitchLink prompt="Already have an account?" action="Log in" onPress={() => router.replace('/login')} />
+        </AuthScreen>
     );
 }
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: C.bg,
-        padding: 20,
-        justifyContent: 'center',
-    },
-    title: {
-        color: C.text,
-        fontSize: 32,
-        marginBottom: 20,
-    }, 
-    input: {
-        backgroundColor: C.card,
-        color: C.text,
-        padding: 12,
-        marginBottom: 15,
-        borderRadius: 6,
-    }, 
-    error: {
-        color: 'red',
-        marginBottom: 10,
-    },
-});

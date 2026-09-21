@@ -74,6 +74,20 @@ export async function saveWorkout(workout: Workout): Promise<void> {
     await putRecords(await requireUid(), 'workouts', [{ ...workout, updatedAt: Date.now() }], true);
 }
 
+// Fixing a finished workout (a typo'd weight, a set that didn't happen).
+export async function updateWorkout(workout: Workout): Promise<void> {
+    await putRecords(await requireUid(), 'workouts', [{ ...workout, updatedAt: Date.now() }]);
+}
+
+// A tombstone, like templates, so the deletion reaches your other devices.
+export async function deleteWorkout(id: string): Promise<void> {
+    await updateRecord<Synced<Workout>>(await requireUid(), 'workouts', id, (current) => ({
+        ...(current ?? { id, name: '', date: new Date(0).toISOString(), durationSeconds: 0, unit: 'kg', exercises: [] }),
+        deleted: true,
+        updatedAt: Date.now(),
+    }));
+}
+
 // ---------------------------------------------------------------------------
 // Templates
 

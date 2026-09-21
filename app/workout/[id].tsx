@@ -2,7 +2,7 @@ import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Check, Timer, X } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { CheckButton } from "../../components/CheckButton";
 import { ExercisePicker } from "../../components/ExercisePicker";
 import { NumberInput } from "../../components/NumberInput";
@@ -37,6 +37,7 @@ import {
   saveTemplate,
   saveWorkout,
 } from "../../lib/storage";
+import { confirm } from "../../lib/confirm";
 import { summarizeWorkout } from "../../lib/summary";
 import { convertWeight, normalizeUnits } from "../../lib/units";
 import { SetType, Workout, WorkoutExercise, WorkoutSet } from "../../types/workout";
@@ -44,21 +45,6 @@ import { SetType, Workout, WorkoutExercise, WorkoutSet } from "../../types/worko
 // Routes: /workout/<templateId> starts (or resumes) that template,
 // /workout/new starts an empty workout, /workout/resume reopens the
 // unfinished one.
-
-function confirm(title: string, message: string, ok: string, opts: { cancel?: string; destructive?: boolean } = {}) {
-  if (Platform.OS === "web") return Promise.resolve(window.confirm(`${title}\n\n${message}`));
-  return new Promise<boolean>((resolve) =>
-    Alert.alert(
-      title,
-      message,
-      [
-        { text: opts.cancel ?? "Cancel", style: "cancel", onPress: () => resolve(false) },
-        { text: ok, style: opts.destructive ? "destructive" : "default", onPress: () => resolve(true) },
-      ],
-      { cancelable: true, onDismiss: () => resolve(false) }
-    )
-  );
-}
 
 const TYPE_LABEL: Partial<Record<SetType, string>> = { warmup: "W", drop: "D", failure: "F" };
 

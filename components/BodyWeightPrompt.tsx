@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { parseWeight } from "../lib/units";
 import { C } from "../constants/theme";
@@ -6,13 +6,17 @@ import { C } from "../constants/theme";
 type Props = {
   visible: boolean;
   unit: "kg" | "lb";
-  onSave: (value: number) => void;
+  onSave: (value: number, unit: "kg" | "lb") => void;
   onLater: () => void;
 };
 
 export function BodyWeightPrompt({ visible, unit, onSave, onLater }: Props) {
   const [text, setText] = useState("");
+  // Starts on the app's unit, but you can type your weight in either.
+  const [chosen, setChosen] = useState(unit);
   const value = parseWeight(text);
+
+  useEffect(() => setChosen(unit), [unit]);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onLater}>
@@ -35,13 +39,25 @@ export function BodyWeightPrompt({ visible, unit, onSave, onLater }: Props) {
               onChangeText={setText}
               autoFocus
             />
-            <Text style={styles.unit}>{unit}</Text>
+            <View style={styles.segment}>
+              {(["kg", "lb"] as const).map((u) => (
+                <Pressable
+                  key={u}
+                  style={[styles.segBtn, chosen === u && styles.segActive]}
+                  onPress={() => setChosen(u)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: chosen === u }}
+                >
+                  <Text style={[styles.segText, chosen === u && styles.segTextActive]}>{u}</Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
 
           <Pressable
             style={[styles.save, !value && styles.saveDisabled]}
             disabled={!value}
-            onPress={() => value && onSave(value)}
+            onPress={() => value && onSave(value, chosen)}
           >
             <Text style={styles.saveText}>Save</Text>
           </Pressable>
@@ -75,6 +91,7 @@ const styles = StyleSheet.create({
   inputRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 20 },
   input: {
     flex: 1,
+    minWidth: 0, // lets it shrink to make room for the kg/lb switch
     backgroundColor: C.raised,
     color: C.text,
     fontSize: 22,
@@ -82,7 +99,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
   },
-  unit: { color: C.textMuted, fontSize: 18, width: 30 },
+  segment: { flexDirection: "row", backgroundColor: C.raised, borderRadius: 10, padding: 3 },
+  segBtn: { paddingHorizontal: 14, paddingVertical: 11, borderRadius: 8 },
+  segActive: { backgroundColor: C.selected },
+  segText: { color: C.textMuted, fontSize: 16, fontWeight: "500" },
+  segTextActive: { color: C.text },
   save: { backgroundColor: C.accent, borderRadius: 12, paddingVertical: 14, alignItems: "center" },
   saveDisabled: { opacity: 0.4 },
   saveText: { color: C.onAccent, fontSize: 16, fontWeight: "600" },

@@ -1,22 +1,27 @@
-import { Link } from 'expo-router';
-import {useState} from 'react';
-import {useAuth} from '../../context/AuthContext';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text } from 'react-native';
+import { AuthHeading, AuthScreen, Field, FormMessage, PrimaryButton, SwitchLink } from '../../components/AuthUI';
+import { C, HIT } from '../../constants/theme';
+import { useAuth } from '../../context/AuthContext';
 import { authErrorMessage } from '../../lib/authErrors';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { C } from "../../constants/theme";
 
 export default function Login() {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
+    const router = useRouter();
+    const { login, resetPassword } = useAuth();
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const [info, setInfo] = useState('');
     const [busy, setBusy] = useState(false);
-    const { login } = useAuth();
+
     const handleLogin = async () => {
+        setInfo('');
         if (!email.trim() || !password) {
-            setError("Enter your email and password.");
+            setError('Enter your email and password.');
             return;
         }
-        setError("");
+        setError('');
         setBusy(true);
         try {
             // On success the auth layout redirects once the account has loaded,
@@ -27,79 +32,61 @@ export default function Login() {
             setBusy(false);
         }
     };
+
+    const handleForgot = async () => {
+        setError('');
+        setInfo('');
+        if (!email.trim()) {
+            setError('Enter your email above, then tap "Forgot password?" again.');
+            return;
+        }
+        // Same message whether or not the account exists, on purpose, so nobody
+        // can use this to find out which emails have accounts.
+        const sent = `If ${email.trim()} has an account, a reset link is on its way. Check your spam folder too.`;
+        try {
+            await resetPassword(email);
+            setInfo(sent);
+        } catch (e) {
+            if ((e as { code?: string })?.code === 'auth/user-not-found') setInfo(sent);
+            else setError(authErrorMessage(e));
+        }
+    };
+
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Login</Text>
-            <TextInput style={styles.input}
-            placeholder = "Email"
-            placeholderTextColor={C.textMuted}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-            value = {email}
-            onChangeText = {setEmail}
+        <AuthScreen back>
+            <AuthHeading title="Welcome back" subtitle="Log in to pick up where you left off." />
+
+            <Field
+                label="Email"
+                placeholder="you@example.com"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                keyboardType="email-address"
+                value={email}
+                onChangeText={setEmail}
             />
-            <TextInput style={styles.input}
-            placeholder = "Password"
-            placeholderTextColor={C.textMuted}
-            secureTextEntry
-            value = {password}
-            onChangeText = {setPassword}
+            <Field
+                label="Password"
+                placeholder="Your password"
+                secureTextEntry
+                autoComplete="current-password"
+                value={password}
+                onChangeText={setPassword}
+                onSubmitEditing={handleLogin}
             />
-            {error ? <Text style={styles.error}>{error}</Text> : null}
-            <Pressable style={styles.button} onPress={handleLogin} disabled={busy}>
-                {busy ? (
-                    <ActivityIndicator color={C.onAccent} />
-                ) : (
-                    <Text style={styles.buttonText}>Log In</Text>
-                )}
+            <Pressable style={styles.forgot} onPress={handleForgot} hitSlop={HIT}>
+                <Text style={styles.forgotText}>Forgot password?</Text>
             </Pressable>
-            <Link href="/welcome" asChild>
-                <Text style={styles.link}>Return</Text>
-            </Link>
-        </View> 
+
+            <FormMessage error={error} info={info} />
+            <PrimaryButton label="Log in" onPress={handleLogin} busy={busy} />
+            <SwitchLink prompt="New here?" action="Create an account" onPress={() => router.replace('/signup')} />
+        </AuthScreen>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: C.bg,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    title: {
-        color: C.text,
-        fontSize: 32,
-        marginBottom: 40,
-    },
-    input: {
-        width: '80%',
-        padding: 10,
-        marginBottom: 20,
-        backgroundColor: C.card,
-        color: C.text,
-        borderRadius: 5,
-    },
-    button: {
-        backgroundColor: C.accent,
-        paddingVertical: 10,
-        paddingHorizontal: 40,
-        borderRadius: 5,
-        marginBottom: 20,
-    },
-    buttonText: {
-        color: C.onAccent,
-        fontSize: 18,
-    },
-    link: {
-        color: C.accent,
-        fontSize: 16,
-    },
-    error: {
-        color: C.danger,
-        marginBottom: 16,
-        width: '80%',
-        textAlign: 'center',
-    },
+    forgot: { alignSelf: 'flex-end', marginTop: -6, marginBottom: 20 },
+    forgotText: { color: C.accent, fontSize: 14, fontWeight: '500' },
 });

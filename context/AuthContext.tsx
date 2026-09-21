@@ -1,13 +1,17 @@
 import {
     createUserWithEmailAndPassword,
+    deleteUser,
+    EmailAuthProvider,
     onAuthStateChanged,
+    reauthenticateWithCredential,
+    sendPasswordResetEmail,
     signInWithEmailAndPassword,
     signOut,
 } from 'firebase/auth';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { auth } from '../lib/firebase';
-import { hasSyncedBefore, syncAll } from '../lib/sync';
+import { hasSyncedBefore, syncAll, wipeAccount } from '../lib/sync';
 
 type User = {
     uid: string;
@@ -21,6 +25,12 @@ type AuthContextType = {
     signup: (email: string, password: string) => Promise<void>;
     login: (email: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
+    // Sends Firebase's password-reset email. Succeeds whether or not the
+    // address has an account, so it can't be used to probe for accounts.
+    resetPassword: (email: string) => Promise<void>;
+    // Permanently deletes the account and all its data. Needs the password
+    // again: Firebase only allows deletion right after a fresh sign-in.
+    deleteAccount: (password: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -85,8 +95,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         await signOut(auth);
     };
 
+    const resetPassword = async (email: string) => {
+        await sendPasswordResetEmail(auth, email.trim());
+    };
+
+    const deleteAccount = async (password: string) => {
+        const current = auth.currentUser;
+        if (!current?.email) throw new Error('Not signed in.');
+        await reauthenticateWithCredential(current, EmailAuthProvider.credential(current.email, password));
+        await wipeAccount(current.uid);
+        await deleteUser(current);
+    };
+
     return (
-        <AuthContext.Provider value={{ user, isLoading, signup, login, logout }}>
+        <AuthContext.Provider value={{ user, isLoading, signup, login, logout, resetPassword, deleteAccount }}>
             {children}
         </AuthContext.Provider>
     );

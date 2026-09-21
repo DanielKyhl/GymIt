@@ -26,8 +26,9 @@ service cloud.firestore {
     match /users/{uid}/{coll}/{docId} {
       allow read: if isOwner(uid);
       allow create, update: if isOwner(uid) && isValidRecord(coll, docId);
-      // Deletions travel as tombstones (deleted: true), never as real deletes.
-      allow delete: if false;
+      // Everyday deletions sync as tombstones (deleted: true). Real deletes
+      // are only for the owner wiping their own data when deleting the account.
+      allow delete: if isOwner(uid);
     }
   }
 }
