@@ -1,76 +1,101 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createContext, ReactNode, useContext, useEffect, useState } from "react";
+import {
+    createUserWithEmailAndPassword,
+    onAuthStateChanged,
+    signInWithEmailAndPassword,
+    signOut,
+} from 'firebase/auth';
+import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import { AppState } from 'react-native';
+import { auth } from '../lib/firebase';
+import { hasSyncedBefore, syncAll } from '../lib/sync';
 
 type User = {
-    email: string;
-    password: string;
+    uid: string;
+    email: string | null;
 };
+
 type AuthContextType = {
     user: User | null;
     isLoading: boolean;
-    signup: (email: string, password: string) => void;
-    login: (email: string, password: string) => boolean;
-    logout: () => void;
+    // These reject with a Firebase error on failure; see lib/authErrors.ts.
+    signup: (email: string, password: string) => Promise<void>;
+    login: (email: string, password: string) => Promise<void>;
+    logout: () => Promise<void>;
 };
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({children}: {children: ReactNode}) => {
+// How long a first sign-in on a new device waits for the cloud copy before
+// showing the app anyway.
+const FIRST_SYNC_TIMEOUT_MS = 8000;
+
+function withTimeout(promise: Promise<void>, ms: number): Promise<void> {
+    return Promise.race([promise, new Promise<void>((resolve) => setTimeout(resolve, ms))]);
+}
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
-    const [registeredUsers, setRegisteredUsers] = useState<User[]> ([]);
     const [isLoading, setIsLoading] = useState(true);
 
+    // Firebase remembers the session between launches and tells us here, both
+    // on startup and whenever someone signs in or out.
     useEffect(() => {
-    const loadData = async () => {
-        const savedUser = await AsyncStorage.getItem("user");
-        if (savedUser) {
-            setUser(JSON.parse(savedUser));
-        }
-        const savedUsers = await AsyncStorage.getItem("registeredUsers");
-        if (savedUsers) {
-            setRegisteredUsers(JSON.parse(savedUsers));
-        }
-        setIsLoading(false);
-    };
-    loadData();
-}, []);
+        return onAuthStateChanged(auth, async (fbUser) => {
+            if (!fbUser) {
+                setUser(null);
+                setIsLoading(false);
+                return;
+            }
+            const uid = fbUser.uid;
+            if (await hasSyncedBefore(uid)) {
+                // Local copy already here: show it now, refresh behind the scenes.
+                syncAll(uid).catch(() => undefined);
+            } else {
+                // First time on this device. Screens load their data once when
+                // they open, so wait for the download rather than show empty lists.
+                await withTimeout(syncAll(uid), FIRST_SYNC_TIMEOUT_MS).catch(() => undefined);
+            }
+            // They may have signed out (or switched account) while we waited.
+            if (auth.currentUser?.uid !== uid) return;
+            setUser({ uid, email: fbUser.email });
+            setIsLoading(false);
+        });
+    }, []);
 
- const signup = (email: string, password: string) => {
-    const alreadyExists = registeredUsers.some((u) => u.email === email);
-    if (alreadyExists) {
-        alert("An account with that email already exists.");
-        return;
-    }
-    const updatedUsers = [...registeredUsers, {email, password}];
-    setRegisteredUsers(updatedUsers);
-    AsyncStorage.setItem("registeredUsers", JSON.stringify(updatedUsers));
-    setUser({email, password});
-    AsyncStorage.setItem("user", JSON.stringify({email, password}));
-};
-    const login = (email: string, password: string) => {
-    const match = registeredUsers.find(
-        (u) => u.email === email && u.password === password
-    );
-    if (match) {
-        setUser(match);
-        AsyncStorage.setItem("user", JSON.stringify(match));
-        return true;
-    }
-    return false;
-};
-    const logout = () => {
-        setUser(null);
-        AsyncStorage.removeItem("user");
+    // Pick up changes made on other devices when the app comes back to the front.
+    useEffect(() => {
+        if (!user) return;
+        const sub = AppState.addEventListener('change', (state) => {
+            if (state === 'active') syncAll(user.uid).catch(() => undefined);
+        });
+        return () => sub.remove();
+    }, [user]);
+
+    // Success is reported through onAuthStateChanged above, which also runs the
+    // first sync, so these only need to start the request.
+    const signup = async (email: string, password: string) => {
+        await createUserWithEmailAndPassword(auth, email.trim(), password);
     };
+
+    const login = async (email: string, password: string) => {
+        await signInWithEmailAndPassword(auth, email.trim(), password);
+    };
+
+    const logout = async () => {
+        await signOut(auth);
+    };
+
     return (
-        <AuthContext.Provider value={{user, isLoading, signup, login, logout}}>
+        <AuthContext.Provider value={{ user, isLoading, signup, login, logout }}>
             {children}
         </AuthContext.Provider>
     );
-}
+};
+
 export function useAuth() {
     const context = useContext(AuthContext);
     if (!context) {
-        throw new Error("useAuth must be used within an AuthProvider");
+        throw new Error('useAuth must be used within an AuthProvider');
     }
-    return  context;
+    return context;
 }

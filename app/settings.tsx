@@ -1,10 +1,10 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Clipboard from "expo-clipboard";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import {
+  exportAll,
   getBodyGender,
   getDefaultRest,
   getDefaultUnit,
@@ -43,13 +43,7 @@ export default function Settings() {
   };
 
   const exportData = async () => {
-    const keys = [
-      "user", "registeredUsers", "templates", "workouts",
-      "weeklyGoal", "bodyGender", "defaultUnit", "defaultRest", "premadeSeeded",
-    ];
-    const dump: Record<string, string | null> = {};
-    for (const k of keys) dump[k] = await AsyncStorage.getItem(k);
-    await Clipboard.setStringAsync(JSON.stringify(dump));
+    await Clipboard.setStringAsync(await exportAll());
     if (Platform.OS === "web") window.alert("Backup copied to clipboard.");
     else Alert.alert("Backup copied", "Your data is on the clipboard. Paste it somewhere safe.");
   };
@@ -90,7 +84,7 @@ export default function Settings() {
 
       <Text style={styles.section}>Weekly workout goal</Text>
       <View style={styles.grid}>
-        {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+        {Array.from({ length: 14 }, (_, i) => i + 1).map((n) => (
           <Pressable
             key={n}
             style={[styles.goalBtn, goal === n && styles.segActive]}

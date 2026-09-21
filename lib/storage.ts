@@ -1,92 +1,126 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Workout, Template } from '../types/workout';
-import { PREMADE_TEMPLATES } from './premadeTemplates';
+import { Template, Workout } from '../types/workout';
+import { currentUid, putRecords, readLocal, SETTINGS_ID, updateRecord } from './sync';
+import { live, SyncRecord } from './syncMerge';
 
-const WORKOUTS_KEY = 'workouts';
-const TEMPLATES_KEY = 'templates';
-const SEEDED_KEY = 'premadeSeeded';
-const WEEKLY_GOAL_KEY = 'weeklyGoal';
-const BODY_GENDER_KEY = 'bodyGender';
-const DEFAULT_UNIT_KEY = 'defaultUnit';
-const DEFAULT_REST_KEY = 'defaultRest';
+// The app's only doorway to saved data. Everything here reads and writes the
+// signed-in account's copy on this device; lib/sync.ts backs it up to Firebase
+// and keeps other devices in step. Screens never talk to Firebase directly.
+
+type Synced<T> = T & SyncRecord;
+
+type Settings = SyncRecord & {
+    weeklyGoal?: number;
+    bodyGender?: 'male' | 'female';
+    defaultUnit?: 'kg' | 'lb';
+    defaultRest?: number;
+    premadeSeeded?: boolean;
+};
+
+// Writes need an account to belong to; reaching one signed out is a bug.
+function requireUid(): string {
+    const uid = currentUid();
+    if (!uid) throw new Error('Tried to save while signed out.');
+    return uid;
+}
+
+// ---------------------------------------------------------------------------
+// Workouts — returned newest first.
 
 export async function getWorkouts(): Promise<Workout[]> {
-    const saved = await AsyncStorage.getItem(WORKOUTS_KEY);
-    return saved ? JSON.parse(saved) : [];
+    const uid = currentUid();
+    if (!uid) return [];
+    const all = await readLocal<Synced<Workout>>(uid, 'workouts');
+    return live(all).sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export async function saveWorkout(workout: Workout): Promise<void> {
-    const workouts = await getWorkouts();
-    const updated = [workout, ...workouts];
-    await AsyncStorage.setItem(WORKOUTS_KEY, JSON.stringify(updated));
+    await putRecords(requireUid(), 'workouts', [{ ...workout, updatedAt: Date.now() }], true);
 }
 
+// ---------------------------------------------------------------------------
+// Templates
+
 export async function getTemplates(): Promise<Template[]> {
-    const saved = await AsyncStorage.getItem(TEMPLATES_KEY);
-    return saved ? JSON.parse(saved) : [];
+    const uid = currentUid();
+    if (!uid) return [];
+    return live(await readLocal<Synced<Template>>(uid, 'templates'));
 }
 
 export async function saveTemplate(template: Template): Promise<void> {
-    const templates = await getTemplates();
-    const updated = [...templates, template];
-    await AsyncStorage.setItem(TEMPLATES_KEY, JSON.stringify(updated));
+    await putRecords(requireUid(), 'templates', [{ ...template, updatedAt: Date.now() }]);
 }
 
 export async function updateTemplate(template: Template): Promise<void> {
-    const templates = await getTemplates();
-    const updated = templates.map((t) => (t.id === template.id ? template : t));
-    await AsyncStorage.setItem(TEMPLATES_KEY, JSON.stringify(updated));
+    await putRecords(requireUid(), 'templates', [{ ...template, updatedAt: Date.now() }]);
 }
 
+// Kept as a tombstone rather than removed, so the deletion reaches your other
+// devices instead of the next sync bringing the template back.
 export async function deleteTemplate(id: string): Promise<void> {
-    const templates = await getTemplates();
-    const updated = templates.filter((t) => t.id !== id);
-    await AsyncStorage.setItem(TEMPLATES_KEY, JSON.stringify(updated));
+    await updateRecord<Synced<Template>>(requireUid(), 'templates', id, (current) => ({
+        ...(current ?? { id, name: '', exercises: [] }),
+        deleted: true,
+        updatedAt: Date.now(),
+    }));
+}
+
+// ---------------------------------------------------------------------------
+// Settings — one synced record per account.
+
+async function getSettings(): Promise<Partial<Settings>> {
+    const uid = currentUid();
+    if (!uid) return {};
+    const meta = await readLocal<Settings>(uid, 'meta');
+    return meta.find((r) => r.id === SETTINGS_ID) ?? {};
+}
+
+async function setSetting(change: Partial<Settings>): Promise<void> {
+    await updateRecord<Settings>(requireUid(), 'meta', SETTINGS_ID, (current) => ({
+        ...current,
+        ...change,
+        id: SETTINGS_ID,
+        updatedAt: Date.now(),
+    }));
 }
 
 export async function getWeeklyGoal(): Promise<number> {
-    const saved = await AsyncStorage.getItem(WEEKLY_GOAL_KEY);
-    return saved ? Number(saved) : 3;
+    return (await getSettings()).weeklyGoal ?? 3;
 }
 
 export async function setWeeklyGoal(goal: number): Promise<void> {
-    await AsyncStorage.setItem(WEEKLY_GOAL_KEY, String(goal));
+    await setSetting({ weeklyGoal: goal });
 }
 
-export async function getBodyGender(): Promise<"male" | "female"> {
-    const saved = await AsyncStorage.getItem(BODY_GENDER_KEY);
-    return saved === "female" ? "female" : "male";
+export async function getBodyGender(): Promise<'male' | 'female'> {
+    return (await getSettings()).bodyGender === 'female' ? 'female' : 'male';
 }
 
-export async function setBodyGender(gender: "male" | "female"): Promise<void> {
-    await AsyncStorage.setItem(BODY_GENDER_KEY, gender);
+export async function setBodyGender(gender: 'male' | 'female'): Promise<void> {
+    await setSetting({ bodyGender: gender });
 }
 
-export async function getDefaultUnit(): Promise<"kg" | "lb"> {
-    const saved = await AsyncStorage.getItem(DEFAULT_UNIT_KEY);
-    return saved === "lb" ? "lb" : "kg";
+export async function getDefaultUnit(): Promise<'kg' | 'lb'> {
+    return (await getSettings()).defaultUnit === 'lb' ? 'lb' : 'kg';
 }
 
-export async function setDefaultUnit(unit: "kg" | "lb"): Promise<void> {
-    await AsyncStorage.setItem(DEFAULT_UNIT_KEY, unit);
+export async function setDefaultUnit(unit: 'kg' | 'lb'): Promise<void> {
+    await setSetting({ defaultUnit: unit });
 }
 
 export async function getDefaultRest(): Promise<number> {
-    const saved = await AsyncStorage.getItem(DEFAULT_REST_KEY);
-    return saved ? Number(saved) : 120;
+    return (await getSettings()).defaultRest ?? 120;
 }
 
 export async function setDefaultRest(seconds: number): Promise<void> {
-    await AsyncStorage.setItem(DEFAULT_REST_KEY, String(seconds));
+    await setSetting({ defaultRest: seconds });
 }
 
-// Add the beginner templates once, on first launch. Guarded by a flag so
-// deleting a premade template won't make it come back on the next launch.
-export async function seedPremadeTemplates(): Promise<void> {
-    const seeded = await AsyncStorage.getItem(SEEDED_KEY);
-    if (seeded) return;
-    const existing = await getTemplates();
-    const updated = [...PREMADE_TEMPLATES, ...existing];
-    await AsyncStorage.setItem(TEMPLATES_KEY, JSON.stringify(updated));
-    await AsyncStorage.setItem(SEEDED_KEY, 'true');
+// Everything the user owns, as plain JSON, for the Settings backup button.
+export async function exportAll(): Promise<string> {
+    const { weeklyGoal, bodyGender, defaultUnit, defaultRest } = await getSettings();
+    return JSON.stringify({
+        workouts: await getWorkouts(),
+        templates: await getTemplates(),
+        settings: { weeklyGoal, bodyGender, defaultUnit, defaultRest },
+    });
 }

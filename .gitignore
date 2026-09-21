@@ -41,3 +41,12 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Firebase project config (see .env.example)
+.env
+
+# Firebase emulator / CLI debris
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebase/

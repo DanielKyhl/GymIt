@@ -1,20 +1,20 @@
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Button, StyleSheet, Text, TextInput, View } from 'react-native';
 import {useAuth} from '../../context/AuthContext';
+import { authErrorMessage } from '../../lib/authErrors';
 
 export default function Signup() {
-    const router = useRouter();
     const { signup } = useAuth();
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
+    const [busy, setBusy] = useState(false);
 
     const validateEmail = (email: string) => {
         return /\S+@\S+\.\S+/.test(email);
     };
-    const handleSignup = () => {
+    const handleSignup = async () => {
         if (!email || !password) {
             setError("Please fill in all fields.");
             return;
@@ -28,8 +28,14 @@ export default function Signup() {
             return;
         }
         setError("");
-        signup(email, password);
-        router.replace("/(tabs)");
+        setBusy(true);
+        try {
+            // On success the auth layout redirects once the account is ready.
+            await signup(email, password);
+        } catch (e) {
+            setError(authErrorMessage(e));
+            setBusy(false);
+        }
     };
     return (
         <View style={styles.container}>
@@ -39,6 +45,9 @@ export default function Signup() {
             style={styles.input}
             placeholder="Email"
             placeholderTextColor="#8C8A86"
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
              value={email}
             onChangeText={setEmail}
             />
@@ -52,7 +61,11 @@ export default function Signup() {
             onChangeText={setPassword}
             />
             {error ? <Text style={styles.error}>{error}</Text> : null}
-            <Button title="Create Account" onPress={handleSignup} />
+            <Button
+                title={busy ? "Creating account…" : "Create Account"}
+                onPress={handleSignup}
+                disabled={busy}
+            />
         </View>
     );
 }

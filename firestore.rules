@@ -1,0 +1,33 @@
+rules_version = '2';
+
+// GymIt: every account owns one private tree, users/{uid}/..., and nothing
+// else in the database is readable or writable by anyone.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // What the app's sync layer (lib/sync.ts) writes:
+    //  - only into the three known collections, with settings as a single doc
+    //  - the document's id field matches its path
+    //  - updatedAt is the device's edit time; syncedAt must be the server's own
+    //    clock (serverTimestamp()), which incremental pulls depend on
+    function isValidRecord(coll, docId) {
+      let data = request.resource.data;
+      return coll in ['workouts', 'templates', 'meta']
+        && (coll != 'meta' || docId == 'settings')
+        && data.id == docId
+        && data.updatedAt is number
+        && data.syncedAt == request.time;
+    }
+
+    match /users/{uid}/{coll}/{docId} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid) && isValidRecord(coll, docId);
+      // Deletions travel as tombstones (deleted: true), never as real deletes.
+      allow delete: if false;
+    }
+  }
+}
