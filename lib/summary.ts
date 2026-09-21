@@ -1,13 +1,14 @@
 import { Workout } from "../types/workout";
 import { getAchievements } from "./achievements";
-import { computeXP, countPRs, levelInfo } from "./gamification";
-import { workoutVolume } from "./stats";
+import { computeXP, levelInfo } from "./gamification";
+import { newRecords, PersonalRecord, workoutVolume } from "./stats";
 
 export type WorkoutSummary = {
   xpGained: number;
   levelAfter: number;
   leveledUp: boolean;
   newPRs: number;
+  records: (PersonalRecord & { name: string })[];
   newAchievements: string[];
   volume: number;
 };
@@ -33,12 +34,14 @@ export function summarizeWorkout(
   const newAchievements = getAchievements(after, weeklyGoal)
     .filter((a) => a.unlocked && !beforeUnlocked.has(a.id))
     .map((a) => a.title);
+  const records = newRecords(pastWorkouts, newWorkout);
 
   return {
     xpGained: xpAfter - xpBefore,
     levelAfter,
     leveledUp: levelAfter > levelBefore,
-    newPRs: countPRs(after) - countPRs(pastWorkouts),
+    newPRs: records.length,
+    records,
     newAchievements,
     volume: workoutVolume(newWorkout),
   };

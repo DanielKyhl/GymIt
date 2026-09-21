@@ -8,9 +8,24 @@ type Props = {
   unit: "kg" | "lb";
   onSave: (value: number, unit: "kg" | "lb") => void;
   onLater: () => void;
+  // Defaults are for the first-time question on Home.
+  title?: string;
+  body?: string;
+  dismissLabel?: string;
 };
 
-export function BodyWeightPrompt({ visible, unit, onSave, onLater }: Props) {
+const FIRST_TIME_BODY =
+  "Bodyweight exercises like pull-ups and push-ups use it as their weight, so they count toward your progress and PRs. You can change it any time in Settings.";
+
+export function BodyWeightPrompt({
+  visible,
+  unit,
+  onSave,
+  onLater,
+  title = "What do you weigh?",
+  body = FIRST_TIME_BODY,
+  dismissLabel = "Later",
+}: Props) {
   const [text, setText] = useState("");
   // Starts on the app's unit, but you can type your weight in either.
   const [chosen, setChosen] = useState(unit);
@@ -22,12 +37,8 @@ export function BodyWeightPrompt({ visible, unit, onSave, onLater }: Props) {
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onLater}>
       <View style={styles.backdrop}>
         <View style={styles.panel}>
-          <Text style={styles.title}>What do you weigh?</Text>
-          <Text style={styles.body}>
-            Bodyweight exercises like pull-ups and push-ups use it as their weight, so
-            they count toward your progress and PRs. You can change it any time in
-            Settings.
-          </Text>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.body}>{body}</Text>
 
           <View style={styles.inputRow}>
             <TextInput
@@ -62,7 +73,7 @@ export function BodyWeightPrompt({ visible, unit, onSave, onLater }: Props) {
             <Text style={styles.saveText}>Save</Text>
           </Pressable>
           <Pressable style={styles.later} onPress={onLater} hitSlop={8}>
-            <Text style={styles.laterText}>Later</Text>
+            <Text style={styles.laterText}>{dismissLabel}</Text>
           </Pressable>
         </View>
       </View>

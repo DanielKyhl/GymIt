@@ -1,5 +1,5 @@
 import { Slug } from "react-native-body-highlighter";
-import { Workout } from "../types/workout";
+import { Template, Workout } from "../types/workout";
 import { exercises } from "./exercises";
 import { stabiliserMuscles } from "./muscleCorrections";
 
@@ -67,6 +67,16 @@ exercises.forEach((e) => {
   muscleMap[e.name] = { primary, secondary: [...secondary] };
 });
 
+// The muscles an exercise trains (empty for names not in the exercise list).
+export function musclesFor(name: string): { primary: Slug[]; secondary: Slug[] } {
+  return muscleMap[name] ?? { primary: [], secondary: [] };
+}
+
+// Every muscle a template works as a primary mover, each listed once.
+export function templateMuscles(template: Template): Slug[] {
+  return [...new Set(template.exercises.flatMap((e) => musclesFor(e.name).primary))];
+}
+
 export type MuscleRecovery = {
   slug: Slug;
   color: string;
@@ -105,6 +115,14 @@ export function computeRecovery(workouts: Workout[], now: number = Date.now()): 
       b.fraction < 0.5 ? COLOR_TRAINED : b.fraction < 1 ? COLOR_PARTIAL : COLOR_RECOVERED;
     return { slug, color, fraction: b.fraction, hoursLeft: Math.round(b.hoursLeft) };
   });
+}
+
+// How recovered you are, 0-100: the average recovery of the given muscles, or
+// of every tracked muscle when none are given.
+export function readinessScore(recovery: MuscleRecovery[], slugs?: Slug[]): number {
+  const pool = slugs ? recovery.filter((m) => slugs.includes(m.slug)) : recovery;
+  if (pool.length === 0) return 100;
+  return Math.round((pool.reduce((sum, m) => sum + m.fraction, 0) / pool.length) * 100);
 }
 
 // Nicely formatted muscle name for display (from the slug).

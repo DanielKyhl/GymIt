@@ -302,13 +302,12 @@ export default function ActiveWorkoutScreen() {
     router.replace({
       pathname: "/workout-summary",
       params: {
+        id: workout.id,
         xp: String(s.xpGained),
         level: String(s.levelAfter),
         leveledUp: s.leveledUp ? "1" : "0",
-        prs: String(s.newPRs),
         achievements: JSON.stringify(s.newAchievements),
-        volume: String(s.volume),
-        unit,
+        records: JSON.stringify(s.records.map(({ name, weight, reps }) => ({ name, weight, reps }))),
       },
     });
   };

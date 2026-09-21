@@ -9,7 +9,15 @@ function shortDate(iso: string) {
   return `${d.getDate()}/${d.getMonth() + 1}`;
 }
 
-export function VolumeChart({ data, width: fixedWidth }: { data: Point[]; width?: number }) {
+type Props = {
+  data: Point[];
+  width?: number;
+  // false: the axis spans just the data's range, so small changes (like body
+  // weight) are visible instead of a flat line near the top.
+  zeroBased?: boolean;
+};
+
+export function VolumeChart({ data, width: fixedWidth, zeroBased = true }: Props) {
   const { width } = useWindowDimensions();
   const chartWidth = fixedWidth ?? Math.min(width - 40, 600);
   const chartHeight = 190;
@@ -19,10 +27,15 @@ export function VolumeChart({ data, width: fixedWidth }: { data: Point[]; width?
   const innerW = chartWidth - padSide * 2;
   const innerH = chartHeight - padTop - padBottom;
 
-  const maxVol = Math.max(...data.map((d) => d.volume), 1);
+  const values = data.map((d) => d.volume);
+  const dataMax = Math.max(...values, zeroBased ? 1 : -Infinity);
+  const dataMin = Math.min(...values);
+  const pad = zeroBased ? 0 : Math.max((dataMax - dataMin) * 0.2, 1);
+  const lo = zeroBased ? 0 : dataMin - pad;
+  const hi = zeroBased ? dataMax : dataMax + pad;
   const n = data.length;
   const x = (i: number) => (n === 1 ? padSide + innerW / 2 : padSide + (i / (n - 1)) * innerW);
-  const y = (v: number) => padTop + innerH - (v / maxVol) * innerH;
+  const y = (v: number) => padTop + innerH - ((v - lo) / (hi - lo)) * innerH;
   const baseY = padTop + innerH;
 
   const points = data.map((d, i) => `${x(i)},${y(d.volume)}`).join(" ");

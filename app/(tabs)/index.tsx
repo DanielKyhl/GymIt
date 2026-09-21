@@ -1,11 +1,15 @@
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { BodyWeightPrompt } from "../../components/BodyWeightPrompt";
+import { WeekStrip } from "../../components/WeekStrip";
 import { useAuth } from "../../context/AuthContext";
 import { plural, relativeDay } from "../../lib/format";
 import { computeXP, levelInfo, thisWeekCount } from "../../lib/gamification";
-import { lastUsedDate } from "../../lib/stats";
+import { computeRecovery } from "../../lib/recovery";
+import { consistencyGrid, lastUsedDate } from "../../lib/stats";
+import { Suggestion, suggestTemplate } from "../../lib/suggest";
 import {
   getActiveWorkout,
   getDefaultUnit,
@@ -46,6 +50,15 @@ export default function HomeScreen() {
   const { level, xpIntoLevel, xpForNext, isMax } = levelInfo(totalXP);
   const weekCount = thisWeekCount(workouts);
   const progress = isMax ? 1 : Math.min(1, xpIntoLevel / xpForNext);
+  const week = consistencyGrid(workouts, 1)[0];
+  const suggestion = suggestTemplate(templates, workouts, computeRecovery(workouts));
+
+  // The XP bar fills up to its value instead of appearing full.
+  const fill = useSharedValue(0);
+  useEffect(() => {
+    fill.set(withTiming(progress, { duration: 700, easing: Easing.out(Easing.cubic) }));
+  }, [fill, progress]);
+  const fillStyle = useAnimatedStyle(() => ({ width: `${fill.get() * 100}%` }));
 
   const custom = templates.filter((t) => !t.id.startsWith("premade-"));
   const premade = templates.filter((t) => t.id.startsWith("premade-"));
@@ -85,6 +98,26 @@ export default function HomeScreen() {
         </View>
       </View>
 
+      {!inProgress && suggestion && (
+        <View style={styles.hero}>
+          <Text style={styles.heroLabel}>Up next</Text>
+          <Pressable onPress={() => router.push(`/template/${suggestion.template.id}`)} hitSlop={HIT}>
+            <Text style={styles.heroName} numberOfLines={1}>
+              {suggestion.template.name}
+            </Text>
+          </Pressable>
+          <Text style={styles.heroMeta}>{heroReason(suggestion)}</Text>
+          <Pressable
+            style={styles.heroBtn}
+            onPress={() => router.push(`/workout/${suggestion.template.id}`)}
+            accessibilityRole="button"
+          >
+            <Play size={18} color={C.onAccent} fill={C.onAccent} />
+            <Text style={styles.heroBtnText}>Start workout</Text>
+          </Pressable>
+        </View>
+      )}
+
       {inProgress && (
         <Pressable style={styles.resumeCard} onPress={() => router.push("/workout/resume")}>
           <View style={styles.resumeText}>
@@ -106,7 +139,10 @@ export default function HomeScreen() {
           <Text style={styles.xpText}>{isMax ? "MAX" : `${xpIntoLevel} / ${xpForNext} XP`}</Text>
         </View>
         <View style={styles.xpBarBg}>
-          <View style={[styles.xpBarFill, { width: `${progress * 100}%` }]} />
+          <Animated.View style={[styles.xpBarFill, fillStyle]} />
+        </View>
+        <View style={styles.weekStrip}>
+          <WeekStrip days={week} />
         </View>
         <View style={styles.miniRow}>
           <Pressable style={styles.goalLink} onPress={() => router.push("/weekly-goal")} hitSlop={HIT}>
@@ -163,6 +199,13 @@ export default function HomeScreen() {
   );
 }
 
+// Why this template: how recovered its muscles are, and when you last did it.
+function heroReason({ readiness, lastDone }: Suggestion): string {
+  const recovered = readiness >= 95 ? "Muscles recovered" : `Muscles ${readiness}% recovered`;
+  const last = lastDone ? `last done ${relativeDay(lastDone).toLowerCase()}` : "not done yet";
+  return `${recovered} · ${last}`;
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   content: { padding: 20, paddingTop: 60, paddingBottom: 40 },
@@ -176,6 +219,19 @@ const styles = StyleSheet.create({
   logout: { color: C.textMuted, fontSize: 14 },
   headerRight: { flexDirection: "row", alignItems: "center", gap: 16 },
   statsCard: { backgroundColor: C.card, borderRadius: 14, padding: 16, marginBottom: 12 },
+  hero: {
+    backgroundColor: C.card, borderRadius: 20, borderWidth: 1, borderColor: C.raised,
+    padding: 20, marginBottom: 12,
+  },
+  heroLabel: { color: C.signal, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
+  heroName: { color: C.text, fontSize: 30, fontWeight: "700", marginTop: 4 },
+  heroMeta: { color: C.textMuted, fontSize: 13, marginTop: 4, marginBottom: 16 },
+  heroBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    backgroundColor: C.accent, borderRadius: 12, paddingVertical: 15,
+  },
+  heroBtnText: { color: C.onAccent, fontSize: 16, fontWeight: "600" },
+  weekStrip: { marginTop: 16 },
   resumeCard: {
     flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12,
     backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.signal, padding: 14,

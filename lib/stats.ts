@@ -1,4 +1,6 @@
+import { Slug } from "react-native-body-highlighter";
 import { Workout, WorkoutSet } from "../types/workout";
+import { musclesFor } from "./recovery";
 
 // Epley formula: estimate a one-rep max from a weight lifted for some reps.
 // 1RM = weight * (1 + reps / 30). One rep just returns the weight.
@@ -104,4 +106,120 @@ export function getVolumeByTemplate(
     groups[w.name].push({ date: w.date, volume: workoutVolume(w) });
   });
   return Object.entries(groups).map(([name, points]) => ({ name, points }));
+}
+
+// ---------------------------------------------------------------------------
+// Personal records
+
+export type BestSet = { weight: number; reps: number; oneRM: number };
+
+// The working set with the highest estimated 1RM, or null if there isn't one.
+export function bestSet(sets: WorkoutSet[]): BestSet | null {
+  let best: BestSet | null = null;
+  sets
+    .filter((s) => s.type !== "warmup")
+    .forEach((s) => {
+      const oneRM = estimate1RM(s.weight, s.reps);
+      if (oneRM > 0 && (!best || oneRM > best.oneRM)) best = { weight: s.weight, reps: s.reps, oneRM };
+    });
+  return best;
+}
+
+export type PersonalRecord = BestSet & { date: string; previous: number };
+
+// Every time this exercise beat its best estimated 1RM, newest first. The
+// first session only sets the baseline, the same rule the XP count uses.
+export function prHistory(workouts: Workout[], name: string): PersonalRecord[] {
+  const records: PersonalRecord[] = [];
+  let best = 0;
+  [...workouts].reverse().forEach((w) => {
+    const ex = w.exercises.find((e) => e.name === name);
+    const top = ex ? bestSet(ex.sets) : null;
+    if (!top || top.oneRM <= best) return;
+    if (best > 0) records.push({ ...top, date: w.date, previous: best });
+    best = top.oneRM;
+  });
+  return records.reverse();
+}
+
+// The records set in a just-finished workout, compared with everything before it.
+export function newRecords(past: Workout[], workout: Workout): (PersonalRecord & { name: string })[] {
+  const records: (PersonalRecord & { name: string })[] = [];
+  workout.exercises.forEach((ex) => {
+    const top = bestSet(ex.sets);
+    if (!top) return;
+    const previous = getExerciseSessions(past, ex.name).reduce((m, s) => Math.max(m, s.best1RM), 0);
+    if (previous > 0 && top.oneRM > previous) {
+      records.push({ ...top, name: ex.name, date: workout.date, previous });
+    }
+  });
+  return records;
+}
+
+// ---------------------------------------------------------------------------
+// Calendar views. All in local time, weeks starting on Monday.
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function dayKey(d: Date): string {
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+export type HeatCell = { date: string; count: number; today: boolean; future: boolean };
+
+// A grid of the last `weeks` weeks for the consistency heatmap: one column per
+// week (oldest first), each with seven days from Monday to Sunday.
+export function consistencyGrid(workouts: Workout[], weeks: number, now: number = Date.now()): HeatCell[][] {
+  const counts: Record<string, number> = {};
+  workouts.forEach((w) => {
+    const k = dayKey(new Date(w.date));
+    counts[k] = (counts[k] ?? 0) + 1;
+  });
+
+  const today = new Date(now);
+  const todayKey = dayKey(today);
+  const dayFromMonday = (today.getDay() + 6) % 7;
+  const grid: HeatCell[][] = [];
+  for (let wk = weeks - 1; wk >= 0; wk--) {
+    const column: HeatCell[] = [];
+    for (let d = 0; d < 7; d++) {
+      // Built from calendar parts, not by adding 24h, so daylight saving can't skip a day.
+      const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() - dayFromMonday - wk * 7 + d);
+      const k = dayKey(date);
+      column.push({ date: k, count: counts[k] ?? 0, today: k === todayKey, future: k > todayKey });
+    }
+    grid.push(column);
+  }
+  return grid;
+}
+
+// The big muscle groups always shown in "sets per muscle", even at zero.
+const MAIN_MUSCLES: Slug[] = [
+  "chest", "upper-back", "deltoids", "biceps", "triceps",
+  "quadriceps", "hamstring", "gluteal", "calves", "abs",
+];
+
+export type MuscleSets = { slug: Slug; sets: number };
+
+// Finished working sets per muscle over the last 7 days, most trained first.
+// A set counts once for each muscle the exercise works as a primary mover.
+export function weeklyMuscleSets(workouts: Workout[], now: number = Date.now()): MuscleSets[] {
+  const counts: Partial<Record<Slug, number>> = {};
+  workouts.forEach((w) => {
+    const t = new Date(w.date).getTime();
+    if (t > now || now - t > 7 * DAY_MS) return;
+    w.exercises.forEach((ex) => {
+      const sets = ex.sets.filter((s) => s.done && s.type !== "warmup").length;
+      if (sets === 0) return;
+      new Set(musclesFor(ex.name).primary).forEach((slug) => {
+        counts[slug] = (counts[slug] ?? 0) + sets;
+      });
+    });
+  });
+  const extra = (Object.keys(counts) as Slug[]).filter((s) => !MAIN_MUSCLES.includes(s));
+  return [...MAIN_MUSCLES, ...extra]
+    .map((slug) => ({ slug, sets: counts[slug] ?? 0 }))
+    .sort((a, b) => b.sets - a.sets);
 }

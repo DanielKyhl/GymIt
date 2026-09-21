@@ -12,3 +12,28 @@ export function startingWeight(exercise: string, bodyWeight: BodyWeight | null, 
   if (!bodyWeight || !isBodyweight(exercise)) return 0;
   return convertWeight(bodyWeight.value, bodyWeight.unit, unit);
 }
+
+// One weigh-in per day. The date is a local calendar day, "2026-09-21".
+export type BodyWeightEntry = { date: string; value: number; unit: Unit };
+
+// Keep at most about three years of daily weigh-ins in the settings record.
+const MAX_ENTRIES = 1000;
+
+// Adds a weigh-in, replacing any earlier one from the same day (Settings saves
+// as you type, so only the last value of the day should stick). Oldest first.
+export function addWeighIn(log: BodyWeightEntry[], entry: BodyWeightEntry): BodyWeightEntry[] {
+  return [...log.filter((e) => e.date !== entry.date), entry]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-MAX_ENTRIES);
+}
+
+// The log in one unit, rounded to 0.1, for charts and comparisons.
+export function weighInsIn(log: BodyWeightEntry[], unit: Unit): { date: string; value: number }[] {
+  return log.map((e) => ({ date: e.date, value: Math.round(convertWeight(e.value, e.unit, unit) * 10) / 10 }));
+}
+
+// Today's date as a local calendar day.
+export function todayKey(now: number = Date.now()): string {
+  const d = new Date(now);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}

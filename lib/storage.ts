@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Template, Workout } from '../types/workout';
 import { ActiveWorkout } from './activeWorkout';
-import { BodyWeight } from './bodyweight';
+import { addWeighIn, BodyWeight, BodyWeightEntry, todayKey } from './bodyweight';
 import { putRecords, readLocal, readyUid, SETTINGS_ID, updateRecord } from './sync';
 import { live, SyncRecord } from './syncMerge';
 import { normalizeUnits } from './units';
@@ -21,6 +21,7 @@ type Settings = SyncRecord & {
     bodyWeight?: number;
     bodyWeightUnit?: 'kg' | 'lb';
     bodyWeightAsked?: boolean; // the Home prompt was answered or skipped
+    bodyWeightLog?: BodyWeightEntry[]; // every weigh-in, oldest first
 };
 
 // Writes need an account to belong to; reaching one signed out is a bug.
@@ -173,8 +174,21 @@ export async function getBodyWeight(): Promise<BodyWeight | null> {
     return s.bodyWeight ? { value: s.bodyWeight, unit: s.bodyWeightUnit ?? 'kg' } : null;
 }
 
+// Also logs today's weigh-in, for the body-weight chart on Progress.
 export async function setBodyWeight(value: number, unit: 'kg' | 'lb'): Promise<void> {
-    await setSetting({ bodyWeight: value, bodyWeightUnit: unit, bodyWeightAsked: true });
+    await updateRecord<Settings>(await requireUid(), 'meta', SETTINGS_ID, (current) => ({
+        ...current,
+        bodyWeight: value,
+        bodyWeightUnit: unit,
+        bodyWeightAsked: true,
+        bodyWeightLog: addWeighIn(current?.bodyWeightLog ?? [], { date: todayKey(), value, unit }),
+        id: SETTINGS_ID,
+        updatedAt: Date.now(),
+    }));
+}
+
+export async function getBodyWeightLog(): Promise<BodyWeightEntry[]> {
+    return (await getSettings()).bodyWeightLog ?? [];
 }
 
 // Ask once. After that it's changed from Settings, not nagged about.
@@ -189,11 +203,11 @@ export async function skipBodyWeight(): Promise<void> {
 
 // Everything the user owns, as plain JSON, for the Settings backup button.
 export async function exportAll(): Promise<string> {
-    const { weeklyGoal, bodyGender, defaultUnit, defaultRest, bodyWeight, bodyWeightUnit } =
+    const { weeklyGoal, bodyGender, defaultUnit, defaultRest, bodyWeight, bodyWeightUnit, bodyWeightLog } =
         await getSettings();
     return JSON.stringify({
         workouts: await getWorkouts(),
         templates: await getTemplates(),
-        settings: { weeklyGoal, bodyGender, defaultUnit, defaultRest, bodyWeight, bodyWeightUnit },
+        settings: { weeklyGoal, bodyGender, defaultUnit, defaultRest, bodyWeight, bodyWeightUnit, bodyWeightLog },
     });
 }

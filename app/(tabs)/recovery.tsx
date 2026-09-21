@@ -1,4 +1,4 @@
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import Body, { Slug } from "react-native-body-highlighter";
@@ -8,15 +8,27 @@ import {
   COLOR_TRAINED,
   computeRecovery,
   MuscleRecovery,
+  readinessScore,
   slugLabel,
 } from "../../lib/recovery";
-import { getBodyGender, getWorkouts, setBodyGender } from "../../lib/storage";
+import { getBodyGender, getTemplates, getWorkouts, setBodyGender } from "../../lib/storage";
+import { suggestTemplate } from "../../lib/suggest";
+import { ReadinessRing } from "../../components/ReadinessRing";
+import { Template, Workout } from "../../types/workout";
 import { C } from "../../constants/theme";
-import { CircleCheck, RotateCw } from "lucide-react-native";
+import { ChevronRight, CircleCheck, RotateCw } from "lucide-react-native";
+
+function headline(score: number): string {
+  if (score >= 80) return "Good to go";
+  return score >= 50 ? "Partly recovered" : "Take it easy today";
+}
 
 export default function Recovery() {
+  const router = useRouter();
   const { width, height } = useWindowDimensions();
   const [recovery, setRecovery] = useState<MuscleRecovery[]>([]);
+  const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
   const [gender, setGender] = useState<"male" | "female">("male");
   const [side, setSide] = useState<"front" | "back">("front");
   const [selected, setSelected] = useState<Slug | null>(null);
@@ -25,7 +37,11 @@ export default function Recovery() {
 
   useFocusEffect(
     useCallback(() => {
-      getWorkouts().then((w) => setRecovery(computeRecovery(w)));
+      getWorkouts().then((w) => {
+        setWorkouts(w);
+        setRecovery(computeRecovery(w));
+      });
+      getTemplates().then(setTemplates);
       getBodyGender().then(setGender);
     }, [])
   );
@@ -43,6 +59,8 @@ export default function Recovery() {
     .filter((m) => m.fraction < 1)
     .sort((a, b) => a.fraction - b.fraction);
     const sel = recovery.find((m) => m.slug === selected);
+  const score = readinessScore(recovery);
+  const suggestion = suggestTemplate(templates, workouts, recovery);
 
   const pageWidth = width - 40;
   // The body library draws the figure 400 × scale tall and 200 × scale wide.
@@ -55,6 +73,28 @@ export default function Recovery() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Recovery</Text>
+
+      {recovery.length > 0 && (
+        <View style={styles.readyCard}>
+          <ReadinessRing score={score} />
+          <View style={styles.readyText}>
+            <Text style={styles.readyLabel}>Readiness</Text>
+            <Text style={styles.readyHeadline}>{headline(score)}</Text>
+            {suggestion && (
+              <Pressable
+                style={styles.readyFor}
+                onPress={() => router.push(`/template/${suggestion.template.id}`)}
+                accessibilityRole="button"
+              >
+                <Text style={styles.readyForText} numberOfLines={1}>
+                  Ready for <Text style={styles.readyForName}>{suggestion.template.name}</Text>
+                </Text>
+                <ChevronRight size={16} color={C.textMuted} />
+              </Pressable>
+            )}
+          </View>
+        </View>
+      )}
 
       <View style={styles.genderRow}>
         <Pressable
@@ -132,6 +172,19 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   content: { padding: 20, paddingTop: 60 },
   title: { color: C.text, fontSize: 28, fontWeight: "bold", marginBottom: 16 },
+  readyCard: {
+    flexDirection: "row", alignItems: "center", gap: 16,
+    backgroundColor: C.card, borderRadius: 16, padding: 16, marginBottom: 16,
+  },
+  readyText: { flex: 1 },
+  readyLabel: { color: C.textMuted, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
+  readyHeadline: { color: C.text, fontSize: 19, fontWeight: "600", marginTop: 2 },
+  readyFor: {
+    flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 4, marginTop: 10,
+    backgroundColor: C.raised, borderRadius: 999, paddingVertical: 7, paddingLeft: 12, paddingRight: 8, maxWidth: "100%",
+  },
+  readyForText: { color: C.textSoft, fontSize: 13, flexShrink: 1 },
+  readyForName: { color: C.text, fontWeight: "600" },
   genderRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
   genderBtn: { paddingVertical: 8, paddingHorizontal: 20, borderRadius: 8, backgroundColor: C.card },
   genderActive: { backgroundColor: C.selected },

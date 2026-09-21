@@ -19,6 +19,7 @@ export const C = {
   textFaint: '#8C8A86', // captions, column headers, placeholders
 
   accent: '#D9D5CE', // bone: primary buttons, active tab, progress fills
+  accentDim: '#77746E', // half-strength accent: lighter heatmap days, bars under target
   onAccent: '#171614', // text/icons on accent
   signal: '#E9A23B', // one warm highlight: streaks, PRs, "new"
 

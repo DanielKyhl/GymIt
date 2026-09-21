@@ -1,8 +1,9 @@
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { getWorkoutsForStats } from "../../lib/storage";
-import { ExerciseSession, getExerciseSessions } from "../../lib/stats";
+import { Flame } from "lucide-react-native";
+import { getDefaultUnit, getWorkoutsForStats } from "../../lib/storage";
+import { ExerciseSession, getExerciseSessions, PersonalRecord, prHistory } from "../../lib/stats";
 import { C, T } from "../../constants/theme";
 
 function formatDate(iso: string) {
@@ -12,9 +13,15 @@ function formatDate(iso: string) {
 export default function ExerciseProgress() {
   const { name } = useLocalSearchParams<{ name: string }>();
   const [sessions, setSessions] = useState<ExerciseSession[]>([]);
+  const [records, setRecords] = useState<PersonalRecord[]>([]);
+  const [unit, setUnit] = useState<"kg" | "lb">("kg");
 
   useEffect(() => {
-    getWorkoutsForStats().then((workouts) => setSessions(getExerciseSessions(workouts, name)));
+    getWorkoutsForStats().then((workouts) => {
+      setSessions(getExerciseSessions(workouts, name));
+      setRecords(prHistory(workouts, name));
+    });
+    getDefaultUnit().then(setUnit);
   }, [name]);
 
   const best1RM = sessions.reduce((m, s) => Math.max(m, s.best1RM), 0);
@@ -54,6 +61,33 @@ export default function ExerciseProgress() {
         </View>
       )}
 
+      <Text style={styles.section}>Personal records</Text>
+      {records.length === 0 ? (
+        <Text style={styles.empty}>
+          {sessions.length === 0
+            ? "No logged sets yet."
+            : "Beat your best estimated 1RM and the record shows up here."}
+        </Text>
+      ) : (
+        <View style={styles.prList}>
+          {records.map((r, i) => (
+            <View key={r.date} style={[styles.prRow, i === records.length - 1 && styles.prRowLast]}>
+              <Flame size={18} color={C.signal} />
+              <View style={styles.prMain}>
+                <Text style={styles.prSet}>
+                  {r.weight} {unit} × {r.reps}
+                </Text>
+                <Text style={styles.prDate}>{formatDate(r.date)}</Text>
+              </View>
+              <View style={styles.prRight}>
+                <Text style={styles.prValue}>{r.oneRM}</Text>
+                <Text style={styles.prDelta}>+{r.oneRM - r.previous} est. 1RM</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
       <Text style={styles.section}>Session history</Text>
       {sessions
         .slice()
@@ -85,6 +119,18 @@ const styles = StyleSheet.create({
   barWrap: { alignItems: "center", flex: 1 },
   bar: { width: "70%", backgroundColor: C.accent, borderRadius: 4 },
   barLabel: { color: C.textMuted, fontSize: 10, marginTop: 6 },
+  prList: { backgroundColor: C.card, borderRadius: 12, paddingHorizontal: 14, marginBottom: 24 },
+  prRow: {
+    flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12,
+    borderBottomWidth: 0.5, borderBottomColor: C.raised,
+  },
+  prRowLast: { borderBottomWidth: 0 },
+  prMain: { flex: 1 },
+  prSet: { ...T.num, fontSize: 20 },
+  prDate: { color: C.textMuted, fontSize: 12, marginTop: 1 },
+  prRight: { alignItems: "flex-end" },
+  prValue: { ...T.num, fontSize: 20, color: C.signal },
+  prDelta: { color: C.textMuted, fontSize: 12, marginTop: 1 },
   sessionRow: {
     flexDirection: "row", justifyContent: "space-between",
     borderBottomWidth: 0.5, borderBottomColor: C.raised, paddingVertical: 12,
