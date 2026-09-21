@@ -30,7 +30,7 @@ export default function CreateTemplate() {
       const found = templates.find((t) => t.id === id);
       if (found) {
         setName(found.name);
-        setExercises(found.exercises.map((e) => ({ name: e.name, sets: e.sets ?? [] })));
+        setExercises(found.exercises.map((e) => ({ ...e, sets: e.sets ?? [] })));
       }
     });
   }, [id]);

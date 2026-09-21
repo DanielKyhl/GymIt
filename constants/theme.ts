@@ -23,6 +23,7 @@ export const C = {
   signal: '#E9A23B', // one warm highlight: streaks, PRs, "new"
 
   success: '#1D9E75',
+  successBg: '#1B2A24', // row tint for a finished set
   warning: '#E6B800',
   danger: '#E5544B',
   rest: '#FAC775', // rest timer running

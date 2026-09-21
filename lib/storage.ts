@@ -1,4 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Template, Workout } from '../types/workout';
+import { ActiveWorkout } from './activeWorkout';
 import { BodyWeight } from './bodyweight';
 import { putRecords, readLocal, readyUid, SETTINGS_ID, updateRecord } from './sync';
 import { live, SyncRecord } from './syncMerge';
@@ -43,6 +45,29 @@ export async function getWorkouts(): Promise<Workout[]> {
 export async function getWorkoutsForStats(): Promise<Workout[]> {
     const [workouts, unit] = await Promise.all([getWorkouts(), getDefaultUnit()]);
     return normalizeUnits(workouts, unit);
+}
+
+// ---------------------------------------------------------------------------
+// The workout in progress. Device-only (not synced): it changes with every
+// keystroke, and it only matters on the phone you're training with.
+
+const activeKey = (uid: string) => `gymit:${uid}:active`;
+
+export async function getActiveWorkout(): Promise<ActiveWorkout | null> {
+    const uid = await readyUid();
+    if (!uid) return null;
+    const raw = await AsyncStorage.getItem(activeKey(uid));
+    return raw ? JSON.parse(raw) : null;
+}
+
+export async function saveActiveWorkout(active: ActiveWorkout): Promise<void> {
+    const uid = await readyUid();
+    if (uid) await AsyncStorage.setItem(activeKey(uid), JSON.stringify(active));
+}
+
+export async function clearActiveWorkout(): Promise<void> {
+    const uid = await readyUid();
+    if (uid) await AsyncStorage.removeItem(activeKey(uid));
 }
 
 export async function saveWorkout(workout: Workout): Promise<void> {

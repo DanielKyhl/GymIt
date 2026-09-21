@@ -7,6 +7,7 @@ import { plural, relativeDay } from "../../lib/format";
 import { computeXP, levelInfo, thisWeekCount } from "../../lib/gamification";
 import { lastUsedDate } from "../../lib/stats";
 import {
+  getActiveWorkout,
   getDefaultUnit,
   getTemplates,
   getWeeklyGoal,
@@ -16,7 +17,8 @@ import {
   skipBodyWeight,
 } from "../../lib/storage";
 import { Template, Workout } from "../../types/workout";
-import { ChevronRight, Clock, Pencil, Settings, Trophy } from "lucide-react-native";
+import { ChevronRight, Clock, Pencil, Play, Plus, Settings, Trophy } from "lucide-react-native";
+import { ActiveWorkout, elapsedSeconds } from "../../lib/activeWorkout";
 import { C, HIT, T } from "../../constants/theme";
 
 export default function HomeScreen() {
@@ -27,6 +29,7 @@ export default function HomeScreen() {
   const [weeklyGoal, setWeeklyGoal] = useState(3);
   const [askWeight, setAskWeight] = useState(false);
   const [unit, setUnit] = useState<"kg" | "lb">("kg");
+  const [inProgress, setInProgress] = useState<ActiveWorkout | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -35,6 +38,7 @@ export default function HomeScreen() {
       getWeeklyGoal().then(setWeeklyGoal);
       getDefaultUnit().then(setUnit);
       shouldAskBodyWeight().then(setAskWeight);
+      getActiveWorkout().then(setInProgress);
     }, [])
   );
 
@@ -81,6 +85,21 @@ export default function HomeScreen() {
         </View>
       </View>
 
+      {inProgress && (
+        <Pressable style={styles.resumeCard} onPress={() => router.push("/workout/resume")}>
+          <View style={styles.resumeText}>
+            <Text style={styles.resumeLabel}>Workout in progress</Text>
+            <Text style={styles.resumeName} numberOfLines={1}>
+              {inProgress.name} · {Math.floor(elapsedSeconds(inProgress.startedAt, Date.now()) / 60)} min
+            </Text>
+          </View>
+          <View style={styles.resumeBtn}>
+            <Play size={16} color={C.onAccent} />
+            <Text style={styles.resumeBtnText}>Resume</Text>
+          </View>
+        </Pressable>
+      )}
+
       <View style={styles.statsCard}>
         <View style={styles.levelRow}>
           <Text style={styles.levelText}>Level {level}</Text>
@@ -97,6 +116,11 @@ export default function HomeScreen() {
           <Text style={styles.miniStat}>{plural(workouts.length, "workout")} total</Text>
         </View>
       </View>
+
+      <Pressable style={styles.emptyWorkout} onPress={() => router.push("/workout/new")}>
+        <Plus size={18} color={C.accent} />
+        <Text style={styles.emptyWorkoutText}>Start empty workout</Text>
+      </Pressable>
 
       <Pressable style={styles.achievementsLink} onPress={() => router.push("/achievements")}>
         <View style={styles.achievementsLabel}>
@@ -151,7 +175,24 @@ const styles = StyleSheet.create({
   title: { color: C.text, fontSize: 28, fontWeight: "bold" },
   logout: { color: C.textMuted, fontSize: 14 },
   headerRight: { flexDirection: "row", alignItems: "center", gap: 16 },
-  statsCard: { backgroundColor: C.card, borderRadius: 14, padding: 16, marginBottom: 24 },
+  statsCard: { backgroundColor: C.card, borderRadius: 14, padding: 16, marginBottom: 12 },
+  resumeCard: {
+    flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12,
+    backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.signal, padding: 14,
+  },
+  resumeText: { flex: 1 },
+  resumeLabel: { color: C.signal, fontSize: 12, fontWeight: "600", textTransform: "uppercase" },
+  resumeName: { color: C.text, fontSize: 15, fontWeight: "500", marginTop: 2 },
+  resumeBtn: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: C.accent, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9,
+  },
+  resumeBtnText: { color: C.onAccent, fontSize: 14, fontWeight: "600" },
+  emptyWorkout: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12,
+    borderWidth: 1, borderColor: C.raised, borderRadius: 14, paddingVertical: 14,
+  },
+  emptyWorkoutText: { color: C.accent, fontSize: 15, fontWeight: "500" },
   levelRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 },
   levelText: { ...T.num, fontSize: 26 },
   xpText: { ...T.num, color: C.textMuted, fontSize: 16 },

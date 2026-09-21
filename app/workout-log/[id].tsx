@@ -6,6 +6,8 @@ import { Workout } from "../../types/workout";
 import { C } from "../../constants/theme";
 import { Check } from "lucide-react-native";
 
+const SET_TYPE_NAME = { warmup: "warm-up", drop: "drop set", failure: "to failure" } as const;
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 }
@@ -38,7 +40,9 @@ export default function WorkoutLogDetail() {
       <ScrollView contentContainerStyle={styles.list}>
         {workout.exercises.map((ex, i) => (
           <View style={styles.card} key={ex.name + i}>
+            {ex.supersetId ? <Text style={styles.superset}>Superset</Text> : null}
             <Text style={styles.exName}>{ex.name}</Text>
+            {ex.notes ? <Text style={styles.notes}>{ex.notes}</Text> : null}
             {ex.sets.length === 0 ? (
               <Text style={styles.noSets}>No sets logged</Text>
             ) : (
@@ -46,6 +50,8 @@ export default function WorkoutLogDetail() {
                 <View style={styles.setRow} key={j}>
                   <Text style={styles.setLine}>
                     Set {j + 1}:  {set.weight} {workout.unit} × {set.reps} reps
+                    {set.type && set.type !== "normal" ? `  · ${SET_TYPE_NAME[set.type]}` : ""}
+                    {set.rpe ? `  · RPE ${set.rpe}` : ""}
                   </Text>
                   {set.done && <Check size={14} color={C.success} />}
                 </View>
@@ -68,4 +74,6 @@ const styles = StyleSheet.create({
   noSets: { color: C.textMuted, fontSize: 13 },
   setRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 },
   setLine: { color: C.textSoft, fontSize: 14 },
+  superset: { color: C.signal, fontSize: 11, fontWeight: "600", textTransform: "uppercase", marginBottom: 2 },
+  notes: { color: C.textMuted, fontSize: 13, fontStyle: "italic", marginBottom: 8 },
 });

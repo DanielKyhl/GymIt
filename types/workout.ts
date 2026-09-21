@@ -13,7 +13,8 @@ export type Exercise = {
   force: string | null; // push | pull | static
 }
 // One set performed within an exercise (e.g. 60kg x 8 reps)
-export type SetType = "normal" | "warmup";
+// warmup: excluded from stats. drop / failure: working sets, just labelled.
+export type SetType = "normal" | "warmup" | "drop" | "failure";
 
 export type WorkoutSet = {
   weight: number;
@@ -21,12 +22,17 @@ export type WorkoutSet = {
   done: boolean;
   type?: SetType; // defaults to "normal" when absent
   restSeconds?: number; // rest to take after this set; 0/undefined = no rest
+  rpe?: number; // rate of perceived exertion, 1–10 (half steps allowed)
 };
 
 // An exercise as performed in a workout, with all its sets
 export type WorkoutExercise = {
   name: string;
   sets: WorkoutSet[];
+  notes?: string;
+  // Exercises sharing an id form a superset: done back to back, with the
+  // rest only after the last one of each round.
+  supersetId?: string;
 };
 
 // A workout session — either in progress or finished and saved
@@ -51,6 +57,8 @@ export type TemplateSet = {
 export type TemplateExercise = {
   name: string;
   sets?: TemplateSet[]; // optional — older templates were name-only
+  notes?: string;
+  supersetId?: string;
 };
 
 // A reusable template: a named list of exercises to train

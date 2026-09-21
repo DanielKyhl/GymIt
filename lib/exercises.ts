@@ -26,6 +26,17 @@ export function isBodyweight(name: string): boolean {
     return BODYWEIGHT.has(name);
 }
 
+const EQUIPMENT = new Map(exercises.map((e) => [e.name, e.equipment]));
+
+// Empty-bar weight for exercises loaded with plates, 0 for everything else.
+// Used by the plate and warm-up calculators.
+export function barWeight(name: string, unit: 'kg' | 'lb'): number {
+    const equipment = EQUIPMENT.get(name);
+    if (equipment === 'barbell') return unit === 'kg' ? 20 : 45;
+    if (equipment === 'e-z curl bar') return unit === 'kg' ? 10 : 25;
+    return 0;
+}
+
 export function searchExercises(query: string): Exercise[] {
     const q = query.trim().toLowerCase();
     if (!q) return exercises;
