@@ -1,10 +1,13 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { X } from "lucide-react-native";
 import { ExercisePicker } from "../components/ExercisePicker";
+import { NumberInput } from "../components/NumberInput";
 import { isBodyweight } from "../lib/exercises";
 import { getDefaultRest, getDefaultUnit, getTemplates, saveTemplate, updateTemplate } from "../lib/storage";
 import { TemplateExercise } from "../types/workout";
+import { C, HIT } from "../constants/theme";
 
 export default function CreateTemplate() {
   const router = useRouter();
@@ -90,7 +93,7 @@ export default function CreateTemplate() {
       <TextInput
         style={styles.nameInput}
         placeholder="Template name"
-        placeholderTextColor="#8C8A86"
+        placeholderTextColor={C.textMuted}
         value={name}
         onChangeText={setName}
       />
@@ -121,33 +124,37 @@ export default function CreateTemplate() {
                   <Text style={styles.bwText}>BW</Text>
                 </View>
               ) : (
-                <TextInput
+                <NumberInput
                   style={styles.cell}
-                  keyboardType="numeric"
                   placeholder="0"
-                  placeholderTextColor="#8C8A86"
-                  value={set.weight ? String(set.weight) : ""}
-                  onChangeText={(v) => updateSet(exIndex, setIndex, "weight", Number(v) || 0)}
+                  placeholderTextColor={C.textFaint}
+                  value={set.weight}
+                  onChangeValue={(v) => updateSet(exIndex, setIndex, "weight", v)}
                 />
               )}
-              <TextInput
+              <NumberInput
                 style={styles.cell}
-                keyboardType="numeric"
+                decimals={false}
                 placeholder="0"
-                placeholderTextColor="#8C8A86"
-                value={set.reps ? String(set.reps) : ""}
-                onChangeText={(v) => updateSet(exIndex, setIndex, "reps", Number(v) || 0)}
+                placeholderTextColor={C.textFaint}
+                value={set.reps}
+                onChangeValue={(v) => updateSet(exIndex, setIndex, "reps", v)}
               />
-              <TextInput
+              <NumberInput
                 style={styles.cell}
-                keyboardType="numeric"
+                decimals={false}
                 placeholder="0"
-                placeholderTextColor="#8C8A86"
-                value={set.restSeconds ? String(set.restSeconds) : ""}
-                onChangeText={(v) => setRestForSet(exIndex, setIndex, Number(v) || 0)}
+                placeholderTextColor={C.textFaint}
+                value={set.restSeconds ?? 0}
+                onChangeValue={(v) => setRestForSet(exIndex, setIndex, v)}
               />
-              <Pressable onPress={() => removeSet(exIndex, setIndex)}>
-                <Text style={styles.removeSet}>✕</Text>
+              <Pressable
+                style={styles.removeSet}
+                onPress={() => removeSet(exIndex, setIndex)}
+                hitSlop={HIT}
+                accessibilityLabel="Remove set"
+              >
+                <X size={18} color={C.textFaint} />
               </Pressable>
             </View>
           ))}
@@ -176,39 +183,39 @@ export default function CreateTemplate() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#131313" },
+  container: { flex: 1, backgroundColor: C.bg },
   content: { padding: 20, paddingTop: 16, paddingBottom: 40 },
   nameInput: {
-    backgroundColor: "#1C1C1C", color: "#F2F0EC", fontSize: 18,
+    backgroundColor: C.card, color: C.text, fontSize: 18,
     padding: 14, borderRadius: 10, marginBottom: 16,
   },
-  exerciseCard: { backgroundColor: "#1C1C1C", borderRadius: 12, padding: 14, marginBottom: 12 },
+  exerciseCard: { backgroundColor: C.card, borderRadius: 12, padding: 14, marginBottom: 12 },
   exHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
-  exerciseName: { color: "#F2F0EC", fontSize: 16, fontWeight: "500", flex: 1 },
-  remove: { color: "#E5544B", fontSize: 13 },
+  exerciseName: { color: C.text, fontSize: 16, fontWeight: "500", flex: 1 },
+  remove: { color: C.danger, fontSize: 13 },
   setRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
-  setNum: { color: "#8C8A86", fontSize: 14, width: 28, textAlign: "center" },
-  colHead: { color: "#6E6C68", fontSize: 11 },
+  setNum: { color: C.textMuted, fontSize: 14, width: 28, textAlign: "center" },
+  colHead: { color: C.textFaint, fontSize: 11 },
   colCell: { width: 60, textAlign: "center" },
   cell: {
-    width: 60, backgroundColor: "#272727", color: "#F2F0EC", textAlign: "center",
+    width: 60, backgroundColor: C.raised, color: C.text, textAlign: "center",
     padding: 8, borderRadius: 6,
   },
   bwCell: {
     width: 60, paddingVertical: 8, borderRadius: 6, alignItems: "center",
-    borderWidth: 1, borderColor: "#272727",
+    borderWidth: 1, borderColor: C.raised,
   },
-  bwText: { color: "#8C8A86", fontSize: 14 },
-  removeSet: { color: "#6E6C68", fontSize: 16, width: 24, textAlign: "center" },
-  addSet: { color: "#D9D5CE", fontSize: 14, marginTop: 4 },
+  bwText: { color: C.textMuted, fontSize: 14 },
+  removeSet: { width: 24, alignItems: "center" },
+  addSet: { color: C.accent, fontSize: 14, marginTop: 4 },
   addExerciseBtn: {
-    alignItems: "center", paddingVertical: 12, borderWidth: 0.5, borderColor: "#272727",
+    alignItems: "center", paddingVertical: 12, borderWidth: 0.5, borderColor: C.raised,
     borderRadius: 10, borderStyle: "dashed", marginBottom: 12,
   },
-  addExerciseText: { color: "#D9D5CE", fontSize: 15 },
+  addExerciseText: { color: C.accent, fontSize: 15 },
   saveButton: {
-    backgroundColor: "#D9D5CE", borderRadius: 12, padding: 16,
+    backgroundColor: C.accent, borderRadius: 12, padding: 16,
     alignItems: "center", marginTop: 4,
   },
-  saveText: { color: "#171614", fontSize: 16, fontWeight: "500" },
+  saveText: { color: C.onAccent, fontSize: 16, fontWeight: "500" },
 });

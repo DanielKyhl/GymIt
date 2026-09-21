@@ -4,6 +4,7 @@ import { FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native
 import { plural } from "../../lib/format";
 import { getWorkouts } from "../../lib/storage";
 import { Workout } from "../../types/workout";
+import { C } from "../../constants/theme";
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -51,11 +52,11 @@ export default function History() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#131313", padding: 20, paddingTop: 60 },
-  title: { color: "#F2F0EC", fontSize: 28, fontWeight: "bold", marginBottom: 20 },
+  container: { flex: 1, backgroundColor: C.bg, padding: 20, paddingTop: 60 },
+  title: { color: C.text, fontSize: 28, fontWeight: "bold", marginBottom: 20 },
   list: { gap: 10 },
-  empty: { color: "#8C8A86", fontSize: 15, textAlign: "center", marginTop: 40 },
-  card: { backgroundColor: "#1C1C1C", borderRadius: 12, padding: 16 },
-  cardTitle: { color: "#F2F0EC", fontSize: 17, fontWeight: "500", marginBottom: 4 },
-  cardSub: { color: "#8C8A86", fontSize: 13 },
+  empty: { color: C.textMuted, fontSize: 15, textAlign: "center", marginTop: 40 },
+  card: { backgroundColor: C.card, borderRadius: 12, padding: 16 },
+  cardTitle: { color: C.text, fontSize: 17, fontWeight: "500", marginBottom: 4 },
+  cardSub: { color: C.textMuted, fontSize: 13 },
 });

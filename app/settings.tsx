@@ -17,6 +17,7 @@ import {
   setDefaultUnit,
   setWeeklyGoal,
 } from "../lib/storage";
+import { C } from "../constants/theme";
 
 export default function Settings() {
   const router = useRouter();
@@ -96,7 +97,7 @@ export default function Settings() {
           style={styles.restInput}
           keyboardType="decimal-pad"
           placeholder="—"
-          placeholderTextColor="#6E6C68"
+          placeholderTextColor={C.textFaint}
           value={weight}
           onChangeText={saveWeight}
         />
@@ -151,25 +152,25 @@ export default function Settings() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#131313" },
+  container: { flex: 1, backgroundColor: C.bg },
   content: { padding: 20, paddingTop: 16, paddingBottom: 40 },
-  section: { color: "#8C8A86", fontSize: 13, textTransform: "uppercase", marginBottom: 10, marginTop: 20 },
-  card: { backgroundColor: "#1C1C1C", borderRadius: 12, padding: 16 },
-  email: { color: "#F2F0EC", fontSize: 16, marginBottom: 10 },
-  logout: { color: "#D9D5CE", fontSize: 15 },
+  section: { color: C.textMuted, fontSize: 13, textTransform: "uppercase", marginBottom: 10, marginTop: 20 },
+  card: { backgroundColor: C.card, borderRadius: 12, padding: 16 },
+  email: { color: C.text, fontSize: 16, marginBottom: 10 },
+  logout: { color: C.accent, fontSize: 15 },
   segment: { flexDirection: "row", gap: 8 },
-  segBtn: { flex: 1, backgroundColor: "#1C1C1C", borderRadius: 10, paddingVertical: 12, alignItems: "center" },
-  segActive: { backgroundColor: "#3A3A3A" },
-  segText: { color: "#F2F0EC", fontSize: 15, fontWeight: "500" },
+  segBtn: { flex: 1, backgroundColor: C.card, borderRadius: 10, paddingVertical: 12, alignItems: "center" },
+  segActive: { backgroundColor: C.selected },
+  segText: { color: C.text, fontSize: 15, fontWeight: "500" },
   restRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   restInput: {
-    backgroundColor: "#1C1C1C", color: "#F2F0EC", fontSize: 16, textAlign: "center",
+    backgroundColor: C.card, color: C.text, fontSize: 16, textAlign: "center",
     paddingVertical: 12, width: 80, borderRadius: 10,
   },
-  restUnit: { color: "#8C8A86", fontSize: 15 },
+  restUnit: { color: C.textMuted, fontSize: 15 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  goalBtn: { width: 44, height: 44, backgroundColor: "#1C1C1C", borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  action: { color: "#D9D5CE", fontSize: 15, marginBottom: 4 },
-  hint: { color: "#8C8A86", fontSize: 12 },
+  goalBtn: { width: 44, height: 44, backgroundColor: C.card, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  action: { color: C.accent, fontSize: 15, marginBottom: 4 },
+  hint: { color: C.textMuted, fontSize: 12 },
   fieldHint: { marginTop: 8 },
 });

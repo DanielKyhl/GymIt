@@ -10,12 +10,14 @@ import {
   getDefaultUnit,
   getTemplates,
   getWeeklyGoal,
-  getWorkouts,
+  getWorkoutsForStats,
   setBodyWeight,
   shouldAskBodyWeight,
   skipBodyWeight,
 } from "../../lib/storage";
 import { Template, Workout } from "../../types/workout";
+import { ChevronRight, Clock, Pencil, Settings, Trophy } from "lucide-react-native";
+import { C, HIT, T } from "../../constants/theme";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -29,7 +31,7 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       getTemplates().then(setTemplates);
-      getWorkouts().then(setWorkouts);
+      getWorkoutsForStats().then(setWorkouts);
       getWeeklyGoal().then(setWeeklyGoal);
       getDefaultUnit().then(setUnit);
       shouldAskBodyWeight().then(setAskWeight);
@@ -58,7 +60,7 @@ export default function HomeScreen() {
           {preview || "No exercises"}
         </Text>
         <View style={styles.cardMeta}>
-          <Text style={styles.clock}>🕒</Text>
+          <Clock size={13} color={C.textMuted} />
           <Text style={styles.cardMetaText}>{used ? relativeDay(used) : "Never used"}</Text>
         </View>
       </TouchableOpacity>
@@ -70,8 +72,8 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>GymIt</Text>
         <View style={styles.headerRight}>
-          <Pressable onPress={() => router.push("/settings")}>
-            <Text style={styles.gear}>⚙</Text>
+          <Pressable onPress={() => router.push("/settings")} hitSlop={HIT} accessibilityLabel="Settings">
+            <Settings size={22} color={C.text} />
           </Pressable>
           <Pressable onPress={logout}>
             <Text style={styles.logout}>Log out</Text>
@@ -88,16 +90,20 @@ export default function HomeScreen() {
           <View style={[styles.xpBarFill, { width: `${progress * 100}%` }]} />
         </View>
         <View style={styles.miniRow}>
-          <Pressable onPress={() => router.push("/weekly-goal")}>
-            <Text style={styles.miniStat}>This week  {weekCount}/{weeklyGoal}  ⚙</Text>
+          <Pressable style={styles.goalLink} onPress={() => router.push("/weekly-goal")} hitSlop={HIT}>
+            <Text style={styles.miniStat}>This week  {weekCount}/{weeklyGoal}</Text>
+            <Pencil size={12} color={C.textSoft} />
           </Pressable>
           <Text style={styles.miniStat}>{plural(workouts.length, "workout")} total</Text>
         </View>
       </View>
 
       <Pressable style={styles.achievementsLink} onPress={() => router.push("/achievements")}>
-        <Text style={styles.achievementsText}>🏆  Achievements</Text>
-        <Text style={styles.achievementsChevron}>›</Text>
+        <View style={styles.achievementsLabel}>
+          <Trophy size={18} color={C.signal} />
+          <Text style={styles.achievementsText}>Achievements</Text>
+        </View>
+        <ChevronRight size={20} color={C.textMuted} />
       </Pressable>
 
       <Text style={styles.sectionTitle}>Your templates</Text>
@@ -134,7 +140,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#131313" },
+  container: { flex: 1, backgroundColor: C.bg },
   content: { padding: 20, paddingTop: 60, paddingBottom: 40 },
   header: {
     flexDirection: "row",
@@ -142,43 +148,42 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
   },
-  title: { color: "#F2F0EC", fontSize: 28, fontWeight: "bold" },
-  logout: { color: "#8C8A86", fontSize: 14 },
+  title: { color: C.text, fontSize: 28, fontWeight: "bold" },
+  logout: { color: C.textMuted, fontSize: 14 },
   headerRight: { flexDirection: "row", alignItems: "center", gap: 16 },
-  gear: { color: "#F2F0EC", fontSize: 20 },
-  statsCard: { backgroundColor: "#1C1C1C", borderRadius: 14, padding: 16, marginBottom: 24 },
+  statsCard: { backgroundColor: C.card, borderRadius: 14, padding: 16, marginBottom: 24 },
   levelRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 },
-  levelText: { color: "#F2F0EC", fontSize: 20, fontWeight: "bold" },
-  xpText: { color: "#8C8A86", fontSize: 13 },
-  xpBarBg: { height: 10, backgroundColor: "#272727", borderRadius: 5, overflow: "hidden" },
-  xpBarFill: { height: 10, backgroundColor: "#D9D5CE", borderRadius: 5 },
+  levelText: { ...T.num, fontSize: 26 },
+  xpText: { ...T.num, color: C.textMuted, fontSize: 16 },
+  xpBarBg: { height: 10, backgroundColor: C.raised, borderRadius: 5, overflow: "hidden" },
+  xpBarFill: { height: 10, backgroundColor: C.accent, borderRadius: 5 },
   miniRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 12 },
-  miniStat: { color: "#B5B1AA", fontSize: 13 },
+  miniStat: { color: C.textSoft, fontSize: 13 },
+  goalLink: { flexDirection: "row", alignItems: "center", gap: 6 },
   achievementsLink: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    backgroundColor: "#1C1C1C", borderRadius: 12, padding: 16, marginBottom: 24,
+    backgroundColor: C.card, borderRadius: 12, padding: 16, marginBottom: 24,
   },
-  achievementsText: { color: "#F2F0EC", fontSize: 15, fontWeight: "500" },
-  achievementsChevron: { color: "#8C8A86", fontSize: 20 },
-  sectionTitle: { color: "#8C8A86", fontSize: 13, marginBottom: 12, textTransform: "uppercase" },
+  achievementsText: { color: C.text, fontSize: 15, fontWeight: "500" },
+  achievementsLabel: { flexDirection: "row", alignItems: "center", gap: 10 },
+  sectionTitle: { color: C.textMuted, fontSize: 13, marginBottom: 12, textTransform: "uppercase" },
   sectionSpacer: { marginTop: 28 },
   list: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 12 },
-  empty: { color: "#8C8A86", fontSize: 15, textAlign: "center", marginTop: 20, marginBottom: 8 },
+  empty: { color: C.textMuted, fontSize: 15, textAlign: "center", marginTop: 20, marginBottom: 8 },
   card: {
-    width: "48%", minHeight: 140, backgroundColor: "#1C1C1C",
-    borderRadius: 24, borderWidth: 1, borderColor: "#272727", padding: 16,
+    width: "48%", minHeight: 140, backgroundColor: C.card,
+    borderRadius: 24, borderWidth: 1, borderColor: C.raised, padding: 16,
   },
-  cardTitle: { color: "#F2F0EC", fontSize: 16, fontWeight: "600", marginBottom: 8 },
-  cardPreview: { color: "#8C8A86", fontSize: 12, lineHeight: 17, marginBottom: 12 },
+  cardTitle: { color: C.text, fontSize: 16, fontWeight: "600", marginBottom: 8 },
+  cardPreview: { color: C.textMuted, fontSize: 12, lineHeight: 17, marginBottom: 12 },
   cardMeta: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: "auto" },
-  clock: { fontSize: 13 },
-  cardMetaText: { color: "#8C8A86", fontSize: 12 },
+  cardMetaText: { color: C.textMuted, fontSize: 12 },
   createButton: {
-    backgroundColor: "#D9D5CE",
+    backgroundColor: C.accent,
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
     marginTop: 12,
   },
-  createButtonText: { color: "#171614", fontSize: 16, fontWeight: "500" },
+  createButtonText: { color: C.onAccent, fontSize: 16, fontWeight: "500" },
 });

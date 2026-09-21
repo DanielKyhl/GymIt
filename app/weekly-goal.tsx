@@ -2,6 +2,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { getWeeklyGoal, setWeeklyGoal } from "../lib/storage";
+import { C } from "../constants/theme";
 
 export default function WeeklyGoalScreen() {
   const router = useRouter();
@@ -43,15 +44,15 @@ export default function WeeklyGoalScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#131313", padding: 20, paddingTop: 16 },
-  title: { color: "#F2F0EC", fontSize: 26, fontWeight: "bold", marginBottom: 8 },
-  subtitle: { color: "#8C8A86", fontSize: 15, marginBottom: 28, lineHeight: 21 },
+  container: { flex: 1, backgroundColor: C.bg, padding: 20, paddingTop: 16 },
+  title: { color: C.text, fontSize: 26, fontWeight: "bold", marginBottom: 8 },
+  subtitle: { color: C.textMuted, fontSize: 15, marginBottom: 28, lineHeight: 21 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   option: {
-    width: 56, height: 56, borderRadius: 12, backgroundColor: "#1C1C1C",
+    width: 56, height: 56, borderRadius: 12, backgroundColor: C.card,
     alignItems: "center", justifyContent: "center",
   },
-  optionActive: { backgroundColor: "#3A3A3A" },
-  optionText: { color: "#F2F0EC", fontSize: 20, fontWeight: "500" },
-  optionTextActive: { color: "#F2F0EC" },
+  optionActive: { backgroundColor: C.selected },
+  optionText: { color: C.text, fontSize: 20, fontWeight: "500" },
+  optionTextActive: { color: C.text },
 });

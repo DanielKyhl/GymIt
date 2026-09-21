@@ -1,14 +1,17 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Check, Circle, CircleCheck, Timer, X } from "lucide-react-native";
 import { ExercisePicker } from "../../components/ExercisePicker";
+import { NumberInput } from "../../components/NumberInput";
 import { BodyWeight, startingWeight } from "../../lib/bodyweight";
 import { isBodyweight } from "../../lib/exercises";
 import { getLastPerformance } from "../../lib/stats";
 import { summarizeWorkout } from "../../lib/summary";
 import { getBodyWeight, getDefaultRest, getDefaultUnit, getTemplates, getWeeklyGoal, getWorkouts, saveWorkout } from "../../lib/storage";
-import { convertWeight } from "../../lib/units";
+import { convertWeight, normalizeUnits } from "../../lib/units";
 import { Template, Workout, WorkoutExercise, WorkoutSet } from "../../types/workout";
+import { C, HIT, T } from "../../constants/theme";
 
 function formatTime(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
@@ -52,7 +55,8 @@ export default function ActiveWorkout() {
         );
         const def = await getDefaultRest();
         setDefaultRest(found.restSeconds ?? def);
-        setPastWorkouts(await getWorkouts());
+        // In the current unit, so "Prev" hints and PRs compare like with like.
+        setPastWorkouts(normalizeUnits(await getWorkouts(), u));
       }
     });
   }, [id]);
@@ -235,13 +239,15 @@ export default function ActiveWorkout() {
                 <Text style={[styles.prev, styles.colHead]}>Prev</Text>
                 <Text style={[styles.colHead, styles.colFlex]}>{unit}</Text>
                 <Text style={[styles.colHead, styles.colFlex]}>Reps</Text>
-                <Text style={[styles.colHead, { width: 30 }]}>✓</Text>
+                <View style={styles.checkCol}>
+                  <Check size={14} color={C.textFaint} />
+                </View>
               </View>
 
               {ex.sets.map((set, setIndex) => (
                 <View key={setIndex}>
                   <View style={styles.setRow}>
-                    <Pressable onPress={() => toggleSetType(exIndex, setIndex)}>
+                    <Pressable onPress={() => toggleSetType(exIndex, setIndex)} hitSlop={HIT}>
                       <Text style={[styles.setNum, set.type === "warmup" && styles.warmupNum]}>
                         {set.type === "warmup" ? "W" : setIndex + 1}
                       </Text>
@@ -251,39 +257,53 @@ export default function ActiveWorkout() {
                         ? `${!prev[setIndex].weight && isBodyweight(ex.name) ? "BW" : prev[setIndex].weight} × ${prev[setIndex].reps}`
                         : "–"}
                     </Text>
-                    <TextInput
+                    <NumberInput
                       style={styles.setInput}
-                      keyboardType="numeric"
-                      placeholder={prev[setIndex] ? String(prev[setIndex].weight) : unit}
-                      placeholderTextColor="#8C8A86"
-                      value={set.weight ? String(set.weight) : ""}
-                      onChangeText={(v) => updateSet(exIndex, setIndex, "weight", Number(v) || 0)}
+                      placeholder={prev[setIndex]?.weight ? String(prev[setIndex].weight) : unit}
+                      placeholderTextColor={C.textFaint}
+                      value={set.weight}
+                      onChangeValue={(v) => updateSet(exIndex, setIndex, "weight", v)}
                     />
-                    <TextInput
+                    <NumberInput
                       style={styles.setInput}
-                      keyboardType="numeric"
+                      decimals={false}
                       placeholder={prev[setIndex] ? String(prev[setIndex].reps) : "reps"}
-                      placeholderTextColor="#8C8A86"
-                      value={set.reps ? String(set.reps) : ""}
-                      onChangeText={(v) => updateSet(exIndex, setIndex, "reps", Number(v) || 0)}
+                      placeholderTextColor={C.textFaint}
+                      value={set.reps}
+                      onChangeValue={(v) => updateSet(exIndex, setIndex, "reps", v)}
                     />
-                    <Pressable onPress={() => toggleDone(exIndex, setIndex)}>
-                      <Text style={styles.check}>{set.done ? "✓" : "○"}</Text>
+                    <Pressable
+                      style={styles.checkCol}
+                      onPress={() => toggleDone(exIndex, setIndex)}
+                      hitSlop={HIT}
+                      accessibilityLabel={set.done ? "Mark set not done" : "Mark set done"}
+                    >
+                      {set.done ? (
+                        <CircleCheck size={26} color={C.success} />
+                      ) : (
+                        <Circle size={26} color={C.textFaint} />
+                      )}
                     </Pressable>
                   </View>
 
                   {set.restSeconds ? (
                     <View style={styles.restEditRow}>
-                      <Text style={styles.restEditLabel}>⏱ Rest</Text>
-                      <TextInput
+                      <Timer size={13} color={C.textFaint} />
+                      <Text style={styles.restEditLabel}>Rest</Text>
+                      <NumberInput
                         style={styles.restEditInput}
-                        keyboardType="numeric"
-                        value={String(set.restSeconds)}
-                        onChangeText={(v) => setRestForSet(exIndex, setIndex, Number(v) || 0)}
+                        decimals={false}
+                        value={set.restSeconds}
+                        onChangeValue={(v) => setRestForSet(exIndex, setIndex, v)}
                       />
                       <Text style={styles.restEditUnit}>s</Text>
-                      <Pressable onPress={() => setRestForSet(exIndex, setIndex, 0)}>
-                        <Text style={styles.restDelete}>✕</Text>
+                      <Pressable
+                        onPress={() => setRestForSet(exIndex, setIndex, 0)}
+                        hitSlop={HIT}
+                        accessibilityLabel="Remove rest"
+                        style={styles.restDelete}
+                      >
+                        <X size={16} color={C.textFaint} />
                       </Pressable>
                     </View>
                   ) : (
@@ -323,43 +343,43 @@ export default function ActiveWorkout() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#131313", padding: 20, paddingTop: 16 },
-  name: { color: "#F2F0EC", fontSize: 22, fontWeight: "500", textAlign: "center" },
-  timer: { color: "#D9D5CE", fontSize: 48, fontWeight: "bold", textAlign: "center", marginBottom: 16 },
+  container: { flex: 1, backgroundColor: C.bg, padding: 20, paddingTop: 16 },
+  name: { color: C.text, fontSize: 22, fontWeight: "500", textAlign: "center" },
+  timer: { ...T.numBig, fontSize: 52, color: C.accent, textAlign: "center", marginBottom: 16 },
   scroll: { flex: 1 },
   scrollContent: { gap: 12, paddingBottom: 12 },
-  exerciseCard: { backgroundColor: "#1C1C1C", borderRadius: 12, padding: 14 },
-  exerciseName: { color: "#F2F0EC", fontSize: 16, fontWeight: "500", marginBottom: 10 },
+  exerciseCard: { backgroundColor: C.card, borderRadius: 12, padding: 14 },
+  exerciseName: { color: C.text, fontSize: 16, fontWeight: "500", marginBottom: 10 },
   exerciseNameTight: { marginBottom: 2 },
-  bwNote: { color: "#8C8A86", fontSize: 12, marginBottom: 10 },
+  bwNote: { color: C.textMuted, fontSize: 12, marginBottom: 10 },
   setRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
-  setNum: { color: "#8C8A86", fontSize: 14, width: 24, textAlign: "center" },
-  warmupNum: { color: "#e6b800", fontWeight: "bold" },
-  prev: { flex: 1, color: "#6E6C68", fontSize: 13, paddingLeft: 4 },
-  colHead: { color: "#6E6C68", fontSize: 11 },
+  setNum: { color: C.textMuted, fontSize: 14, width: 24, textAlign: "center" },
+  warmupNum: { color: C.warning, fontWeight: "bold" },
+  prev: { flex: 1, color: C.textFaint, fontSize: 13, paddingLeft: 4 },
+  colHead: { color: C.textFaint, fontSize: 11 },
   colFlex: { width: 56, textAlign: "center" },
-  tip: { color: "#6E6C68", fontSize: 11, textAlign: "center", marginBottom: 10 },
-  setInput: { width: 56, backgroundColor: "#272727", color: "#F2F0EC", textAlign: "center", padding: 8, borderRadius: 6 },
-  check: { color: "#1d9e75", fontSize: 22, width: 30, textAlign: "center" },
-  addSet: { color: "#D9D5CE", fontSize: 14, marginTop: 4 },
+  tip: { color: C.textFaint, fontSize: 11, textAlign: "center", marginBottom: 10 },
+  setInput: { width: 56, backgroundColor: C.raised, color: C.text, textAlign: "center", padding: 8, borderRadius: 6 },
+  checkCol: { width: 36, alignItems: "center", justifyContent: "center" },
+  addSet: { color: C.accent, fontSize: 14, marginTop: 4 },
   addExerciseBtn: {
-    alignItems: "center", paddingVertical: 12, borderWidth: 0.5, borderColor: "#272727",
+    alignItems: "center", paddingVertical: 12, borderWidth: 0.5, borderColor: C.raised,
     borderRadius: 10, borderStyle: "dashed",
   },
-  addExerciseText: { color: "#D9D5CE", fontSize: 15 },
-  restBanner: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#1C1C1C", borderRadius: 10, padding: 12, marginBottom: 12 },
-  restText: { color: "#fac775", fontSize: 16, fontWeight: "500" },
-  restBannerOver: { backgroundColor: "#3A2020" },
-  restTextOver: { color: "#E5544B" },
-  skipText: { color: "#8C8A86", fontSize: 14 },
+  addExerciseText: { color: C.accent, fontSize: 15 },
+  restBanner: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: C.card, borderRadius: 10, padding: 12, marginBottom: 12 },
+  restText: { ...T.num, color: C.rest, fontSize: 20 },
+  restBannerOver: { backgroundColor: C.restOver },
+  restTextOver: { color: C.danger },
+  skipText: { color: C.textMuted, fontSize: 14 },
   restEditRow: { flexDirection: "row", alignItems: "center", gap: 6, marginLeft: 24, marginBottom: 10 },
-  restEditLabel: { color: "#6E6C68", fontSize: 12 },
-  restEditInput: { backgroundColor: "#272727", color: "#B5B1AA", fontSize: 12, textAlign: "center", paddingVertical: 4, width: 46, borderRadius: 6 },
-  restEditUnit: { color: "#6E6C68", fontSize: 12 },
-  restDelete: { color: "#6E6C68", fontSize: 14, marginLeft: 4 },
-  addRest: { color: "#D9D5CE", fontSize: 12, marginLeft: 24, marginBottom: 10 },
-  endButton: { backgroundColor: "#D9D5CE", borderRadius: 12, padding: 16, alignItems: "center", marginTop: 12 },
-  endText: { color: "#171614", fontSize: 16, fontWeight: "500" },
+  restEditLabel: { color: C.textFaint, fontSize: 12 },
+  restEditInput: { backgroundColor: C.raised, color: C.textSoft, fontSize: 12, textAlign: "center", paddingVertical: 4, width: 46, borderRadius: 6 },
+  restEditUnit: { color: C.textFaint, fontSize: 12 },
+  restDelete: { marginLeft: 4 },
+  addRest: { color: C.accent, fontSize: 12, marginLeft: 24, marginBottom: 10 },
+  endButton: { backgroundColor: C.accent, borderRadius: 12, padding: 16, alignItems: "center", marginTop: 12 },
+  endText: { color: C.onAccent, fontSize: 16, fontWeight: "500" },
   discardBtn: { alignItems: "center", paddingVertical: 10, marginTop: 2 },
-  discardText: { color: "#8C8A86", fontSize: 14 },
+  discardText: { color: C.textMuted, fontSize: 14 },
 });

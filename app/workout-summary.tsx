@@ -1,5 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { C, T } from "../constants/theme";
+import { Award, Flame, Sparkles, Trophy } from "lucide-react-native";
 
 export default function WorkoutSummary() {
   const router = useRouter();
@@ -28,7 +30,9 @@ export default function WorkoutSummary() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.emoji}>💪</Text>
+      <View style={styles.hero}>
+        <Trophy size={48} color={C.signal} />
+      </View>
       <Text style={styles.title}>Workout complete!</Text>
 
       <View style={styles.xpCard}>
@@ -43,14 +47,16 @@ export default function WorkoutSummary() {
 
       {leveledUp && (
         <View style={styles.levelCard}>
-          <Text style={styles.levelText}>🎉 Level up! You reached Level {level}</Text>
+          <Sparkles size={18} color={C.rest} />
+          <Text style={styles.levelText}>Level up! You reached Level {level}</Text>
         </View>
       )}
 
       {prs > 0 && (
         <View style={styles.prCard}>
+          <Flame size={18} color={C.signal} />
           <Text style={styles.prText}>
-            🔥 {prs} new personal record{prs > 1 ? "s" : ""}!
+            {prs} new personal record{prs > 1 ? "s" : ""}!
           </Text>
         </View>
       )}
@@ -60,7 +66,7 @@ export default function WorkoutSummary() {
           <Text style={styles.achHeader}>Achievement{achievements.length > 1 ? "s" : ""} unlocked</Text>
           {achievements.map((a) => (
             <View key={a} style={styles.achCard}>
-              <Text style={styles.achIcon}>🏆</Text>
+              <Award size={22} color={C.signal} />
               <Text style={styles.achName}>{a}</Text>
             </View>
           ))}
@@ -75,34 +81,39 @@ export default function WorkoutSummary() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#131313" },
+  container: { flex: 1, backgroundColor: C.bg },
   content: { padding: 24, paddingTop: 80, alignItems: "center" },
-  emoji: { fontSize: 56, marginBottom: 8 },
-  title: { color: "#F2F0EC", fontSize: 26, fontWeight: "bold", marginBottom: 28 },
+  hero: { marginBottom: 12 },
+  title: { color: C.text, fontSize: 26, fontWeight: "bold", marginBottom: 28 },
   xpCard: {
-    backgroundColor: "#1C1C1C", borderRadius: 16, paddingVertical: 24, paddingHorizontal: 48,
+    backgroundColor: C.card, borderRadius: 16, paddingVertical: 24, paddingHorizontal: 48,
     alignItems: "center", marginBottom: 16, width: "100%",
   },
-  xpValue: { color: "#D9D5CE", fontSize: 44, fontWeight: "bold" },
-  xpLabel: { color: "#D9D5CE", fontSize: 14, marginTop: 2 },
-  volumeCard: { backgroundColor: "#1C1C1C", borderRadius: 16, paddingVertical: 20, alignItems: "center", marginBottom: 16, width: "100%" },
-  volumeValue: { color: "#F2F0EC", fontSize: 28, fontWeight: "bold" },
-  volumeLabel: { color: "#8C8A86", fontSize: 13, marginTop: 2 },
-  levelCard: { backgroundColor: "#1C1C1C", borderRadius: 12, padding: 16, marginBottom: 12, width: "100%" },
-  levelText: { color: "#fac775", fontSize: 16, fontWeight: "500", textAlign: "center" },
-  prCard: { backgroundColor: "#1C1C1C", borderRadius: 12, padding: 16, marginBottom: 12, width: "100%" },
-  prText: { color: "#e6b800", fontSize: 16, fontWeight: "500", textAlign: "center" },
+  xpValue: { ...T.numBig, color: C.accent },
+  xpLabel: { color: C.accent, fontSize: 14, marginTop: 2 },
+  volumeCard: { backgroundColor: C.card, borderRadius: 16, paddingVertical: 20, alignItems: "center", marginBottom: 16, width: "100%" },
+  volumeValue: { ...T.num, fontSize: 32 },
+  volumeLabel: { color: C.textMuted, fontSize: 13, marginTop: 2 },
+  levelCard: {
+    backgroundColor: C.card, borderRadius: 12, padding: 16, marginBottom: 12, width: "100%",
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+  },
+  levelText: { color: C.rest, fontSize: 16, fontWeight: "500", textAlign: "center" },
+  prCard: {
+    backgroundColor: C.card, borderRadius: 12, padding: 16, marginBottom: 12, width: "100%",
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+  },
+  prText: { color: C.signal, fontSize: 16, fontWeight: "500", textAlign: "center" },
   achBlock: { width: "100%", marginBottom: 12 },
-  achHeader: { color: "#8C8A86", fontSize: 13, textTransform: "uppercase", marginBottom: 10, textAlign: "center" },
+  achHeader: { color: C.textMuted, fontSize: 13, textTransform: "uppercase", marginBottom: 10, textAlign: "center" },
   achCard: {
     flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: "#1C1C1C", borderRadius: 12, padding: 14, marginBottom: 8,
+    backgroundColor: C.card, borderRadius: 12, padding: 14, marginBottom: 8,
   },
-  achIcon: { fontSize: 24 },
-  achName: { color: "#F2F0EC", fontSize: 16, fontWeight: "500" },
+  achName: { color: C.text, fontSize: 16, fontWeight: "500" },
   doneBtn: {
-    backgroundColor: "#D9D5CE", borderRadius: 12, paddingVertical: 16,
+    backgroundColor: C.accent, borderRadius: 12, paddingVertical: 16,
     alignItems: "center", marginTop: 24, width: "100%",
   },
-  doneText: { color: "#171614", fontSize: 16, fontWeight: "500" },
+  doneText: { color: C.onAccent, fontSize: 16, fontWeight: "500" },
 });

@@ -1,5 +1,6 @@
 import { useWindowDimensions, View } from "react-native";
 import Svg, { Circle, G, Line, Polyline, Text as SvgText } from "react-native-svg";
+import { C } from "../constants/theme";
 
 type Point = { date: string; volume: number };
 
@@ -29,17 +30,17 @@ export function VolumeChart({ data, width: fixedWidth }: { data: Point[]; width?
   return (
     <View>
       <Svg width={chartWidth} height={chartHeight}>
-        <Line x1={padSide} y1={baseY} x2={chartWidth - padSide} y2={baseY} stroke="#272727" strokeWidth={1} />
+        <Line x1={padSide} y1={baseY} x2={chartWidth - padSide} y2={baseY} stroke={C.raised} strokeWidth={1} />
 
-        {n > 1 && <Polyline points={points} fill="none" stroke="#D9D5CE" strokeWidth={2.5} />}
+        {n > 1 && <Polyline points={points} fill="none" stroke={C.accent} strokeWidth={2.5} />}
 
         {data.map((d, i) => (
           <G key={i}>
-            <Circle cx={x(i)} cy={y(d.volume)} r={4} fill="#D9D5CE" />
+            <Circle cx={x(i)} cy={y(d.volume)} r={4} fill={C.accent} />
             <SvgText
               x={x(i)}
               y={y(d.volume) - 10}
-              fill="#D9D5CE"
+              fill={C.accent}
               fontSize="11"
               fontWeight="500"
               textAnchor="middle"
@@ -47,7 +48,7 @@ export function VolumeChart({ data, width: fixedWidth }: { data: Point[]; width?
               {d.volume.toLocaleString()}
             </SvgText>
             {(i === 0 || i === n - 1) && (
-              <SvgText x={x(i)} y={baseY + 15} fill="#8C8A86" fontSize="10" textAnchor="middle">
+              <SvgText x={x(i)} y={baseY + 15} fill={C.textMuted} fontSize="10" textAnchor="middle">
                 {shortDate(d.date)}
               </SvgText>
             )}

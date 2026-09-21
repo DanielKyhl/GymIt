@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { getWorkouts } from "../../lib/storage";
 import { Workout } from "../../types/workout";
+import { C } from "../../constants/theme";
+import { Check } from "lucide-react-native";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
@@ -41,9 +43,12 @@ export default function WorkoutLogDetail() {
               <Text style={styles.noSets}>No sets logged</Text>
             ) : (
               ex.sets.map((set, j) => (
-                <Text style={styles.setLine} key={j}>
-                  Set {j + 1}:  {set.weight} {workout.unit} × {set.reps} reps {set.done ? " ✓" : ""}
-                </Text>
+                <View style={styles.setRow} key={j}>
+                  <Text style={styles.setLine}>
+                    Set {j + 1}:  {set.weight} {workout.unit} × {set.reps} reps
+                  </Text>
+                  {set.done && <Check size={14} color={C.success} />}
+                </View>
               ))
             )}
           </View>
@@ -54,12 +59,13 @@ export default function WorkoutLogDetail() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#131313", padding: 20, paddingTop: 16 },
-  title: { color: "#F2F0EC", fontSize: 28, fontWeight: "bold", marginBottom: 4 },
-  sub: { color: "#8C8A86", fontSize: 14, marginBottom: 20 },
+  container: { flex: 1, backgroundColor: C.bg, padding: 20, paddingTop: 16 },
+  title: { color: C.text, fontSize: 28, fontWeight: "bold", marginBottom: 4 },
+  sub: { color: C.textMuted, fontSize: 14, marginBottom: 20 },
   list: { gap: 12 },
-  card: { backgroundColor: "#1C1C1C", borderRadius: 12, padding: 16 },
-  exName: { color: "#F2F0EC", fontSize: 16, fontWeight: "500", marginBottom: 8 },
-  noSets: { color: "#8C8A86", fontSize: 13 },
-  setLine: { color: "#B5B1AA", fontSize: 14, marginBottom: 4 },
+  card: { backgroundColor: C.card, borderRadius: 12, padding: 16 },
+  exName: { color: C.text, fontSize: 16, fontWeight: "500", marginBottom: 8 },
+  noSets: { color: C.textMuted, fontSize: 13 },
+  setRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 },
+  setLine: { color: C.textSoft, fontSize: 14 },
 });

@@ -11,6 +11,8 @@ import {
   slugLabel,
 } from "../../lib/recovery";
 import { getBodyGender, getWorkouts, setBodyGender } from "../../lib/storage";
+import { C } from "../../constants/theme";
+import { CircleCheck, RotateCw } from "lucide-react-native";
 
 export default function Recovery() {
   const { width, height } = useWindowDimensions();
@@ -76,15 +78,21 @@ export default function Recovery() {
 
 
       <Pressable style={styles.turnBtn} onPress={flip}>
-        <Text style={styles.turnText}>⟳ Turn around · showing {side}</Text>
+        <RotateCw size={15} color={C.accent} />
+        <Text style={styles.turnText}>Turn around · showing {side}</Text>
       </Pressable>
 
 {sel && (
   <View style={styles.selCard}>
     <Text style={styles.selName}>{slugLabel(sel.slug)}</Text>
-    <Text style={styles.selStat}>
-      {sel.fraction >= 1 ? "Recovered ✓" : `~${sel.hoursLeft}h until recovered`}
-    </Text>
+    {sel.fraction >= 1 ? (
+      <View style={styles.selRecovered}>
+        <CircleCheck size={16} color={C.success} />
+        <Text style={styles.selStat}>Recovered</Text>
+      </View>
+    ) : (
+      <Text style={styles.selStat}>~{sel.hoursLeft}h until recovered</Text>
+    )}
   </View>
 )}
       <View style={styles.legend}>
@@ -121,36 +129,38 @@ export default function Recovery() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#131313" },
+  container: { flex: 1, backgroundColor: C.bg },
   content: { padding: 20, paddingTop: 60 },
-  title: { color: "#F2F0EC", fontSize: 28, fontWeight: "bold", marginBottom: 16 },
+  title: { color: C.text, fontSize: 28, fontWeight: "bold", marginBottom: 16 },
   genderRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
-  genderBtn: { paddingVertical: 8, paddingHorizontal: 20, borderRadius: 8, backgroundColor: "#1C1C1C" },
-  genderActive: { backgroundColor: "#3A3A3A" },
-  genderText: { color: "#F2F0EC", fontSize: 14 },
-  hint: { color: "#8C8A86", fontSize: 12, textAlign: "center", marginBottom: 6 },
+  genderBtn: { paddingVertical: 8, paddingHorizontal: 20, borderRadius: 8, backgroundColor: C.card },
+  genderActive: { backgroundColor: C.selected },
+  genderText: { color: C.text, fontSize: 14 },
+  hint: { color: C.textMuted, fontSize: 12, textAlign: "center", marginBottom: 6 },
   // overflow hidden: even if the figure ever outgrows the box, it can't cover
   // the gender toggle or the turn-around button.
   bodyWrap: { alignItems: "center", justifyContent: "center", alignSelf: "center", overflow: "hidden" },
   turnBtn: {
-    alignSelf: "center", backgroundColor: "#1C1C1C", borderRadius: 10,
-    paddingVertical: 8, paddingHorizontal: 18, marginTop: 8,
+    alignSelf: "center", backgroundColor: C.card, borderRadius: 10,
+    paddingVertical: 11, paddingHorizontal: 18, marginTop: 8,
+    flexDirection: "row", alignItems: "center", gap: 8,
   },
-  turnText: { color: "#D9D5CE", fontSize: 14, fontWeight: "500" },
+  turnText: { color: C.accent, fontSize: 14, fontWeight: "500" },
   legend: { flexDirection: "row", justifyContent: "center", gap: 18, marginTop: 8, marginBottom: 24 },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
-  legendText: { color: "#B5B1AA", fontSize: 12 },
+  legendText: { color: C.textSoft, fontSize: 12 },
   dot: { width: 12, height: 12, borderRadius: 6 },
-  section: { color: "#8C8A86", fontSize: 13, textTransform: "uppercase", marginBottom: 12 },
-  empty: { color: "#8C8A86", fontSize: 15, textAlign: "center", marginTop: 10 },
+  section: { color: C.textMuted, fontSize: 13, textTransform: "uppercase", marginBottom: 12 },
+  empty: { color: C.textMuted, fontSize: 15, textAlign: "center", marginTop: 10 },
   row: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    borderBottomWidth: 0.5, borderBottomColor: "#272727", paddingVertical: 12,
+    borderBottomWidth: 0.5, borderBottomColor: C.raised, paddingVertical: 12,
   },
   rowLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
-  rowName: { color: "#F2F0EC", fontSize: 15 },
-  rowStat: { color: "#8C8A86", fontSize: 14 },
-    selCard: { backgroundColor: "#1C1C1C", borderRadius: 12, padding: 16, alignItems: "center", marginTop: 14 },
-  selName: { color: "#F2F0EC", fontSize: 18, fontWeight: "500", marginBottom: 4 },
-  selStat: { color: "#8C8A86", fontSize: 15 },
+  rowName: { color: C.text, fontSize: 15 },
+  rowStat: { color: C.textMuted, fontSize: 14 },
+    selCard: { backgroundColor: C.card, borderRadius: 12, padding: 16, alignItems: "center", marginTop: 14 },
+  selName: { color: C.text, fontSize: 18, fontWeight: "500", marginBottom: 4 },
+  selStat: { color: C.textMuted, fontSize: 15 },
+  selRecovered: { flexDirection: "row", alignItems: "center", gap: 6 },
 });

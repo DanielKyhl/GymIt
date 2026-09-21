@@ -3,8 +3,10 @@ import { useCallback, useState } from "react";
 import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { VolumeChart } from "../../components/VolumeChart";
 import { plural } from "../../lib/format";
-import { getWorkouts } from "../../lib/storage";
+import { getWorkoutsForStats } from "../../lib/storage";
 import { ExerciseSummary, getTrainedExercises, getVolumeByTemplate } from "../../lib/stats";
+import { C, HIT } from "../../constants/theme";
+import { ChevronRight, X } from "lucide-react-native";
 
 export default function Progress() {
   const router = useRouter();
@@ -17,7 +19,7 @@ export default function Progress() {
 
   useFocusEffect(
     useCallback(() => {
-      getWorkouts().then((workouts) => {
+      getWorkoutsForStats().then((workouts) => {
         setExercises(getTrainedExercises(workouts));
         setByTemplate(getVolumeByTemplate(workouts));
       });
@@ -39,7 +41,7 @@ export default function Progress() {
           <View>
             <Pressable style={styles.volumeLink} onPress={() => setShowVolume(true)}>
               <Text style={styles.volumeLinkText}>Volume per template</Text>
-              <Text style={styles.volumeChevron}>›</Text>
+              <ChevronRight size={20} color={C.textMuted} />
             </Pressable>
             <Text style={styles.section}>Exercises</Text>
           </View>
@@ -72,8 +74,8 @@ export default function Progress() {
           <View style={styles.panel}>
             <View style={styles.panelHeader}>
               <Text style={styles.panelTitle}>Volume per template</Text>
-              <Pressable onPress={() => setShowVolume(false)} hitSlop={12}>
-                <Text style={styles.close}>✕</Text>
+              <Pressable onPress={() => setShowVolume(false)} hitSlop={HIT} accessibilityLabel="Close">
+                <X size={22} color={C.textMuted} />
               </Pressable>
             </View>
 
@@ -98,38 +100,36 @@ export default function Progress() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#131313", padding: 20, paddingTop: 60 },
-  title: { color: "#F2F0EC", fontSize: 28, fontWeight: "bold", marginBottom: 20 },
-  section: { color: "#8C8A86", fontSize: 13, textTransform: "uppercase", marginBottom: 12, marginTop: 20 },
+  container: { flex: 1, backgroundColor: C.bg, padding: 20, paddingTop: 60 },
+  title: { color: C.text, fontSize: 28, fontWeight: "bold", marginBottom: 20 },
+  section: { color: C.textMuted, fontSize: 13, textTransform: "uppercase", marginBottom: 12, marginTop: 20 },
   volumeLink: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    backgroundColor: "#1C1C1C", borderRadius: 12, padding: 16,
+    backgroundColor: C.card, borderRadius: 12, padding: 16,
   },
-  volumeLinkText: { color: "#F2F0EC", fontSize: 15, fontWeight: "500" },
-  volumeChevron: { color: "#8C8A86", fontSize: 20 },
+  volumeLinkText: { color: C.text, fontSize: 15, fontWeight: "500" },
   list: { gap: 10 },
-  empty: { color: "#8C8A86", fontSize: 15, textAlign: "center", marginTop: 20 },
-  card: { backgroundColor: "#1C1C1C", borderRadius: 12, padding: 16 },
-  cardTitle: { color: "#F2F0EC", fontSize: 16, fontWeight: "500", marginBottom: 4 },
-  cardSub: { color: "#8C8A86", fontSize: 13 },
+  empty: { color: C.textMuted, fontSize: 15, textAlign: "center", marginTop: 20 },
+  card: { backgroundColor: C.card, borderRadius: 12, padding: 16 },
+  cardTitle: { color: C.text, fontSize: 16, fontWeight: "500", marginBottom: 4 },
+  cardSub: { color: C.textMuted, fontSize: 13 },
 
   backdrop: {
     flex: 1, backgroundColor: "rgba(0,0,0,0.7)",
     justifyContent: "center", alignItems: "center", padding: 20,
   },
   panel: {
-    width: "100%", maxHeight: "80%", backgroundColor: "#1C1C1C",
-    borderRadius: 20, borderWidth: 1, borderColor: "#272727", overflow: "hidden",
+    width: "100%", maxHeight: "80%", backgroundColor: C.card,
+    borderRadius: 20, borderWidth: 1, borderColor: C.raised, overflow: "hidden",
   },
   panelHeader: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: "#272727",
+    borderBottomWidth: 1, borderBottomColor: C.raised,
   },
-  panelTitle: { color: "#F2F0EC", fontSize: 17, fontWeight: "600" },
-  close: { color: "#8C8A86", fontSize: 18 },
+  panelTitle: { color: C.text, fontSize: 17, fontWeight: "600" },
   panelContent: { padding: 16, paddingBottom: 24 },
   templateSection: { marginBottom: 24 },
-  templateName: { color: "#F2F0EC", fontSize: 16, fontWeight: "500" },
-  templateMeta: { color: "#8C8A86", fontSize: 12, marginBottom: 4 },
+  templateName: { color: C.text, fontSize: 16, fontWeight: "500" },
+  templateMeta: { color: C.textMuted, fontSize: 12, marginBottom: 4 },
 });

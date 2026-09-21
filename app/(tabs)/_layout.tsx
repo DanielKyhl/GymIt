@@ -1,18 +1,15 @@
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
+import { ChartLine, History, House, PersonStanding } from 'lucide-react-native';
 import React from 'react';
-import { Redirect } from 'expo-router';
-import { useAuth } from '../../context/AuthContext';
 import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAuth } from '../../context/AuthContext';
+import { C } from '../../constants/theme';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-  const {user,isLoading} = useAuth();
+  const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return null; 
+    return null;
   }
   if (!user) {
     return <Redirect href="/welcome" />;
@@ -21,9 +18,9 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        tabBarInactiveTintColor: '#8C8A86',
-        tabBarStyle: { backgroundColor: '#131313', borderTopColor: '#272727' },
+        tabBarActiveTintColor: C.accent,
+        tabBarInactiveTintColor: C.textMuted,
+        tabBarStyle: { backgroundColor: C.bg, borderTopColor: C.raised },
         headerShown: false,
         tabBarButton: HapticTab,
       }}>
@@ -31,28 +28,28 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          tabBarIcon: ({ color }) => <House size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
           title: 'History',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="clock.fill" color={color} />,
+          tabBarIcon: ({ color }) => <History size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="progress"
         options={{
           title: 'Progress',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="chart.bar.fill" color={color} />,
+          tabBarIcon: ({ color }) => <ChartLine size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="recovery"
         options={{
           title: 'Recovery',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="figure.stand" color={color} />,
+          tabBarIcon: ({ color }) => <PersonStanding size={24} color={color} />,
         }}
       />
     </Tabs>

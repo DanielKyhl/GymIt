@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button, StyleSheet, Text, TextInput, View } from 'react-native';
 import {useAuth} from '../../context/AuthContext';
 import { authErrorMessage } from '../../lib/authErrors';
+import { C } from "../../constants/theme";
 
 export default function Signup() {
     const { signup } = useAuth();
@@ -44,7 +45,7 @@ export default function Signup() {
             <TextInput
             style={styles.input}
             placeholder="Email"
-            placeholderTextColor="#8C8A86"
+            placeholderTextColor={C.textMuted}
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="email-address"
@@ -55,7 +56,7 @@ export default function Signup() {
             <TextInput
             style={styles.input}
             placeholder="Password"
-            placeholderTextColor = "#8C8A86"
+            placeholderTextColor={C.textMuted}
             secureTextEntry
             value = {password}
             onChangeText={setPassword}
@@ -72,18 +73,18 @@ export default function Signup() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#131313',
+        backgroundColor: C.bg,
         padding: 20,
         justifyContent: 'center',
     },
     title: {
-        color: '#F2F0EC',
+        color: C.text,
         fontSize: 32,
         marginBottom: 20,
     }, 
     input: {
-        backgroundColor: '#1C1C1C',
-        color: '#F2F0EC',
+        backgroundColor: C.card,
+        color: C.text,
         padding: 12,
         marginBottom: 15,
         borderRadius: 6,

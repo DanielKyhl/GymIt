@@ -1,8 +1,9 @@
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { getWorkouts } from "../../lib/storage";
+import { getWorkoutsForStats } from "../../lib/storage";
 import { ExerciseSession, getExerciseSessions } from "../../lib/stats";
+import { C, T } from "../../constants/theme";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
@@ -13,7 +14,7 @@ export default function ExerciseProgress() {
   const [sessions, setSessions] = useState<ExerciseSession[]>([]);
 
   useEffect(() => {
-    getWorkouts().then((workouts) => setSessions(getExerciseSessions(workouts, name)));
+    getWorkoutsForStats().then((workouts) => setSessions(getExerciseSessions(workouts, name)));
   }, [name]);
 
   const best1RM = sessions.reduce((m, s) => Math.max(m, s.best1RM), 0);
@@ -68,26 +69,26 @@ export default function ExerciseProgress() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#131313" },
+  container: { flex: 1, backgroundColor: C.bg },
   content: { padding: 20, paddingTop: 16 },
-  title: { color: "#F2F0EC", fontSize: 24, fontWeight: "bold", marginBottom: 20 },
+  title: { color: C.text, fontSize: 24, fontWeight: "bold", marginBottom: 20 },
   statsRow: { flexDirection: "row", gap: 10, marginBottom: 24 },
-  statCard: { flex: 1, backgroundColor: "#1C1C1C", borderRadius: 12, padding: 14, alignItems: "center" },
-  statLabel: { color: "#8C8A86", fontSize: 12, marginBottom: 6 },
-  statValue: { color: "#F2F0EC", fontSize: 22, fontWeight: "bold" },
-  section: { color: "#8C8A86", fontSize: 13, textTransform: "uppercase", marginBottom: 12, marginTop: 8 },
-  empty: { color: "#8C8A86", fontSize: 14, marginBottom: 20 },
+  statCard: { flex: 1, backgroundColor: C.card, borderRadius: 12, padding: 14, alignItems: "center" },
+  statLabel: { color: C.textMuted, fontSize: 12, marginBottom: 6 },
+  statValue: { ...T.num, fontSize: 30 },
+  section: { color: C.textMuted, fontSize: 13, textTransform: "uppercase", marginBottom: 12, marginTop: 8 },
+  empty: { color: C.textMuted, fontSize: 14, marginBottom: 20 },
   chart: {
     flexDirection: "row", alignItems: "flex-end", gap: 8,
     height: 180, marginBottom: 24, paddingTop: 10,
   },
   barWrap: { alignItems: "center", flex: 1 },
-  bar: { width: "70%", backgroundColor: "#D9D5CE", borderRadius: 4 },
-  barLabel: { color: "#8C8A86", fontSize: 10, marginTop: 6 },
+  bar: { width: "70%", backgroundColor: C.accent, borderRadius: 4 },
+  barLabel: { color: C.textMuted, fontSize: 10, marginTop: 6 },
   sessionRow: {
     flexDirection: "row", justifyContent: "space-between",
-    borderBottomWidth: 0.5, borderBottomColor: "#272727", paddingVertical: 12,
+    borderBottomWidth: 0.5, borderBottomColor: C.raised, paddingVertical: 12,
   },
-  sessionDate: { color: "#F2F0EC", fontSize: 14 },
-  sessionStat: { color: "#8C8A86", fontSize: 14 },
+  sessionDate: { color: C.text, fontSize: 14 },
+  sessionStat: { color: C.textMuted, fontSize: 14 },
 });

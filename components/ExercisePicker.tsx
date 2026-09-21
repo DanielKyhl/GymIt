@@ -12,6 +12,8 @@ import {
 } from "react-native";
 import { exerciseImageUrl, muscleList, searchExercises } from "../lib/exercises";
 import { Exercise } from "../types/workout";
+import { C, HIT } from "../constants/theme";
+import { X } from "lucide-react-native";
 
 // Fixed row height lets FlatList skip measuring 873 rows while scrolling.
 const ROW_HEIGHT = 76;
@@ -48,8 +50,8 @@ export function ExercisePicker({ visible, onClose, onSelect }: Props) {
         <View style={styles.panel}>
           <View style={styles.panelHeader}>
             <Text style={styles.panelTitle}>Add exercise</Text>
-            <Pressable onPress={onClose} hitSlop={12}>
-              <Text style={styles.close}>✕</Text>
+            <Pressable onPress={onClose} hitSlop={HIT} accessibilityLabel="Close">
+              <X size={22} color={C.textMuted} />
             </Pressable>
           </View>
 
@@ -57,7 +59,7 @@ export function ExercisePicker({ visible, onClose, onSelect }: Props) {
             <TextInput
               style={styles.search}
               placeholder="Search exercises"
-              placeholderTextColor="#6E6C68"
+              placeholderTextColor={C.textFaint}
               value={query}
               onChangeText={setQuery}
               autoCorrect={false}
@@ -159,8 +161,8 @@ function ExerciseDetails({
             <Text style={styles.panelTitle} numberOfLines={1}>
               {exercise.name}
             </Text>
-            <Pressable onPress={onClose} hitSlop={12}>
-              <Text style={styles.close}>✕</Text>
+            <Pressable onPress={onClose} hitSlop={HIT} accessibilityLabel="Close">
+              <X size={22} color={C.textMuted} />
             </Pressable>
           </View>
 
@@ -241,10 +243,10 @@ const styles = StyleSheet.create({
     width: "100%",
     maxHeight: "85%",
     flexShrink: 1,
-    backgroundColor: "#1C1C1C",
+    backgroundColor: C.card,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#272727",
+    borderColor: C.raised,
     overflow: "hidden",
   },
   panelHeader: {
@@ -254,16 +256,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#272727",
+    borderBottomColor: C.raised,
     gap: 12,
   },
-  panelTitle: { color: "#F2F0EC", fontSize: 17, fontWeight: "600", flex: 1 },
-  close: { color: "#8C8A86", fontSize: 18 },
+  panelTitle: { color: C.text, fontSize: 17, fontWeight: "600", flex: 1 },
 
   searchWrap: { padding: 12, paddingBottom: 8 },
   search: {
-    backgroundColor: "#272727",
-    color: "#F2F0EC",
+    backgroundColor: C.raised,
+    color: C.text,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 8,
@@ -277,28 +278,28 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 12,
     borderBottomWidth: 0.5,
-    borderBottomColor: "#272727",
+    borderBottomColor: C.raised,
   },
-  thumb: { width: 52, height: 52, borderRadius: 8, backgroundColor: "#272727" },
+  thumb: { width: 52, height: 52, borderRadius: 8, backgroundColor: C.raised },
   thumbFallback: { alignItems: "center", justifyContent: "center" },
-  thumbLetter: { color: "#6E6C68", fontSize: 20, fontWeight: "600" },
+  thumbLetter: { color: C.textFaint, fontSize: 20, fontWeight: "600" },
   rowText: { flex: 1 },
-  rowName: { color: "#F2F0EC", fontSize: 15, fontWeight: "500" },
+  rowName: { color: C.text, fontSize: 15, fontWeight: "500" },
   rowMeta: {
-    color: "#8C8A86",
+    color: C.textMuted,
     fontSize: 12,
     marginTop: 3,
     textTransform: "capitalize",
   },
   detailsBtn: {
-    backgroundColor: "#272727",
+    backgroundColor: C.raised,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 8,
   },
-  detailsText: { color: "#D9D5CE", fontSize: 13 },
+  detailsText: { color: C.accent, fontSize: 13 },
   empty: {
-    color: "#8C8A86",
+    color: C.textMuted,
     fontSize: 15,
     textAlign: "center",
     marginTop: 24,
@@ -310,37 +311,37 @@ const styles = StyleSheet.create({
     width: "100%",
     aspectRatio: 4 / 3,
     borderRadius: 12,
-    backgroundColor: "#272727",
+    backgroundColor: C.raised,
     marginBottom: 10,
   },
   tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 6 },
   tag: {
-    backgroundColor: "#272727",
+    backgroundColor: C.raised,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 999,
   },
-  tagText: { color: "#B5B1AA", fontSize: 12, textTransform: "capitalize" },
+  tagText: { color: C.textSoft, fontSize: 12, textTransform: "capitalize" },
   sectionLabel: {
-    color: "#6E6C68",
+    color: C.textFaint,
     fontSize: 11,
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginTop: 14,
     marginBottom: 4,
   },
-  body: { color: "#F2F0EC", fontSize: 15, textTransform: "capitalize" },
+  body: { color: C.text, fontSize: 15, textTransform: "capitalize" },
   step: { flexDirection: "row", gap: 10, marginBottom: 10 },
-  stepNum: { color: "#6E6C68", fontSize: 13, width: 16, marginTop: 2 },
-  stepText: { color: "#B5B1AA", fontSize: 14, lineHeight: 20, flex: 1 },
+  stepNum: { color: C.textFaint, fontSize: 13, width: 16, marginTop: 2 },
+  stepText: { color: C.textSoft, fontSize: 14, lineHeight: 20, flex: 1 },
 
   addBtn: {
-    backgroundColor: "#D9D5CE",
+    backgroundColor: C.accent,
     margin: 16,
     marginTop: 8,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
   },
-  addBtnText: { color: "#171614", fontSize: 15, fontWeight: "600" },
+  addBtnText: { color: C.onAccent, fontSize: 15, fontWeight: "600" },
 });

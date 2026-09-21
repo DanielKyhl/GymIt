@@ -5,6 +5,7 @@ import { isBodyweight } from "../../lib/exercises";
 import { plural } from "../../lib/format";
 import { deleteTemplate, getTemplates } from "../../lib/storage";
 import { Template } from "../../types/workout";
+import { C } from "../../constants/theme";
 
 export default function TemplateDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -88,25 +89,25 @@ export default function TemplateDetail() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#131313", padding: 20, paddingTop: 16 },
-  title: { color: "#F2F0EC", fontSize: 28, fontWeight: "bold", marginBottom: 4 },
-  subtitle: { color: "#8C8A86", fontSize: 14, marginBottom: 24 },
+  container: { flex: 1, backgroundColor: C.bg, padding: 20, paddingTop: 16 },
+  title: { color: C.text, fontSize: 28, fontWeight: "bold", marginBottom: 4 },
+  subtitle: { color: C.textMuted, fontSize: 14, marginBottom: 24 },
   list: { gap: 10 },
-  row: { backgroundColor: "#1C1C1C", borderRadius: 12, padding: 16 },
-  rowText: { color: "#F2F0EC", fontSize: 16 },
-  rowSub: { color: "#8C8A86", fontSize: 13, marginTop: 4 },
+  row: { backgroundColor: C.card, borderRadius: 12, padding: 16 },
+  rowText: { color: C.text, fontSize: 16 },
+  rowSub: { color: C.textMuted, fontSize: 13, marginTop: 4 },
   startButton: {
-    backgroundColor: "#D9D5CE", borderRadius: 12, padding: 16,
+    backgroundColor: C.accent, borderRadius: 12, padding: 16,
     alignItems: "center", marginTop: 12,
   },
-  startText: { color: "#171614", fontSize: 16, fontWeight: "500" },
+  startText: { color: C.onAccent, fontSize: 16, fontWeight: "500" },
   actionRow: { flexDirection: "row", gap: 10, marginTop: 10 },
   editButton: {
-    flex: 1, backgroundColor: "#1C1C1C", borderRadius: 12, padding: 14, alignItems: "center",
+    flex: 1, backgroundColor: C.card, borderRadius: 12, padding: 14, alignItems: "center",
   },
-  editText: { color: "#F2F0EC", fontSize: 15, fontWeight: "500" },
+  editText: { color: C.text, fontSize: 15, fontWeight: "500" },
   deleteButton: {
-    flex: 1, backgroundColor: "#1C1C1C", borderRadius: 12, padding: 14, alignItems: "center",
+    flex: 1, backgroundColor: C.card, borderRadius: 12, padding: 14, alignItems: "center",
   },
-  deleteText: { color: "#E5544B", fontSize: 15, fontWeight: "500" },
+  deleteText: { color: C.danger, fontSize: 15, fontWeight: "500" },
 });

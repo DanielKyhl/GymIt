@@ -2,6 +2,7 @@ import { Template, Workout } from '../types/workout';
 import { BodyWeight } from './bodyweight';
 import { putRecords, readLocal, readyUid, SETTINGS_ID, updateRecord } from './sync';
 import { live, SyncRecord } from './syncMerge';
+import { normalizeUnits } from './units';
 
 // The app's only doorway to saved data. Everything here reads and writes the
 // signed-in account's copy on this device; lib/sync.ts backs it up to Firebase
@@ -35,6 +36,13 @@ export async function getWorkouts(): Promise<Workout[]> {
     if (!uid) return [];
     const all = await readLocal<Synced<Workout>>(uid, 'workouts');
     return live(all).sort((a, b) => b.date.localeCompare(a.date));
+}
+
+// For anything that compares or adds up weights (progress, PRs, XP, volume):
+// every workout converted to the unit currently chosen in Settings.
+export async function getWorkoutsForStats(): Promise<Workout[]> {
+    const [workouts, unit] = await Promise.all([getWorkouts(), getDefaultUnit()]);
+    return normalizeUnits(workouts, unit);
 }
 
 export async function saveWorkout(workout: Workout): Promise<void> {

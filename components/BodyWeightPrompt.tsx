@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { parseWeight } from "../lib/units";
+import { C } from "../constants/theme";
 
 type Props = {
   visible: boolean;
@@ -29,7 +30,7 @@ export function BodyWeightPrompt({ visible, unit, onSave, onLater }: Props) {
               style={styles.input}
               keyboardType="decimal-pad"
               placeholder="0"
-              placeholderTextColor="#6E6C68"
+              placeholderTextColor={C.textFaint}
               value={text}
               onChangeText={setText}
               autoFocus
@@ -63,28 +64,28 @@ const styles = StyleSheet.create({
   },
   panel: {
     width: "100%",
-    backgroundColor: "#1C1C1C",
+    backgroundColor: C.card,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#272727",
+    borderColor: C.raised,
     padding: 20,
   },
-  title: { color: "#F2F0EC", fontSize: 20, fontWeight: "600", marginBottom: 8 },
-  body: { color: "#B5B1AA", fontSize: 14, lineHeight: 20, marginBottom: 20 },
+  title: { color: C.text, fontSize: 20, fontWeight: "600", marginBottom: 8 },
+  body: { color: C.textSoft, fontSize: 14, lineHeight: 20, marginBottom: 20 },
   inputRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 20 },
   input: {
     flex: 1,
-    backgroundColor: "#272727",
-    color: "#F2F0EC",
+    backgroundColor: C.raised,
+    color: C.text,
     fontSize: 22,
     textAlign: "center",
     paddingVertical: 12,
     borderRadius: 10,
   },
-  unit: { color: "#8C8A86", fontSize: 18, width: 30 },
-  save: { backgroundColor: "#D9D5CE", borderRadius: 12, paddingVertical: 14, alignItems: "center" },
+  unit: { color: C.textMuted, fontSize: 18, width: 30 },
+  save: { backgroundColor: C.accent, borderRadius: 12, paddingVertical: 14, alignItems: "center" },
   saveDisabled: { opacity: 0.4 },
-  saveText: { color: "#171614", fontSize: 16, fontWeight: "600" },
+  saveText: { color: C.onAccent, fontSize: 16, fontWeight: "600" },
   later: { alignItems: "center", paddingTop: 14 },
-  laterText: { color: "#8C8A86", fontSize: 15 },
+  laterText: { color: C.textMuted, fontSize: 15 },
 });
