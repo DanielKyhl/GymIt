@@ -34,7 +34,8 @@ export default function History() {
           <Text style={styles.empty}>No workouts yet. Finish one to see it here.</Text>
         }
         renderItem={({ item }) => {
-          const totalSets = item.exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
+          // Working sets, the same count the workout summary shows.
+          const totalSets = item.exercises.reduce((sum, ex) => sum + ex.sets.filter((s) => s.type !== "warmup").length, 0);
           const rpe = workoutRPE(item);
           return (
             <TouchableOpacity

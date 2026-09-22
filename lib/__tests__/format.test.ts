@@ -1,4 +1,4 @@
-import { plural, relativeDay } from "../format";
+import { plural, relativeDay, formatNumber } from "../format";
 
 const NOW = "2026-09-09T12:00:00.000Z";
 const DAY = 24 * 60 * 60 * 1000;
@@ -55,5 +55,14 @@ describe("relativeDay", () => {
   test("earlier the same day is still today", () => {
     jest.setSystemTime(new Date("2026-09-08T21:30:00.000Z")); // 23:30
     expect(relativeDay("2026-09-07T22:30:00.000Z")).toBe("Today"); // 00:30, 23 hours earlier
+  });
+});
+
+describe("formatNumber", () => {
+  test("one style everywhere: comma thousands, dot decimals", () => {
+    expect(formatNumber(2420)).toBe("2,420");
+    expect(formatNumber(8.5)).toBe("8.5");
+    expect(formatNumber(1.63)).toBe("1.6");
+    expect(formatNumber(1667.5, 0)).toBe("1,668");
   });
 });

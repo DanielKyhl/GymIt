@@ -81,10 +81,14 @@ export function computeXP(workouts: Workout[], weeklyGoal: number): number {
   return xp;
 }
 
-export const MAX_LEVEL = 100;
+export const MAX_LEVEL = 150;
+
+// XP to go from level N to N+1: 100 for the first, 11 more for each level
+// after, up to 1,728 for the last. Level 150 takes 136,186 XP in total: about
+// 3 years at 5 workouts a week (weekly-goal bonus and records included).
+export const xpToNextLevel = (level: number) => 89 + 11 * level;
 
 // Turn a total XP number into a level plus progress toward the next one.
-// Level N -> N+1 costs N * 100 XP (each level a little harder than the last).
 // Level is capped at MAX_LEVEL; there, xpForNext is 0 (you're maxed out).
 export function levelInfo(totalXP: number): {
   level: number;
@@ -93,12 +97,12 @@ export function levelInfo(totalXP: number): {
   isMax: boolean;
 } {
   let level = 1;
-  let need = 100;
+  let need = xpToNextLevel(1);
   let remaining = totalXP;
   while (level < MAX_LEVEL && remaining >= need) {
     remaining -= need;
     level += 1;
-    need = level * 100;
+    need = xpToNextLevel(level);
   }
   if (level >= MAX_LEVEL) {
     return { level: MAX_LEVEL, xpIntoLevel: 0, xpForNext: 0, isMax: true };

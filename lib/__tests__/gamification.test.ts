@@ -30,18 +30,19 @@ describe("levelInfo", () => {
 
   test("each level costs more than the last", () => {
     expect(levelInfo(100).level).toBe(2);
-    expect(levelInfo(100).xpForNext).toBe(200);
-    expect(levelInfo(300).level).toBe(3);
-    expect(levelInfo(300).xpForNext).toBe(300);
+    expect(levelInfo(100).xpForNext).toBe(111);
+    expect(levelInfo(211).level).toBe(3);
+    expect(levelInfo(211).xpForNext).toBe(122);
   });
 
   test("keeps the leftover XP as progress into the current level", () => {
     expect(levelInfo(99)).toMatchObject({ level: 1, xpIntoLevel: 99 });
-    expect(levelInfo(299)).toMatchObject({ level: 2, xpIntoLevel: 199 });
+    expect(levelInfo(210)).toMatchObject({ level: 2, xpIntoLevel: 110 });
   });
 
-  test("caps out at MAX_LEVEL", () => {
-    expect(levelInfo(495000)).toEqual({
+  test("caps out at level 150", () => {
+    expect(MAX_LEVEL).toBe(150);
+    expect(levelInfo(136_186)).toEqual({
       level: MAX_LEVEL,
       xpIntoLevel: 0,
       xpForNext: 0,
@@ -50,8 +51,8 @@ describe("levelInfo", () => {
     expect(levelInfo(99_999_999).isMax).toBe(true);
   });
 
-  test("one XP short of max is still level 99", () => {
-    expect(levelInfo(494999).level).toBe(99);
+  test("one XP short of max is still level 149", () => {
+    expect(levelInfo(136_185).level).toBe(149);
   });
 });
 

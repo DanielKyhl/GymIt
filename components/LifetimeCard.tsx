@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 import { C, R, T } from "../constants/theme";
+import { formatNumber } from "../lib/format";
 import { lifetimeMilestone } from "../lib/milestones";
 import { convertWeight, Unit } from "../lib/units";
 
@@ -14,7 +15,7 @@ export function LifetimeCard({ totalKg, unit, newMilestone }: { totalKg: number;
         {newMilestone ? "New milestone!" : "Lifetime total"}
       </Text>
       <Text style={styles.total}>
-        {shown.toLocaleString()}
+        {formatNumber(shown, 0)}
         <Text style={styles.unit}> {unit}</Text>
       </Text>
       {m.passed && <Text style={styles.passed}>More than {m.passed.name}</Text>}

@@ -157,7 +157,7 @@ export default function Settings() {
         ))}
       </View>
 
-      <Text style={styles.section}>Recovery body</Text>
+      <Text style={styles.section}>Gender</Text>
       <View style={styles.segment}>
         {(["male", "female"] as const).map((g) => (
           <Pressable
@@ -169,6 +169,7 @@ export default function Settings() {
           </Pressable>
         ))}
       </View>
+      <Text style={[styles.hint, styles.fieldHint]}>Picks the body on the Recovery tab's muscle map.</Text>
 
       <Text style={styles.section}>Data</Text>
       <Pressable style={styles.card} onPress={exportData}>

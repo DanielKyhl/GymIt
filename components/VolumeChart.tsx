@@ -1,6 +1,7 @@
 import { useWindowDimensions, View } from "react-native";
 import Svg, { Circle, G, Line, Polyline, Text as SvgText } from "react-native-svg";
 import { C } from "../constants/theme";
+import { formatNumber } from "../lib/format";
 
 type Point = { date: string; volume: number };
 
@@ -58,7 +59,7 @@ export function VolumeChart({ data, width: fixedWidth, zeroBased = true }: Props
               fontWeight="500"
               textAnchor="middle"
             >
-              {d.volume.toLocaleString()}
+              {formatNumber(d.volume)}
             </SvgText>
             {(i === 0 || i === n - 1) && (
               <SvgText x={x(i)} y={baseY + 15} fill={C.textMuted} fontSize="10" textAnchor="middle">

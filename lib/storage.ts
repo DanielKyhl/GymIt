@@ -223,6 +223,7 @@ export async function shouldOnboard(): Promise<boolean> {
 export type OnboardingAnswers = {
     goal: Goal;
     experience: Experience;
+    gender: 'male' | 'female'; // picks the body on the Recovery muscle map
     unit: 'kg' | 'lb';
     weeklyGoal: number;
     bodyWeight: number | null; // optional question
@@ -235,6 +236,7 @@ export async function completeOnboarding(a: OnboardingAnswers): Promise<void> {
         ...current,
         goal: a.goal,
         experience: a.experience,
+        bodyGender: a.gender,
         defaultUnit: a.unit,
         weeklyGoal: a.weeklyGoal,
         defaultRest: restForGoal(a.goal),

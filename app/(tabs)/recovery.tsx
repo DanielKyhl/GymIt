@@ -11,7 +11,7 @@ import {
   readinessScore,
   slugLabel,
 } from "../../lib/recovery";
-import { getBodyGender, getPlanTemplates, getTemplates, getWorkouts, setBodyGender } from "../../lib/storage";
+import { getBodyGender, getPlanTemplates, getTemplates, getWorkouts } from "../../lib/storage";
 import { suggestTemplate } from "../../lib/suggest";
 import { ReadinessRing } from "../../components/ReadinessRing";
 import { Template, Workout } from "../../types/workout";
@@ -47,11 +47,6 @@ export default function Recovery() {
       getBodyGender().then(setGender);
     }, [])
   );
-
-  const chooseGender = async (g: "male" | "female") => {
-    setGender(g);
-    await setBodyGender(g);
-  };
 
   // Color every tracked muscle: green when recovered, yellow recovering, red
   // just trained. Non-muscle parts keep the body's neutral fill.
@@ -98,20 +93,6 @@ export default function Recovery() {
         </View>
       )}
 
-      <View style={styles.genderRow}>
-        <Pressable
-          style={[styles.genderBtn, gender === "male" && styles.genderActive]}
-          onPress={() => chooseGender("male")}
-        >
-          <Text style={styles.genderText}>Male</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.genderBtn, gender === "female" && styles.genderActive]}
-          onPress={() => chooseGender("female")}
-        >
-          <Text style={styles.genderText}>Female</Text>
-        </Pressable>
-      </View>
       
       
       <View style={[styles.bodyWrap, { width: pageWidth, height: bodyHeight }]}>
@@ -187,13 +168,9 @@ const styles = StyleSheet.create({
   },
   readyForText: { color: C.textSoft, fontSize: 13, flexShrink: 1 },
   readyForName: { color: C.text, fontWeight: "600" },
-  genderRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
-  genderBtn: { paddingVertical: 8, paddingHorizontal: 20, borderRadius: 8, backgroundColor: C.card },
-  genderActive: { backgroundColor: C.selected },
-  genderText: { color: C.text, fontSize: 14 },
   hint: { color: C.textMuted, fontSize: 12, textAlign: "center", marginBottom: 6 },
   // overflow hidden: even if the figure ever outgrows the box, it can't cover
-  // the gender toggle or the turn-around button.
+  // the readiness card or the turn-around button.
   bodyWrap: { alignItems: "center", justifyContent: "center", alignSelf: "center", overflow: "hidden" },
   turnBtn: {
     alignSelf: "center", backgroundColor: C.card, borderRadius: 10,

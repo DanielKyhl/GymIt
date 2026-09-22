@@ -1,14 +1,14 @@
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { BodyWeightPrompt } from "../../components/BodyWeightPrompt";
-import { WeekStrip } from "../../components/WeekStrip";
+import { LevelCard } from "../../components/LevelCard";
 import { useAuth } from "../../context/AuthContext";
-import { plural, relativeDay } from "../../lib/format";
+import { relativeDay } from "../../lib/format";
 import { computeXP, levelInfo, thisWeekCount } from "../../lib/gamification";
 import { computeRecovery } from "../../lib/recovery";
 import { consistencyGrid, lastUsedDate } from "../../lib/stats";
+import { computeStreak } from "../../lib/streak";
 import { Suggestion, suggestTemplate } from "../../lib/suggest";
 import {
   getActiveWorkout,
@@ -22,7 +22,7 @@ import {
   skipBodyWeight,
 } from "../../lib/storage";
 import { Template, Workout } from "../../types/workout";
-import { ChevronRight, Clock, Pencil, Play, Plus, Settings, Trophy } from "lucide-react-native";
+import { ChevronRight, Clock, Play, Plus, Settings, Shield, Trophy } from "lucide-react-native";
 import { ActiveWorkout, elapsedSeconds } from "../../lib/activeWorkout";
 import { C, HIT, T } from "../../constants/theme";
 
@@ -52,16 +52,9 @@ export default function HomeScreen() {
   const totalXP = computeXP(workouts, weeklyGoal);
   const { level, xpIntoLevel, xpForNext, isMax } = levelInfo(totalXP);
   const weekCount = thisWeekCount(workouts);
-  const progress = isMax ? 1 : Math.min(1, xpIntoLevel / xpForNext);
   const week = consistencyGrid(workouts, 1)[0];
   const suggestion = suggestTemplate(templates, workouts, computeRecovery(workouts), planIds);
-
-  // The XP bar fills up to its value instead of appearing full.
-  const fill = useSharedValue(0);
-  useEffect(() => {
-    fill.set(withTiming(progress, { duration: 700, easing: Easing.out(Easing.cubic) }));
-  }, [fill, progress]);
-  const fillStyle = useAnimatedStyle(() => ({ width: `${fill.get() * 100}%` }));
+  const streak = computeStreak(workouts, weeklyGoal);
 
   const custom = templates.filter((t) => !t.id.startsWith("premade-"));
   const premade = templates.filter((t) => t.id.startsWith("premade-"));
@@ -136,25 +129,28 @@ export default function HomeScreen() {
         </Pressable>
       )}
 
-      <View style={styles.statsCard}>
-        <View style={styles.levelRow}>
-          <Text style={styles.levelText}>Level {level}</Text>
-          <Text style={styles.xpText}>{isMax ? "MAX" : `${xpIntoLevel} / ${xpForNext} XP`}</Text>
+      {streak.shieldUsedLastWeek && (
+        <View style={styles.shieldNotice}>
+          <Shield size={20} color="#60a5fa" fill="#60a5fa" />
+          <Text style={styles.shieldText}>
+            <Text style={styles.shieldBold}>Shield used. </Text>
+            You missed last week's goal, but your {streak.weeks}-week streak is safe.{" "}
+            {streak.shields === 1 ? "1 shield left." : `${streak.shields} shields left.`}
+          </Text>
         </View>
-        <View style={styles.xpBarBg}>
-          <Animated.View style={[styles.xpBarFill, fillStyle]} />
-        </View>
-        <View style={styles.weekStrip}>
-          <WeekStrip days={week} />
-        </View>
-        <View style={styles.miniRow}>
-          <Pressable style={styles.goalLink} onPress={() => router.push("/weekly-goal")} hitSlop={HIT}>
-            <Text style={styles.miniStat}>This week  {weekCount}/{weeklyGoal}</Text>
-            <Pencil size={12} color={C.textSoft} />
-          </Pressable>
-          <Text style={styles.miniStat}>{plural(workouts.length, "workout")} total</Text>
-        </View>
-      </View>
+      )}
+
+      <LevelCard
+        level={level}
+        xpIntoLevel={xpIntoLevel}
+        xpForNext={xpForNext}
+        isMax={isMax}
+        week={week}
+        weekCount={weekCount}
+        weeklyGoal={weeklyGoal}
+        streak={streak}
+        onEditGoal={() => router.push("/weekly-goal")}
+      />
 
       <Pressable style={styles.emptyWorkout} onPress={() => router.push("/workout/new")}>
         <Plus size={18} color={C.accent} />
@@ -210,6 +206,12 @@ function heroReason({ readiness, lastDone }: Suggestion): string {
 }
 
 const styles = StyleSheet.create({
+  shieldNotice: {
+    flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12,
+    backgroundColor: "#16233a", borderWidth: 1, borderColor: "#2b4a7a", borderRadius: 12, padding: 12,
+  },
+  shieldText: { flex: 1, color: C.textSoft, fontSize: 14, lineHeight: 19 },
+  shieldBold: { color: C.text, fontWeight: "600" },
   container: { flex: 1, backgroundColor: C.bg },
   content: { padding: 20, paddingTop: 60, paddingBottom: 40 },
   header: {
@@ -221,7 +223,6 @@ const styles = StyleSheet.create({
   title: { color: C.text, fontSize: 28, fontWeight: "bold" },
   logout: { color: C.textMuted, fontSize: 14 },
   headerRight: { flexDirection: "row", alignItems: "center", gap: 16 },
-  statsCard: { backgroundColor: C.card, borderRadius: 14, padding: 16, marginBottom: 12 },
   hero: {
     backgroundColor: C.card, borderRadius: 20, borderWidth: 1, borderColor: C.raised,
     padding: 20, marginBottom: 12,
@@ -234,7 +235,6 @@ const styles = StyleSheet.create({
     backgroundColor: C.accent, borderRadius: 12, paddingVertical: 15,
   },
   heroBtnText: { color: C.onAccent, fontSize: 16, fontWeight: "600" },
-  weekStrip: { marginTop: 16 },
   resumeCard: {
     flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12,
     backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.signal, padding: 14,
@@ -252,14 +252,6 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: C.raised, borderRadius: 14, paddingVertical: 14,
   },
   emptyWorkoutText: { color: C.accent, fontSize: 15, fontWeight: "500" },
-  levelRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 },
-  levelText: { ...T.num, fontSize: 26 },
-  xpText: { ...T.num, color: C.textMuted, fontSize: 16 },
-  xpBarBg: { height: 10, backgroundColor: C.raised, borderRadius: 5, overflow: "hidden" },
-  xpBarFill: { height: 10, backgroundColor: C.accent, borderRadius: 5 },
-  miniRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 12 },
-  miniStat: { color: C.textSoft, fontSize: 13 },
-  goalLink: { flexDirection: "row", alignItems: "center", gap: 6 },
   achievementsLink: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     backgroundColor: C.card, borderRadius: 12, padding: 16, marginBottom: 24,

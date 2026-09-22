@@ -27,7 +27,7 @@ import { completeOnboarding, getDefaultUnit, getTemplates, skipOnboarding } from
 import { parseWeight, Unit } from "../lib/units";
 import { Template } from "../types/workout";
 
-const QUESTIONS = 4; // then the plan
+const QUESTIONS = 5; // then the plan
 
 function Option({
   title,
@@ -63,6 +63,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [goal, setGoal] = useState<Goal | null>(null);
   const [experience, setExperience] = useState<Experience | null>(null);
+  const [gender, setGender] = useState<"male" | "female" | null>(null);
   const [unit, setUnit] = useState<Unit>("kg");
   const [weightText, setWeightText] = useState("");
   const [weekly, setWeekly] = useState<number | null>(null);
@@ -86,7 +87,8 @@ export default function Onboarding() {
   const template = templates.find((t) => t.id === plan.templateId);
   const goalTitle = GOALS.find((g) => g.id === goal)?.title;
 
-  const canContinue = (step === 0 && goal !== null) || (step === 1 && experience !== null) || step >= 2;
+  const canContinue =
+    (step === 0 && goal !== null) || (step === 1 && experience !== null) || (step === 2 && gender !== null) || step >= 3;
 
   const skip = async () => {
     await skipOnboarding();
@@ -94,11 +96,12 @@ export default function Onboarding() {
   };
 
   const finish = async (startWorkout: boolean) => {
-    if (!goal || !experience) return;
+    if (!goal || !experience || !gender) return;
     setBusy(true);
     await completeOnboarding({
       goal,
       experience,
+      gender,
       unit,
       weeklyGoal,
       bodyWeight: parseWeight(weightText),
@@ -131,6 +134,22 @@ export default function Onboarding() {
           </>
         );
       case 2:
+        return (
+          <>
+            <Text style={styles.title}>What's your gender?</Text>
+            <Text style={styles.subtitle}>
+              It picks the body on the Recovery tab's muscle map. You can change it in Settings.
+            </Text>
+            <Option title="Male" detail="Male muscle map" selected={gender === "male"} onPress={() => setGender("male")} />
+            <Option
+              title="Female"
+              detail="Female muscle map"
+              selected={gender === "female"}
+              onPress={() => setGender("female")}
+            />
+          </>
+        );
+      case 3:
         return (
           <>
             <Text style={styles.title}>Kilograms or pounds?</Text>
@@ -169,7 +188,7 @@ export default function Onboarding() {
             </Text>
           </>
         );
-      case 3:
+      case 4:
         return (
           <>
             <Text style={styles.title}>How often will you train?</Text>

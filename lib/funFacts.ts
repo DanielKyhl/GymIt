@@ -1,4 +1,5 @@
 import type { SilhouetteName } from "../components/animalSilhouettes";
+import { formatNumber } from "./format";
 import { convertWeight, Unit } from "./units";
 
 // "Lifted what is equal to 10 tigers": the comparison on the workout summary,
@@ -45,7 +46,6 @@ const MIN_COUNT = 1.5;
 const MAX_COUNT = 99;
 
 const roundCount = (n: number) => (n < 10 ? Math.round(n * 10) / 10 : Math.round(n));
-const formatNumber = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 
 // Picks an animal for a workout's total volume. Several animals usually fit;
 // `seed` (how many workouts came before this one) rotates through them, so

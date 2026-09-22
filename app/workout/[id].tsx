@@ -435,6 +435,7 @@ export default function ActiveWorkoutScreen() {
         id: workout.id,
         xp: String(s.xpGained),
         level: String(s.levelAfter),
+        levelBefore: String(s.levelBefore),
         leveledUp: s.leveledUp ? "1" : "0",
         achievements: JSON.stringify(s.newAchievements),
         records: JSON.stringify(s.records.map(({ name, weight, reps }) => ({ name, weight, reps }))),

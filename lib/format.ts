@@ -13,3 +13,8 @@ export function relativeDay(iso: string): string {
   if (days === 1) return "Yesterday";
   return `${days} days ago`;
 }
+
+// Numbers in one style app-wide, matching the English text: "2,420", "8.5".
+export function formatNumber(n: number, maxDecimals = 1): string {
+  return n.toLocaleString("en-US", { maximumFractionDigits: maxDecimals });
+}

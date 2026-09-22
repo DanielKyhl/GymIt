@@ -5,6 +5,7 @@ import { newRecords, PersonalRecord, workoutVolume } from "./stats";
 
 export type WorkoutSummary = {
   xpGained: number;
+  levelBefore: number;
   levelAfter: number;
   leveledUp: boolean;
   newPRs: number;
@@ -38,6 +39,7 @@ export function summarizeWorkout(
 
   return {
     xpGained: xpAfter - xpBefore,
+    levelBefore,
     levelAfter,
     leveledUp: levelAfter > levelBefore,
     newPRs: records.length,

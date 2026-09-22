@@ -1,4 +1,5 @@
 import { Workout, WorkoutSet } from "../types/workout";
+import { formatNumber } from "./format";
 
 // RPE (rate of perceived exertion): how hard a set felt, 1-10. 10 means no
 // more reps were possible; each step down is roughly one more rep left.
@@ -15,9 +16,9 @@ export const RPE_OPTIONS: { value: number; detail: string }[] = [
   { value: 5, detail: "Easy, 5 or more reps left" },
 ];
 
-// "8", "8.5", or an average like "8.3", with the device's decimal separator.
+// "8", "8.5", or an average like "8.3".
 export function formatRPE(value: number): string {
-  return value.toLocaleString(undefined, { maximumFractionDigits: 1 });
+  return formatNumber(value);
 }
 
 // Finished working sets that were given an RPE. Warm-ups don't count.

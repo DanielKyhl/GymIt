@@ -7,11 +7,13 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, V
 import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
 import { captureRef } from "react-native-view-shot";
 import { LifetimeCard } from "../components/LifetimeCard";
+import { RankBadge, rankColor } from "../components/RankBadge";
 import { RpeHelpButton } from "../components/Rpe";
 import { ShareCard } from "../components/ShareCard";
 import { C, T } from "../constants/theme";
 import { compareVolume, Comparison } from "../lib/funFacts";
 import { lifetimeKg, lifetimeMilestone } from "../lib/milestones";
+import { rankFor } from "../lib/ranks";
 import { formatRPE, workoutRPE } from "../lib/rpe";
 import { convertWeight } from "../lib/units";
 import { workoutVolume } from "../lib/stats";
@@ -33,6 +35,7 @@ export default function WorkoutSummary() {
     xp?: string;
     level?: string;
     leveledUp?: string;
+    levelBefore?: string;
     achievements?: string;
     records?: string;
   }>();
@@ -45,6 +48,8 @@ export default function WorkoutSummary() {
   const xp = Number(params.xp ?? 0);
   const level = Number(params.level ?? 1);
   const leveledUp = params.leveledUp === "1";
+  const levelBefore = Number(params.levelBefore ?? level);
+  const newRank = rankFor(level).id !== rankFor(levelBefore).id;
   const achievements = parseList<string>(params.achievements);
   const records = parseList<{ name: string; weight: number; reps: number }>(params.records);
   const celebrate = records.length > 0 || leveledUp;
@@ -99,6 +104,7 @@ export default function WorkoutSummary() {
             volume={workoutVolume(workout)}
             records={records}
             comparison={comparison}
+            level={level}
           />
         </Animated.View>
       )}
@@ -130,9 +136,20 @@ export default function WorkoutSummary() {
       )}
 
       {leveledUp && (
-        <Animated.View entering={ZoomIn.delay(480).springify().damping(10)} style={styles.levelCard}>
-          <Sparkles size={18} color={C.rest} />
-          <Text style={styles.levelText}>Level up! You reached Level {level}</Text>
+        <Animated.View
+          entering={ZoomIn.delay(480).springify().damping(10)}
+          style={[styles.levelCard, { borderColor: rankColor(level) }]}
+        >
+          <RankBadge level={level} size={52} />
+          <View style={styles.levelBody}>
+            <View style={styles.levelHead}>
+              <Sparkles size={16} color={C.rest} />
+              <Text style={styles.levelText}>Level up! Level {level}</Text>
+            </View>
+            <Text style={[styles.levelSub, { color: rankColor(level) }]}>
+              {newRank ? `New rank: ${rankFor(level).name}` : rankFor(level).name}
+            </Text>
+          </View>
         </Animated.View>
       )}
 
@@ -181,11 +198,14 @@ const styles = StyleSheet.create({
   xpLabel: { color: C.textMuted, fontSize: 13, marginTop: 2 },
   rpeLabel: { flexDirection: "row", alignItems: "center", gap: 4 },
   levelCard: {
-    backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.rest,
-    padding: 16, marginTop: 12, width: "100%",
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    backgroundColor: C.card, borderRadius: 14, borderWidth: 1,
+    padding: 14, marginTop: 12, width: "100%",
+    flexDirection: "row", alignItems: "center", gap: 14,
   },
-  levelText: { color: C.rest, fontSize: 16, fontWeight: "500", textAlign: "center" },
+  levelBody: { flex: 1 },
+  levelHead: { flexDirection: "row", alignItems: "center", gap: 6 },
+  levelText: { color: C.rest, fontSize: 16, fontWeight: "600" },
+  levelSub: { fontSize: 14, fontWeight: "600", marginTop: 3 },
   achBlock: { width: "100%", marginTop: 20 },
   achHeader: { color: C.textMuted, fontSize: 13, textTransform: "uppercase", marginBottom: 10, textAlign: "center" },
   achCard: {
