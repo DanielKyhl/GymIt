@@ -45,7 +45,6 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false, animation: 'fade' }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           <Stack.Screen name="template/[id]" options={{ title: 'Template' }} />
           <Stack.Screen name="workout/[id]" options={{ title: 'Workout' }} />
           <Stack.Screen name="workout-log/[id]" options={{ title: 'Workout' }} />
