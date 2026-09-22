@@ -10,16 +10,20 @@ export type Suggestion = {
 
 // Which template to train next: the one whose muscles are most recovered,
 // and among equally ready ones, the one you haven't done for the longest.
-// Example templates only count once you've used them, so someone running
-// their own push/pull/legs isn't nudged towards an example they never do.
+// Example templates only count once you've used them, or when they're part of
+// the plan picked during setup (`planIds`), so someone running their own
+// push/pull/legs isn't nudged towards an example they never do.
 export function suggestTemplate(
   templates: Template[],
   workouts: Workout[],
-  recovery: MuscleRecovery[]
+  recovery: MuscleRecovery[],
+  planIds: string[] = []
 ): Suggestion | null {
   const withExercises = templates.filter((t) => t.exercises.length > 0);
   const used = new Set(workouts.map((w) => w.name));
-  const own = withExercises.filter((t) => !t.id.startsWith("premade-") || used.has(t.name));
+  const own = withExercises.filter(
+    (t) => !t.id.startsWith("premade-") || used.has(t.name) || planIds.includes(t.id)
+  );
   const pool = own.length > 0 ? own : withExercises;
   if (pool.length === 0) return null;
 

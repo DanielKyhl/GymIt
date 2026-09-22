@@ -11,7 +11,7 @@ import {
   readinessScore,
   slugLabel,
 } from "../../lib/recovery";
-import { getBodyGender, getTemplates, getWorkouts, setBodyGender } from "../../lib/storage";
+import { getBodyGender, getPlanTemplates, getTemplates, getWorkouts, setBodyGender } from "../../lib/storage";
 import { suggestTemplate } from "../../lib/suggest";
 import { ReadinessRing } from "../../components/ReadinessRing";
 import { Template, Workout } from "../../types/workout";
@@ -29,6 +29,7 @@ export default function Recovery() {
   const [recovery, setRecovery] = useState<MuscleRecovery[]>([]);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [planIds, setPlanIds] = useState<string[]>([]);
   const [gender, setGender] = useState<"male" | "female">("male");
   const [side, setSide] = useState<"front" | "back">("front");
   const [selected, setSelected] = useState<Slug | null>(null);
@@ -42,6 +43,7 @@ export default function Recovery() {
         setRecovery(computeRecovery(w));
       });
       getTemplates().then(setTemplates);
+      getPlanTemplates().then(setPlanIds);
       getBodyGender().then(setGender);
     }, [])
   );
@@ -60,7 +62,7 @@ export default function Recovery() {
     .sort((a, b) => a.fraction - b.fraction);
     const sel = recovery.find((m) => m.slug === selected);
   const score = readinessScore(recovery);
-  const suggestion = suggestTemplate(templates, workouts, recovery);
+  const suggestion = suggestTemplate(templates, workouts, recovery, planIds);
 
   const pageWidth = width - 40;
   // The body library draws the figure 400 × scale tall and 200 × scale wide.

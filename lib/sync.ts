@@ -36,6 +36,13 @@ export function currentUid(): string | null {
   return auth.currentUser?.uid ?? null;
 }
 
+// Signed up within the last hour: there's nothing in the cloud yet, so an
+// empty local copy is the real state even before the first download finishes.
+export function isNewAccount(now: number = Date.now()): boolean {
+  const created = auth.currentUser?.metadata.creationTime;
+  return created !== undefined && now - new Date(created).getTime() < 60 * 60 * 1000;
+}
+
 // Firebase restores the saved login asynchronously when the app starts. Reads
 // must wait for that: a screen opened first (a page refresh, a link) would
 // otherwise see "signed out" and load nothing.

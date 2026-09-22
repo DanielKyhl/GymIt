@@ -2,7 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Template, Workout } from '../types/workout';
 import { ActiveWorkout } from './activeWorkout';
 import { addWeighIn, BodyWeight, BodyWeightEntry, todayKey } from './bodyweight';
-import { putRecords, readLocal, readyUid, SETTINGS_ID, updateRecord } from './sync';
+import { Experience, Goal, needsOnboarding, restForGoal } from './onboarding';
+import { hasSyncedBefore, isNewAccount, putRecords, readLocal, readyUid, SETTINGS_ID, updateRecord } from './sync';
 import { live, SyncRecord } from './syncMerge';
 import { normalizeUnits } from './units';
 
@@ -22,6 +23,10 @@ type Settings = SyncRecord & {
     bodyWeightUnit?: 'kg' | 'lb';
     bodyWeightAsked?: boolean; // the Home prompt was answered or skipped
     bodyWeightLog?: BodyWeightEntry[]; // every weigh-in, oldest first
+    goal?: Goal;
+    experience?: Experience;
+    onboarded?: boolean; // finished or skipped the first-run setup
+    planTemplates?: string[]; // the split picked during setup, e.g. upper then lower
 };
 
 // Writes need an account to belong to; reaching one signed out is a bug.
@@ -201,13 +206,84 @@ export async function skipBodyWeight(): Promise<void> {
     await setSetting({ bodyWeightAsked: true });
 }
 
+// ---------------------------------------------------------------------------
+// First-run setup (app/onboarding.tsx).
+
+// Whether to show it. For older accounts, only once this device's first
+// download has finished: an existing account whose data hasn't arrived yet
+// (slow network) would otherwise look brand new.
+export async function shouldOnboard(): Promise<boolean> {
+    const uid = await readyUid();
+    if (!uid) return false;
+    if (!isNewAccount() && !(await hasSyncedBefore(uid))) return false;
+    const [settings, workouts] = await Promise.all([getSettings(), getWorkouts()]);
+    return needsOnboarding(settings, workouts.length);
+}
+
+export type OnboardingAnswers = {
+    goal: Goal;
+    experience: Experience;
+    unit: 'kg' | 'lb';
+    weeklyGoal: number;
+    bodyWeight: number | null; // optional question
+    planTemplates: string[];
+};
+
+// Saves every answer in one go, plus the rest timer that suits the goal.
+export async function completeOnboarding(a: OnboardingAnswers): Promise<void> {
+    await updateRecord<Settings>(await requireUid(), 'meta', SETTINGS_ID, (current) => ({
+        ...current,
+        goal: a.goal,
+        experience: a.experience,
+        defaultUnit: a.unit,
+        weeklyGoal: a.weeklyGoal,
+        defaultRest: restForGoal(a.goal),
+        planTemplates: a.planTemplates,
+        onboarded: true,
+        // Asked here, so Home doesn't ask again (even if they left it blank).
+        bodyWeightAsked: true,
+        ...(a.bodyWeight
+            ? {
+                  bodyWeight: a.bodyWeight,
+                  bodyWeightUnit: a.unit,
+                  bodyWeightLog: addWeighIn(current?.bodyWeightLog ?? [], {
+                      date: todayKey(),
+                      value: a.bodyWeight,
+                      unit: a.unit,
+                  }),
+              }
+            : {}),
+        id: SETTINGS_ID,
+        updatedAt: Date.now(),
+    }));
+}
+
+// The templates of the split picked during setup, for the "Up next" suggestion.
+export async function getPlanTemplates(): Promise<string[]> {
+    return (await getSettings()).planTemplates ?? [];
+}
+
+export async function skipOnboarding(): Promise<void> {
+    await setSetting({ onboarded: true });
+}
+
 // Everything the user owns, as plain JSON, for the Settings backup button.
 export async function exportAll(): Promise<string> {
-    const { weeklyGoal, bodyGender, defaultUnit, defaultRest, bodyWeight, bodyWeightUnit, bodyWeightLog } =
+    const { weeklyGoal, bodyGender, defaultUnit, defaultRest, bodyWeight, bodyWeightUnit, bodyWeightLog, goal, experience } =
         await getSettings();
     return JSON.stringify({
         workouts: await getWorkouts(),
         templates: await getTemplates(),
-        settings: { weeklyGoal, bodyGender, defaultUnit, defaultRest, bodyWeight, bodyWeightUnit, bodyWeightLog },
+        settings: {
+            weeklyGoal,
+            bodyGender,
+            defaultUnit,
+            defaultRest,
+            bodyWeight,
+            bodyWeightUnit,
+            bodyWeightLog,
+            goal,
+            experience,
+        },
     });
 }

@@ -166,6 +166,17 @@ describe("suggestTemplate", () => {
     expect(suggestTemplate([example], [], computeRecovery([], NOW))?.template.name).toBe("Full Body");
     expect(suggestTemplate([], [], [])).toBeNull();
   });
+
+  test("follows the plan picked during setup, then its rotation", () => {
+    const upper: Template = { id: "premade-upper", name: "Upper", exercises: [{ name: BENCH }] };
+    const lower: Template = { id: "premade-lower", name: "Lower", exercises: [{ name: SQUAT }] };
+    const examplePush: Template = { id: "premade-push", name: "Push", exercises: [{ name: BENCH }] };
+    const all = [examplePush, upper, lower];
+    const plan = ["premade-upper", "premade-lower"];
+    expect(suggestTemplate(all, [], computeRecovery([], NOW), plan)?.template.name).toBe("Upper");
+    const done = [workout("Upper", new Date(NOW - 20 * HOUR).toISOString(), [{ name: BENCH, sets: [set(60, 8)] }])];
+    expect(suggestTemplate(all, done, computeRecovery(done, NOW), plan)?.template.name).toBe("Lower");
+  });
 });
 
 describe("body-weight log", () => {

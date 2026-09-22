@@ -58,14 +58,24 @@ export function Field({ label, hint, ...input }: TextInputProps & { label: strin
   );
 }
 
-export function PrimaryButton({ label, onPress, busy }: { label: string; onPress: () => void; busy?: boolean }) {
+export function PrimaryButton({
+  label,
+  onPress,
+  busy,
+  disabled,
+}: {
+  label: string;
+  onPress: () => void;
+  busy?: boolean;
+  disabled?: boolean;
+}) {
   return (
     <Pressable
-      style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.primary, pressed && styles.pressed, disabled && styles.disabled]}
       onPress={onPress}
-      disabled={busy}
+      disabled={busy || disabled}
       accessibilityRole="button"
-      accessibilityState={{ busy }}
+      accessibilityState={{ busy, disabled }}
     >
       {busy ? <ActivityIndicator color={C.onAccent} /> : <Text style={styles.primaryText}>{label}</Text>}
     </Pressable>
@@ -120,6 +130,7 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
   },
   hint: { color: C.textFaint, fontSize: 12, marginTop: 6 },
+  disabled: { opacity: 0.4 },
   primary: {
     backgroundColor: C.accent,
     borderRadius: R.md,

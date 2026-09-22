@@ -13,6 +13,7 @@ import { Suggestion, suggestTemplate } from "../../lib/suggest";
 import {
   getActiveWorkout,
   getDefaultUnit,
+  getPlanTemplates,
   getTemplates,
   getWeeklyGoal,
   getWorkoutsForStats,
@@ -34,6 +35,7 @@ export default function HomeScreen() {
   const [askWeight, setAskWeight] = useState(false);
   const [unit, setUnit] = useState<"kg" | "lb">("kg");
   const [inProgress, setInProgress] = useState<ActiveWorkout | null>(null);
+  const [planIds, setPlanIds] = useState<string[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -43,6 +45,7 @@ export default function HomeScreen() {
       getDefaultUnit().then(setUnit);
       shouldAskBodyWeight().then(setAskWeight);
       getActiveWorkout().then(setInProgress);
+      getPlanTemplates().then(setPlanIds);
     }, [])
   );
 
@@ -51,7 +54,7 @@ export default function HomeScreen() {
   const weekCount = thisWeekCount(workouts);
   const progress = isMax ? 1 : Math.min(1, xpIntoLevel / xpForNext);
   const week = consistencyGrid(workouts, 1)[0];
-  const suggestion = suggestTemplate(templates, workouts, computeRecovery(workouts));
+  const suggestion = suggestTemplate(templates, workouts, computeRecovery(workouts), planIds);
 
   // The XP bar fills up to its value instead of appearing full.
   const fill = useSharedValue(0);
