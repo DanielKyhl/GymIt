@@ -2,6 +2,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { plural } from "../../lib/format";
+import { formatRPE, workoutRPE } from "../../lib/rpe";
 import { getWorkouts } from "../../lib/storage";
 import { Workout } from "../../types/workout";
 import { C } from "../../constants/theme";
@@ -34,6 +35,7 @@ export default function History() {
         }
         renderItem={({ item }) => {
           const totalSets = item.exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
+          const rpe = workoutRPE(item);
           return (
             <TouchableOpacity
               style={styles.card}
@@ -42,6 +44,7 @@ export default function History() {
               <Text style={styles.cardTitle}>{item.name}</Text>
               <Text style={styles.cardSub}>
                 {formatDate(item.date)} · {Math.round(item.durationSeconds / 60)} min · {plural(totalSets, "set")}
+                {rpe !== null ? ` · RPE ${formatRPE(rpe)}` : ""}
               </Text>
             </TouchableOpacity>
           );

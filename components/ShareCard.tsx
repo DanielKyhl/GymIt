@@ -2,7 +2,9 @@ import { Flame } from "lucide-react-native";
 import { Ref } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { C, FONT, T } from "../constants/theme";
+import { Comparison } from "../lib/funFacts";
 import { bestSet } from "../lib/stats";
+import { AnimalIcon } from "./AnimalIcon";
 import { Workout } from "../types/workout";
 
 type Line = { name: string; weight: number; reps: number };
@@ -12,13 +14,14 @@ type Props = {
   workout: Workout;
   volume: number;
   records: Line[];
+  comparison?: Comparison | null; // "the weight of 7 elephants"
 };
 
 const fmt = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 
 // The workout at a glance. Shown on the summary screen and saved as an image
 // by the Share button, so what you see is what gets shared.
-export function ShareCard({ ref, workout, volume, records }: Props) {
+export function ShareCard({ ref, workout, volume, records, comparison }: Props) {
   const unit = workout.unit;
   const sets = workout.exercises.reduce(
     (n, ex) => n + ex.sets.filter((s) => s.done && s.type !== "warmup").length,
@@ -47,14 +50,22 @@ export function ShareCard({ ref, workout, volume, records }: Props) {
         {workout.name}
       </Text>
 
+      {/* The hero: a big silhouette of the animal, with what it means under it. */}
+      {comparison && (
+        <View style={styles.hero}>
+          <AnimalIcon animal={comparison.animal} width={260} height={150} color="#FFFFFF" />
+          <Text style={styles.heroText}>{comparison.text}</Text>
+        </View>
+      )}
+
       <View style={styles.stats}>
         <View style={styles.stat}>
           <Text style={styles.statValue}>{minutes}</Text>
           <Text style={styles.statLabel}>Minutes</Text>
         </View>
-        <View style={styles.stat}>
-          <Text style={styles.statValue}>
-            {fmt(volume)}
+        <View style={[styles.stat, styles.statWide]}>
+          <Text style={styles.statValue} numberOfLines={1}>
+            {Math.round(volume).toLocaleString()}
             <Text style={styles.statUnit}> {unit}</Text>
           </Text>
           <Text style={styles.statLabel}>Volume</Text>
@@ -101,9 +112,12 @@ const styles = StyleSheet.create({
   name: { color: C.text, fontSize: 26, fontWeight: "700", marginBottom: 18 },
   stats: { flexDirection: "row", justifyContent: "space-between" },
   stat: { flex: 1 },
+  statWide: { flex: 1.8 }, // volume runs to 5-6 digits
   statValue: { ...T.num, fontSize: 30 },
   statUnit: { ...T.num, color: C.textMuted, fontSize: 16 },
   statLabel: { color: C.textMuted, fontSize: 12, marginTop: 2 },
+  hero: { alignItems: "center", paddingTop: 6, paddingBottom: 22 },
+  heroText: { color: C.text, fontSize: 20, fontWeight: "700", textAlign: "center", marginTop: 16, lineHeight: 26 },
   lines: { borderTopWidth: 1, borderTopColor: C.raised, marginTop: 18, paddingTop: 14, gap: 8 },
   linesHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 },
   linesTitle: { color: C.textMuted, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },

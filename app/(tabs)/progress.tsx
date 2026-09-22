@@ -3,10 +3,14 @@ import { useCallback, useState } from "react";
 import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { BodyWeightPrompt } from "../../components/BodyWeightPrompt";
 import { ConsistencyHeatmap } from "../../components/ConsistencyHeatmap";
+import { LifetimeCard } from "../../components/LifetimeCard";
 import { MuscleSetBars } from "../../components/MuscleSetBars";
+import { RpeHelpButton } from "../../components/Rpe";
 import { VolumeChart } from "../../components/VolumeChart";
 import { weighInsIn } from "../../lib/bodyweight";
 import { plural } from "../../lib/format";
+import { lifetimeKg } from "../../lib/milestones";
+import { averageRPE, formatRPE, rpeByWorkout, rpeHistory } from "../../lib/rpe";
 import {
   getBodyWeight,
   getBodyWeightLog,
@@ -37,10 +41,16 @@ export default function Progress() {
     { name: string; points: { date: string; volume: number }[] }[]
   >([]);
   const [grid, setGrid] = useState<HeatCell[][]>([]);
+  const [lifetime, setLifetime] = useState(0);
   const [muscles, setMuscles] = useState<MuscleSets[]>([]);
   const [unit, setUnit] = useState<Unit>("kg");
   const [weighIns, setWeighIns] = useState<{ date: string; value: number }[]>([]);
   const [bodyWeight, setBodyWeightState] = useState<number | null>(null);
+  const [rpe, setRpe] = useState<{
+    average: number | null;
+    trend: { date: string; value: number }[];
+    byWorkout: { name: string; average: number; sessions: number }[];
+  }>({ average: null, trend: [], byWorkout: [] });
   const [showVolume, setShowVolume] = useState(false);
   const [logging, setLogging] = useState(false);
 
@@ -58,7 +68,9 @@ export default function Progress() {
         setExercises(getTrainedExercises(workouts));
         setByTemplate(getVolumeByTemplate(workouts));
         setGrid(consistencyGrid(workouts, HEATMAP_WEEKS));
+        setLifetime(lifetimeKg(workouts));
         setMuscles(weeklyMuscleSets(workouts));
+        setRpe({ average: averageRPE(workouts), trend: rpeHistory(workouts), byWorkout: rpeByWorkout(workouts) });
       });
       loadBodyWeight();
     }, [loadBodyWeight])
@@ -119,6 +131,41 @@ export default function Progress() {
         )}
       </View>
 
+      <View style={styles.sectionRow}>
+        <Text style={[styles.section, styles.sectionInline]}>Effort (RPE)</Text>
+        <RpeHelpButton />
+      </View>
+      <View style={styles.panelCard}>
+        {rpe.average === null ? (
+          <Text style={[styles.caption, styles.captionTop]}>
+            Rate your sets in the RPE column during a workout, and how hard you train shows up here.
+          </Text>
+        ) : (
+          <>
+            <Text style={styles.bwValue}>{formatRPE(rpe.average)}</Text>
+            <Text style={styles.bwChange}>Average RPE over all your workouts</Text>
+            {rpe.trend.length >= 2 && (
+              <VolumeChart
+                data={rpe.trend.slice(-8).map((p) => ({ date: p.date, volume: p.value }))}
+                width={chartWidth}
+                zeroBased={false}
+              />
+            )}
+            <View style={styles.rpeList}>
+              {rpe.byWorkout.map((w) => (
+                <View key={w.name} style={styles.rpeRow}>
+                  <Text style={styles.rpeName} numberOfLines={1}>
+                    {w.name}
+                  </Text>
+                  <Text style={styles.rpeSessions}>{plural(w.sessions, "workout")}</Text>
+                  <Text style={styles.rpeValue}>{formatRPE(w.average)}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+      </View>
+
       <Pressable style={styles.volumeLink} onPress={() => setShowVolume(true)}>
         <Text style={styles.volumeLinkText}>Volume per template</Text>
         <ChevronRight size={20} color={C.textMuted} />
@@ -136,6 +183,9 @@ export default function Progress() {
         ListHeaderComponent={
           <View>
             <Text style={styles.title}>Progress</Text>
+            <View style={styles.lifetime}>
+              <LifetimeCard totalKg={lifetime} unit={unit} />
+            </View>
             {header}
           </View>
         }
@@ -215,9 +265,21 @@ function shortDay(key: string): string {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   title: { color: C.text, fontSize: 28, fontWeight: "bold", marginBottom: 4 },
+  lifetime: { marginTop: 12 },
   section: { color: C.textMuted, fontSize: 13, textTransform: "uppercase", marginBottom: 12, marginTop: 20 },
   panelCard: { backgroundColor: C.card, borderRadius: 14, padding: 16 },
   caption: { color: C.textFaint, fontSize: 12, lineHeight: 17, marginTop: 14 },
+  captionTop: { marginTop: 0 },
+  sectionRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 20, marginBottom: 12 },
+  sectionInline: { marginTop: 0, marginBottom: 0 },
+  rpeList: { marginTop: 8 },
+  rpeRow: {
+    flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10,
+    borderTopWidth: 0.5, borderTopColor: C.raised,
+  },
+  rpeName: { flex: 1, color: C.text, fontSize: 14 },
+  rpeSessions: { color: C.textFaint, fontSize: 12 },
+  rpeValue: { ...T.num, width: 36, textAlign: "right", fontSize: 18 },
   bwTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 },
   bwValue: { ...T.num, fontSize: 34 },
   bwUnit: { ...T.num, color: C.textMuted, fontSize: 18 },

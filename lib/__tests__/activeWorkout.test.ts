@@ -1,12 +1,16 @@
 import {
+  ActiveWorkout,
   elapsedSeconds,
   formatClock,
+  formatRest,
   historyBest1RM,
   isLivePR,
   linkWithNext,
-  nextSetType,
+  loggedExercises,
   platesPerSide,
   restAfterSet,
+  setNumber,
+  toggleSet,
   unlinkFromNext,
   warmupSets,
 } from "../activeWorkout";
@@ -25,12 +29,60 @@ describe("timer", () => {
   });
 });
 
-describe("nextSetType", () => {
-  test("cycles normal, warm-up, drop, failure and back", () => {
-    expect(nextSetType(undefined)).toBe("warmup");
-    expect(nextSetType("warmup")).toBe("drop");
-    expect(nextSetType("drop")).toBe("failure");
-    expect(nextSetType("failure")).toBe("normal");
+describe("set numbers and rest labels", () => {
+  test("warm-ups aren't numbered, working sets count from 1", () => {
+    const sets = [set(20, 10, { type: "warmup" }), set(40, 5, { type: "warmup" }), set(60, 8), set(60, 8, { type: "drop" })];
+    expect(sets.map((_, i) => setNumber(sets, i))).toEqual([0, 0, 1, 2]);
+  });
+
+  test("rest reads like a clock", () => {
+    expect(formatRest(90)).toBe("1:30");
+    expect(formatRest(45)).toBe("0:45");
+  });
+});
+
+describe("loggedExercises", () => {
+  test("leaves out sets never filled in, and exercises left empty", () => {
+    const logged = loggedExercises([
+      { name: "Squat", sets: [set(60, 8), set(60, 8, { done: false }), set(0, 0, { done: false })] },
+      { name: "Bench", sets: [set(0, 0, { done: false })] },
+    ]);
+    expect(logged).toEqual([{ name: "Squat", sets: [set(60, 8), set(60, 8, { done: false })] }]);
+  });
+});
+
+describe("toggleSet and the rest timer", () => {
+  const workoutWith = (exercises: WorkoutExercise[]): ActiveWorkout => ({
+    templateId: null, name: "W", startedAt: 0, unit: "kg", rest: null, exercises,
+  });
+  const bench: WorkoutExercise = {
+    name: "Bench",
+    sets: [set(60, 8, { done: false, restSeconds: 90 }), set(60, 8, { done: false, restSeconds: 90 })],
+  };
+
+  test("ticking a set starts its rest, under that set", () => {
+    const a = toggleSet(workoutWith([bench]), 0, 0, 5_000);
+    expect(a.exercises[0].sets[0].done).toBe(true);
+    expect(a.rest).toEqual({ startedAt: 5_000, target: 90, exIndex: 0, setIndex: 0 });
+  });
+
+  test("the next set replaces the running rest", () => {
+    const a = toggleSet(toggleSet(workoutWith([bench]), 0, 0, 5_000), 0, 1, 80_000);
+    expect(a.rest).toEqual({ startedAt: 80_000, target: 90, exIndex: 0, setIndex: 1 });
+  });
+
+  test("unticking stops its own rest, but not another set's", () => {
+    const one = toggleSet(workoutWith([bench]), 0, 0, 5_000);
+    expect(toggleSet(one, 0, 0, 6_000).rest).toBeNull();
+    const two = toggleSet(one, 0, 1, 7_000);
+    expect(toggleSet(two, 0, 0, 8_000).rest?.setIndex).toBe(1);
+  });
+
+  test("no rest inside a superset round", () => {
+    const a = { ...bench, supersetId: "s" };
+    const b = { ...bench, name: "Row", supersetId: "s" };
+    expect(toggleSet(workoutWith([a, b]), 0, 0, 1_000).rest).toBeNull();
+    expect(toggleSet(workoutWith([a, b]), 1, 0, 1_000).rest?.target).toBe(90);
   });
 });
 

@@ -15,8 +15,9 @@ export type ActiveWorkout = {
 
 // Timers store when they started rather than counting ticks, so they stay
 // right when the phone locks or the app is in the background (where
-// intervals pause).
-export type RestTimer = { startedAt: number; target: number };
+// intervals pause). exIndex/setIndex: the finished set the rest follows; the
+// running timer is shown right under it.
+export type RestTimer = { startedAt: number; target: number; exIndex: number; setIndex: number };
 
 export function elapsedSeconds(since: number, now: number): number {
   return Math.max(0, Math.floor((now - since) / 1000));
@@ -28,14 +29,29 @@ export function formatClock(totalSeconds: number): string {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+// A rest length the way people say it: "1:30", "0:45".
+export function formatRest(totalSeconds: number): string {
+  return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
+}
+
+// The rest lengths offered in the rest menu (0 = no rest timer).
+export const REST_OPTIONS = [0, 30, 60, 90, 120, 150, 180, 240, 300];
+
 // ---------------------------------------------------------------------------
-// Set types: tapping the set number cycles normal → warm-up → drop → failure.
+// Set types, in the order the set menu lists them. The letter replaces the
+// set number for anything that isn't a normal set.
 
-const TYPE_CYCLE: SetType[] = ["normal", "warmup", "drop", "failure"];
+export const SET_TYPES: { type: SetType; letter: string; name: string; detail: string }[] = [
+  { type: "normal", letter: "", name: "Normal set", detail: "A regular working set." },
+  { type: "warmup", letter: "W", name: "Warm-up set", detail: "Lighter, to get ready. Left out of your stats." },
+  { type: "drop", letter: "D", name: "Drop set", detail: "Straight after a set, with less weight." },
+  { type: "failure", letter: "F", name: "Failure set", detail: "Until you can't do another rep." },
+];
 
-export function nextSetType(type: SetType | undefined): SetType {
-  const i = TYPE_CYCLE.indexOf(type ?? "normal");
-  return TYPE_CYCLE[(i + 1) % TYPE_CYCLE.length];
+// Working sets are numbered 1, 2, 3… with warm-ups not counted, so the
+// numbers match what you'd call them: W, W, 1, 2, 3.
+export function setNumber(sets: WorkoutSet[], index: number): number {
+  return sets.slice(0, index + 1).filter((s) => s.type !== "warmup").length;
 }
 
 // ---------------------------------------------------------------------------
@@ -69,6 +85,24 @@ export function restAfterSet(exercises: WorkoutExercise[], exIndex: number, setI
   const rest = ex?.sets[setIndex]?.restSeconds ?? 0;
   if (!ex?.supersetId) return rest;
   return exercises[exIndex + 1]?.supersetId === ex.supersetId ? 0 : rest;
+}
+
+// Ticking a set starts the rest that follows it (replacing any rest already
+// running); unticking it stops that rest. Within a superset round there's
+// no rest, so ticking just ends the previous one.
+export function toggleSet(a: ActiveWorkout, exIndex: number, setIndex: number, now: number): ActiveWorkout {
+  const set = a.exercises[exIndex]?.sets[setIndex];
+  if (!set) return a;
+  const done = !set.done;
+  const exercises = a.exercises.map((ex, i) =>
+    i === exIndex ? { ...ex, sets: ex.sets.map((s, j) => (j === setIndex ? { ...s, done } : s)) } : ex
+  );
+  if (!done) {
+    const ownRest = a.rest?.exIndex === exIndex && a.rest?.setIndex === setIndex;
+    return { ...a, exercises, rest: ownRest ? null : a.rest };
+  }
+  const seconds = restAfterSet(exercises, exIndex, setIndex);
+  return { ...a, exercises, rest: seconds > 0 ? { startedAt: now, target: seconds, exIndex, setIndex } : null };
 }
 
 // Join an exercise with the one after it (merging their groups if either is
@@ -149,4 +183,15 @@ export function warmupSets(working: number, unit: Unit, bar: number, restSeconds
     last = weight;
   }
   return sets;
+}
+
+// ---------------------------------------------------------------------------
+// Finishing.
+
+// What gets saved: sets never filled in (not ticked, no reps) are left out,
+// and so are exercises with nothing left, so history only shows real work.
+export function loggedExercises(exercises: WorkoutExercise[]): WorkoutExercise[] {
+  return exercises
+    .map((ex) => ({ ...ex, sets: ex.sets.filter((s) => s.done || s.reps > 0) }))
+    .filter((ex) => ex.sets.length > 0);
 }

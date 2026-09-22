@@ -1,23 +1,30 @@
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Check, Timer, X } from "lucide-react-native";
+import { CircleCheck, Disc, Ellipsis, Flame, Link2, Plus, StickyNote, Timer, Trash2, Unlink2 } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { CheckButton } from "../../components/CheckButton";
+import { Anchor, DropdownMenu, measureAnchor, MenuItem } from "../../components/DropdownMenu";
 import { ExercisePicker } from "../../components/ExercisePicker";
 import { NumberInput } from "../../components/NumberInput";
 import { PlateCalculator } from "../../components/PlateCalculator";
-import { RestSheet } from "../../components/RestSheet";
+import { RestRow } from "../../components/RestRow";
+import { RpeCell, RpeHelpButton, rpeItems } from "../../components/Rpe";
+import { SetBadge, setTypeItems } from "../../components/SetBadge";
 import { C, HIT, R, T } from "../../constants/theme";
 import {
   ActiveWorkout,
   elapsedSeconds,
   formatClock,
+  formatRest,
   historyBest1RM,
   isLivePR,
   linkWithNext,
-  nextSetType,
+  loggedExercises,
+  REST_OPTIONS,
   restAfterSet,
+  setNumber,
+  toggleSet,
   unlinkFromNext,
   warmupSets,
 } from "../../lib/activeWorkout";
@@ -40,13 +47,11 @@ import {
 import { confirm } from "../../lib/confirm";
 import { summarizeWorkout } from "../../lib/summary";
 import { convertWeight, normalizeUnits } from "../../lib/units";
-import { SetType, Workout, WorkoutExercise, WorkoutSet } from "../../types/workout";
+import { Workout, WorkoutExercise, WorkoutSet } from "../../types/workout";
 
 // Routes: /workout/<templateId> starts (or resumes) that template,
 // /workout/new starts an empty workout, /workout/resume reopens the
 // unfinished one.
-
-const TYPE_LABEL: Partial<Record<SetType, string>> = { warmup: "W", drop: "D", failure: "F" };
 
 // The workout clock ticks on its own, so the rest of the screen doesn't
 // re-render every second.
@@ -59,6 +64,28 @@ function ElapsedClock({ startedAt }: { startedAt: number }) {
   return <Text style={styles.timer}>{formatClock(elapsedSeconds(startedAt, now))}</Text>;
 }
 
+// The "⋯" button on each exercise. It opens the exercise menu next to itself.
+function MenuButton({ label, onOpen }: { label: string; onOpen: (anchor: Anchor) => void }) {
+  const ref = useRef<View>(null);
+  return (
+    <Pressable
+      ref={ref}
+      style={({ pressed }) => [styles.menuBtn, pressed && styles.menuBtnPressed]}
+      onPress={() => measureAnchor(ref.current, onOpen)}
+      hitSlop={HIT}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <Ellipsis size={20} color={C.textSoft} />
+    </Pressable>
+  );
+}
+
+type OpenMenu = { anchor: Anchor; title?: string; items: MenuItem[]; align?: "left" | "right" };
+
+const blankSets = (weight: number, restSeconds: number): WorkoutSet[] =>
+  Array.from({ length: 3 }, () => ({ weight, reps: 0, done: false, restSeconds }));
+
 export default function ActiveWorkoutScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -70,6 +97,7 @@ export default function ActiveWorkoutScreen() {
   const [showAdd, setShowAdd] = useState(false);
   const [plateFor, setPlateFor] = useState<{ name: string; weight: number } | null>(null);
   const [openNotes, setOpenNotes] = useState<string[]>([]);
+  const [menu, setMenu] = useState<OpenMenu | null>(null);
   // Set once the workout is ended or discarded, so a pending autosave can't
   // bring it back.
   const finished = useRef(false);
@@ -91,10 +119,13 @@ export default function ActiveWorkoutScreen() {
       // In the current unit, so "Prev" hints and PRs compare like with like.
       setPastWorkouts(normalizeUnits(past, unit));
       const template = id === "new" || id === "resume" ? null : (templates.find((t) => t.id === id) ?? null);
-      setDefaultRest(template?.restSeconds ?? def);
+      const rest = template?.restSeconds ?? def;
+      setDefaultRest(rest);
 
       const open = (a: ActiveWorkout) => {
-        setActive(a);
+        // Workouts saved by an older version have a rest timer that doesn't
+        // say which set it follows; drop it rather than show it in the wrong place.
+        setActive(a.rest && typeof a.rest.exIndex !== "number" ? { ...a, rest: null } : a);
         setStatus("ready");
       };
 
@@ -129,8 +160,11 @@ export default function ActiveWorkoutScreen() {
           notes: e.notes,
           supersetId: e.supersetId,
           // Bodyweight exercises are saved in templates as "BW" (0) and start
-          // at your current body weight.
-          sets: (e.sets ?? []).map((s) => ({ ...s, weight: s.weight || startingWeight(e.name, bw, unit), done: false })),
+          // at your current body weight. Exercises with no planned sets (the
+          // examples) start with three empty ones, ready to fill in.
+          sets: e.sets?.length
+            ? e.sets.map((s) => ({ ...s, weight: s.weight || startingWeight(e.name, bw, unit), done: false }))
+            : blankSets(startingWeight(e.name, bw, unit), rest),
         })),
       });
     })();
@@ -192,7 +226,7 @@ export default function ActiveWorkoutScreen() {
     );
 
   const addExercise = (name: string) => {
-    updateExercises((list) => [...list, { name, sets: [] }]);
+    updateExercises((list) => [...list, { name, sets: blankSets(startingWeight(name, bodyWeight, unit), defaultRest) }]);
     setShowAdd(false);
   };
 
@@ -204,7 +238,13 @@ export default function ActiveWorkoutScreen() {
               ...ex,
               sets: [
                 ...ex.sets,
-                { weight: startingWeight(ex.name, bodyWeight, unit), reps: 0, done: false, restSeconds: defaultRest },
+                {
+                  weight: startingWeight(ex.name, bodyWeight, unit),
+                  reps: 0,
+                  done: false,
+                  // Same rest as the sets before it, so a changed rest sticks.
+                  restSeconds: ex.sets[ex.sets.length - 1]?.restSeconds ?? defaultRest,
+                },
               ],
             }
           : ex
@@ -212,37 +252,42 @@ export default function ActiveWorkoutScreen() {
     );
 
   const toggleDone = (exIndex: number, setIndex: number) => {
-    const markingDone = !active.exercises[exIndex].sets[setIndex].done;
-    const exercises = active.exercises.map((ex, i) =>
-      i === exIndex ? { ...ex, sets: ex.sets.map((s, j) => (j === setIndex ? { ...s, done: markingDone } : s)) } : ex
-    );
-    let rest = active.rest;
-    if (markingDone) {
-      const seconds = restAfterSet(exercises, exIndex, setIndex);
-      if (seconds > 0) rest = { startedAt: Date.now(), target: seconds };
-      const ex = exercises[exIndex];
-      if (isLivePR(ex, setIndex, history[ex.name]?.best ?? 0)) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      }
+    const next = toggleSet(active, exIndex, setIndex, Date.now());
+    const ex = next.exercises[exIndex];
+    if (ex.sets[setIndex].done && isLivePR(ex, setIndex, history[ex.name]?.best ?? 0)) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     }
-    setActive({ ...active, exercises, rest });
+    setActive(next);
   };
 
-  // Replaces any unfinished warm-ups, so tapping twice doesn't double them.
+  // Inserting or removing sets would leave a running rest timer under the
+  // wrong set, so those changes stop it.
+  const changeSets = (exIndex: number, change: (sets: WorkoutSet[]) => WorkoutSet[]) =>
+    update((a) => ({
+      ...a,
+      rest: a.rest?.exIndex === exIndex ? null : a.rest,
+      exercises: a.exercises.map((ex, i) => (i === exIndex ? { ...ex, sets: change(ex.sets) } : ex)),
+    }));
+
+  const removeSet = (exIndex: number, setIndex: number) =>
+    changeSets(exIndex, (sets) => sets.filter((_, j) => j !== setIndex));
+
+  // Replaces any unfinished warm-ups, so adding them twice doesn't double them.
   const addWarmups = (exIndex: number, working: number) =>
-    updateExercises((list) =>
-      list.map((ex, i) =>
-        i === exIndex
-          ? {
-              ...ex,
-              sets: [
-                ...warmupSets(working, unit, barWeight(ex.name, unit)),
-                ...ex.sets.filter((s) => !(s.type === "warmup" && !s.done)),
-              ],
-            }
-          : ex
-      )
-    );
+    changeSets(exIndex, (sets) => [
+      ...warmupSets(working, unit, barWeight(active.exercises[exIndex].name, unit)),
+      ...sets.filter((s) => !(s.type === "warmup" && !s.done)),
+    ]);
+
+  // One rest length for every set of the exercise; a running rest follows it.
+  const setExerciseRest = (exIndex: number, seconds: number) =>
+    update((a) => ({
+      ...a,
+      rest: a.rest?.exIndex === exIndex ? (seconds > 0 ? { ...a.rest, target: seconds } : null) : a.rest,
+      exercises: a.exercises.map((ex, i) =>
+        i === exIndex ? { ...ex, sets: ex.sets.map((s) => ({ ...s, restSeconds: seconds })) } : ex
+      ),
+    }));
 
   const removeExercise = async (exIndex: number) => {
     const ex = active.exercises[exIndex];
@@ -250,16 +295,101 @@ export default function ActiveWorkoutScreen() {
       const ok = await confirm("Remove exercise", `Remove ${ex.name} and its logged sets?`, "Remove", { destructive: true });
       if (!ok) return;
     }
-    updateExercises((list) => list.filter((_, i) => i !== exIndex));
+    update((a) => ({
+      ...a,
+      rest:
+        !a.rest || a.rest.exIndex === exIndex
+          ? null
+          : a.rest.exIndex > exIndex
+            ? { ...a.rest, exIndex: a.rest.exIndex - 1 }
+            : a.rest,
+      exercises: a.exercises.filter((_, i) => i !== exIndex),
+    }));
   };
 
-  const nextUp = (() => {
-    for (const ex of active.exercises) {
-      const i = ex.sets.findIndex((s) => !s.done);
-      if (i >= 0) return `Next: ${ex.name} · set ${i + 1}`;
+  const openRestMenu = (exIndex: number, anchor: Anchor, current: number, align: "left" | "right" = "left") =>
+    setMenu({
+      anchor,
+      align,
+      title: "Rest between sets",
+      items: REST_OPTIONS.map((seconds) => ({
+        key: String(seconds),
+        label: seconds === 0 ? "No rest timer" : formatRest(seconds),
+        selected: seconds === current,
+        onPress: () => setExerciseRest(exIndex, seconds),
+      })),
+    });
+
+  const openExerciseMenu = (exIndex: number, anchor: Anchor) => {
+    const ex = active.exercises[exIndex];
+    const prev = history[ex.name]?.prev ?? [];
+    const bar = barWeight(ex.name, unit);
+    const working =
+      ex.sets.find((s) => s.type !== "warmup" && s.weight > 0)?.weight ?? prev.find((s) => s.weight > 0)?.weight ?? 0;
+    const rest = ex.sets.find((s) => s.restSeconds !== undefined)?.restSeconds ?? defaultRest;
+    const next = active.exercises[exIndex + 1];
+    const linkedToNext = Boolean(ex.supersetId && next?.supersetId === ex.supersetId);
+    const noteOpen = ex.notes !== undefined || openNotes.includes(`${exIndex}:${ex.name}`);
+    const icon = (Icon: typeof Timer, color: string = C.textSoft) => <Icon size={18} color={color} />;
+
+    const items: MenuItem[] = [];
+    if (!isBodyweight(ex.name) && working > 0) {
+      items.push({
+        key: "warmups",
+        label: "Add warm-up sets",
+        detail: `Lighter sets building up to ${working} ${unit}`,
+        icon: icon(Flame),
+        onPress: () => addWarmups(exIndex, working),
+      });
     }
-    return undefined;
-  })();
+    if (bar > 0) {
+      items.push({
+        key: "plates",
+        label: "Plate calculator",
+        detail: "Which plates to load on each side",
+        icon: icon(Disc),
+        onPress: () => setPlateFor({ name: ex.name, weight: working || bar }),
+      });
+    }
+    if (!noteOpen) {
+      items.push({
+        key: "note",
+        label: "Add note",
+        detail: "Seat height, grip, cues…",
+        icon: icon(StickyNote),
+        onPress: () => setOpenNotes((n) => [...n, `${exIndex}:${ex.name}`]),
+      });
+    }
+    items.push({
+      key: "rest",
+      label: "Rest timer",
+      detail: rest > 0 ? `${formatRest(rest)} between sets` : "Off",
+      icon: icon(Timer),
+      onPress: () => openRestMenu(exIndex, anchor, rest, "right"),
+    });
+    if (next) {
+      items.push({
+        key: "superset",
+        label: linkedToNext ? "Remove superset" : "Superset with next exercise",
+        detail: linkedToNext ? undefined : `Alternate with ${next.name}, rest after each pair`,
+        icon: icon(linkedToNext ? Unlink2 : Link2),
+        onPress: () =>
+          updateExercises((list) =>
+            linkedToNext
+              ? unlinkFromNext(list, exIndex, `ss${Date.now()}`)
+              : linkWithNext(list, exIndex, `ss${Date.now()}`)
+          ),
+      });
+    }
+    items.push({
+      key: "remove",
+      label: "Remove exercise",
+      danger: true,
+      icon: icon(Trash2, C.danger),
+      onPress: () => removeExercise(exIndex),
+    });
+    setMenu({ anchor, align: "right", items });
+  };
 
   const handleEnd = async () => {
     finished.current = true;
@@ -269,7 +399,7 @@ export default function ActiveWorkoutScreen() {
       date: new Date().toISOString(),
       durationSeconds: elapsedSeconds(active.startedAt, Date.now()),
       unit,
-      exercises: active.exercises,
+      exercises: loggedExercises(active.exercises),
     };
     await saveWorkout(workout);
     await clearActiveWorkout();
@@ -322,21 +452,35 @@ export default function ActiveWorkoutScreen() {
     router.replace("/(tabs)");
   };
 
+  const totalSets = active.exercises.reduce((n, ex) => n + ex.sets.length, 0);
+  const doneSets = active.exercises.reduce((n, ex) => n + ex.sets.filter((s) => s.done).length, 0);
+
   return (
     <View style={styles.container}>
-      {active.templateId === null ? (
-        <TextInput
-          style={[styles.name, styles.nameInput]}
-          value={active.name}
-          onChangeText={(name) => update((a) => ({ ...a, name }))}
-          placeholder="Workout name"
-          placeholderTextColor={C.textFaint}
-        />
-      ) : (
-        <Text style={styles.name}>{active.name}</Text>
-      )}
-      <ElapsedClock startedAt={active.startedAt} />
-      <Text style={styles.tip}>Tap a set number: W warm-up · D drop · F failure</Text>
+      <View style={styles.header}>
+        <View style={styles.headerText}>
+          {active.templateId === null ? (
+            <TextInput
+              style={[styles.name, styles.nameInput]}
+              value={active.name}
+              onChangeText={(name) => update((a) => ({ ...a, name }))}
+              placeholder="Workout name"
+              placeholderTextColor={C.textFaint}
+            />
+          ) : (
+            <Text style={styles.name} numberOfLines={1}>
+              {active.name}
+            </Text>
+          )}
+          <Text style={styles.progress}>
+            {totalSets === 0 ? "No sets yet" : `${doneSets} of ${totalSets} sets done`}
+          </Text>
+        </View>
+        <View style={styles.clock}>
+          <Timer size={16} color={C.accent} />
+          <ElapsedClock startedAt={active.startedAt} />
+        </View>
+      </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         {active.exercises.length === 0 && (
@@ -347,26 +491,29 @@ export default function ActiveWorkoutScreen() {
           const prev = history[ex.name]?.prev ?? [];
           const best = history[ex.name]?.best ?? 0;
           const bodyweight = isBodyweight(ex.name);
-          const bar = barWeight(ex.name, unit);
-          const working =
-            ex.sets.find((s) => s.type !== "warmup" && s.weight > 0)?.weight ??
-            prev.find((s) => s.weight > 0)?.weight ??
-            0;
-          const next = active.exercises[exIndex + 1];
-          const linkedToNext = Boolean(ex.supersetId && next?.supersetId === ex.supersetId);
           const noteOpen = ex.notes !== undefined || openNotes.includes(`${exIndex}:${ex.name}`);
+          const allDone = ex.sets.length > 0 && ex.sets.every((s) => s.done);
 
           return (
-            <View style={[styles.exerciseCard, ex.supersetId ? styles.supersetCard : null]} key={ex.name + exIndex}>
-              {ex.supersetId ? <Text style={styles.supersetLabel}>Superset</Text> : null}
-              <Text style={[styles.exerciseName, bodyweight && styles.exerciseNameTight]}>{ex.name}</Text>
-              {bodyweight && (
-                <Text style={styles.bwNote}>
-                  {bodyWeight
-                    ? `Bodyweight · uses your ${convertWeight(bodyWeight.value, bodyWeight.unit, unit)} ${unit}`
-                    : "Bodyweight · add your weight in Settings"}
-                </Text>
-              )}
+            <View style={[styles.card, ex.supersetId ? styles.supersetCard : null]} key={ex.name + exIndex}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardTitle}>
+                  {ex.supersetId ? <Text style={styles.supersetLabel}>Superset</Text> : null}
+                  <Text style={styles.exerciseName} numberOfLines={2}>
+                    {ex.name}
+                  </Text>
+                  {bodyweight && (
+                    <Text style={styles.bwNote}>
+                      {bodyWeight
+                        ? `Bodyweight · uses your ${convertWeight(bodyWeight.value, bodyWeight.unit, unit)} ${unit}`
+                        : "Bodyweight · add your weight in Settings"}
+                    </Text>
+                  )}
+                </View>
+                {allDone && <CircleCheck size={20} color={C.success} />}
+                <MenuButton label={`${ex.name} options`} onOpen={(anchor) => openExerciseMenu(exIndex, anchor)} />
+              </View>
+
               {noteOpen && (
                 <TextInput
                   style={styles.noteInput}
@@ -378,139 +525,131 @@ export default function ActiveWorkoutScreen() {
                 />
               )}
 
-              <View style={styles.setRow}>
-                <Text style={[styles.setNum, styles.colHead]}>Set</Text>
-                <Text style={[styles.prevCol, styles.colHead]}>Prev</Text>
-                <Text style={[styles.colHead, styles.colFlex]}>{unit}</Text>
-                <Text style={[styles.colHead, styles.colFlex]}>Reps</Text>
-                <View style={styles.checkCol}>
-                  <Check size={14} color={C.textFaint} />
+              {ex.sets.length > 0 && (
+                <View style={styles.row}>
+                  <Text style={[styles.colHead, styles.colSet]}>Set</Text>
+                  <Text style={[styles.colHead, styles.colPrev]}>Previous</Text>
+                  <Text style={[styles.colHead, styles.colWeight, styles.center]}>{unit}</Text>
+                  <Text style={[styles.colHead, styles.colReps, styles.center]}>Reps</Text>
+                  <View style={[styles.colRpe, styles.rpeHead]}>
+                    <Text style={[styles.colHead, styles.colHeadInline]}>RPE</Text>
+                    <RpeHelpButton size={12} />
+                  </View>
+                  <View style={styles.colCheck} />
                 </View>
-              </View>
+              )}
 
               {ex.sets.map((set, setIndex) => {
-                const type = set.type ?? "normal";
-                const pr = isLivePR(ex, setIndex, best);
+                const number = setNumber(ex.sets, setIndex);
                 const p = prev[setIndex];
+                const rest = restAfterSet(active.exercises, exIndex, setIndex);
+                const running = active.rest?.exIndex === exIndex && active.rest.setIndex === setIndex ? active.rest : null;
+                const isLast = setIndex === ex.sets.length - 1;
                 return (
                   <View key={setIndex}>
-                    <View style={[styles.setRow, styles.setRowBody, set.done && styles.setRowDone]}>
-                      <Pressable
-                        onPress={() => updateSet(exIndex, setIndex, { type: nextSetType(set.type) })}
-                        hitSlop={HIT}
-                        accessibilityLabel="Change set type"
-                      >
-                        <Text style={[styles.setNum, type !== "normal" && styles[type]]}>
-                          {TYPE_LABEL[type] ?? setIndex + 1}
-                        </Text>
-                      </Pressable>
-                      <View style={styles.prevCol}>
+                    <View style={[styles.row, styles.setRow, set.done && styles.setRowDone]}>
+                      <SetBadge
+                        type={set.type}
+                        number={number}
+                        onOpen={(anchor) =>
+                          setMenu({
+                            anchor,
+                            title: set.type === "warmup" ? "Warm-up set" : `Set ${number}`,
+                            items: setTypeItems(
+                              set.type,
+                              ex.sets.slice(0, setIndex).filter((s) => s.type !== "warmup").length + 1,
+                              (type) => updateSet(exIndex, setIndex, { type }),
+                              () => removeSet(exIndex, setIndex)
+                            ),
+                          })
+                        }
+                      />
+                      <View style={[styles.colPrev, styles.prevCell]}>
                         <Text style={styles.prev} numberOfLines={1}>
                           {p ? `${!p.weight && bodyweight ? "BW" : p.weight} × ${p.reps}` : "–"}
                         </Text>
-                        {pr && (
+                        {isLivePR(ex, setIndex, best) && (
                           <View style={styles.prPill}>
                             <Text style={styles.prText}>PR</Text>
                           </View>
                         )}
                       </View>
                       <NumberInput
-                        style={styles.setInput}
-                        placeholder={p?.weight ? String(p.weight) : unit}
+                        style={[styles.input, styles.colWeight]}
+                        placeholder={p?.weight ? String(p.weight) : "0"}
                         placeholderTextColor={C.textFaint}
                         value={set.weight}
                         onChangeValue={(v) => updateSet(exIndex, setIndex, { weight: v })}
                       />
                       <NumberInput
-                        style={styles.setInput}
+                        style={[styles.input, styles.colReps]}
                         decimals={false}
-                        placeholder={p ? String(p.reps) : "reps"}
+                        placeholder={p ? String(p.reps) : "0"}
                         placeholderTextColor={C.textFaint}
                         value={set.reps}
                         onChangeValue={(v) => updateSet(exIndex, setIndex, { reps: v })}
                       />
+                      <RpeCell
+                        value={set.rpe}
+                        onOpen={(anchor) =>
+                          setMenu({
+                            anchor,
+                            align: "right",
+                            title: "How hard was that set?",
+                            items: rpeItems(set.rpe, (rpe) => updateSet(exIndex, setIndex, { rpe })),
+                          })
+                        }
+                      />
                       <CheckButton done={set.done} onToggle={() => toggleDone(exIndex, setIndex)} />
                     </View>
 
-                    <View style={styles.subRow}>
-                      {set.restSeconds ? (
-                        <View style={styles.subGroup}>
-                          <Timer size={13} color={C.textFaint} />
-                          <Text style={styles.subLabel}>Rest</Text>
-                          <NumberInput
-                            style={styles.subInput}
-                            decimals={false}
-                            value={set.restSeconds}
-                            onChangeValue={(v) => updateSet(exIndex, setIndex, { restSeconds: v })}
-                          />
-                          <Text style={styles.subLabel}>s</Text>
-                          <Pressable
-                            onPress={() => updateSet(exIndex, setIndex, { restSeconds: 0 })}
-                            hitSlop={HIT}
-                            accessibilityLabel="Remove rest"
-                          >
-                            <X size={15} color={C.textFaint} />
-                          </Pressable>
-                        </View>
-                      ) : (
-                        <Pressable onPress={() => updateSet(exIndex, setIndex, { restSeconds: defaultRest })} hitSlop={HIT}>
-                          <Text style={styles.subLink}>+ Rest</Text>
-                        </Pressable>
-                      )}
-                      <View style={styles.subGroup}>
-                        <Text style={styles.subLabel}>RPE</Text>
-                        <NumberInput
-                          style={styles.subInput}
-                          value={set.rpe ?? 0}
-                          placeholder="–"
-                          placeholderTextColor={C.textFaint}
-                          onChangeValue={(v) => updateSet(exIndex, setIndex, { rpe: v ? Math.min(10, v) : undefined })}
-                        />
-                      </View>
-                    </View>
+                    {/* The rest between this set and the next. After the last set it
+                        only shows while it's running (the rest before the next exercise). */}
+                    {(running || (rest > 0 && !isLast)) && (
+                      <RestRow
+                        seconds={rest}
+                        running={running}
+                        onEdit={(anchor) => openRestMenu(exIndex, anchor, set.restSeconds ?? 0)}
+                        onStop={() => update((a) => ({ ...a, rest: null }))}
+                      />
+                    )}
                   </View>
                 );
               })}
 
-              <View style={styles.actions}>
-                <Pill label="+ Set" onPress={() => addSet(exIndex)} />
-                {!bodyweight && working > 0 && <Pill label="Warm-ups" onPress={() => addWarmups(exIndex, working)} />}
-                {bar > 0 && <Pill label="Plates" onPress={() => setPlateFor({ name: ex.name, weight: working || bar })} />}
-                {!noteOpen && <Pill label="Note" onPress={() => setOpenNotes((n) => [...n, `${exIndex}:${ex.name}`])} />}
-                {next && (
-                  <Pill
-                    label={linkedToNext ? "Unlink" : "Superset"}
-                    onPress={() =>
-                      updateExercises((list) =>
-                        linkedToNext
-                          ? unlinkFromNext(list, exIndex, `ss${Date.now()}`)
-                          : linkWithNext(list, exIndex, `ss${Date.now()}`)
-                      )
-                    }
-                  />
-                )}
-                <Pill label="Remove" danger onPress={() => removeExercise(exIndex)} />
-              </View>
+              <Pressable
+                style={({ pressed }) => [styles.addSet, pressed && styles.addSetPressed]}
+                onPress={() => addSet(exIndex)}
+                accessibilityRole="button"
+              >
+                <Plus size={16} color={C.accent} />
+                <Text style={styles.addSetText}>Add set</Text>
+              </Pressable>
             </View>
           );
         })}
 
-        <Pressable style={styles.addExerciseBtn} onPress={() => setShowAdd(true)}>
-          <Text style={styles.addExerciseText}>+ Add exercise</Text>
+        <Pressable style={styles.addExerciseBtn} onPress={() => setShowAdd(true)} accessibilityRole="button">
+          <Plus size={18} color={C.accent} />
+          <Text style={styles.addExerciseText}>Add exercise</Text>
+        </Pressable>
+
+        <Pressable style={styles.discardBtn} onPress={handleDiscard} hitSlop={HIT} accessibilityRole="button">
+          <Text style={styles.discardText}>Discard workout</Text>
         </Pressable>
       </ScrollView>
 
-      {active.rest && (
-        <RestSheet
-          rest={active.rest}
-          nextLabel={nextUp}
-          onAdjust={(delta) =>
-            update((a) => (a.rest ? { ...a, rest: { ...a.rest, target: Math.max(15, a.rest.target + delta) } } : a))
-          }
-          onDone={() => update((a) => ({ ...a, rest: null }))}
-        />
-      )}
+      <Pressable style={styles.endButton} onPress={handleEnd} accessibilityRole="button">
+        <Text style={styles.endText}>Finish workout</Text>
+      </Pressable>
 
+      <DropdownMenu
+        anchor={menu?.anchor ?? null}
+        title={menu?.title}
+        items={menu?.items ?? []}
+        align={menu?.align}
+        onClose={() => setMenu(null)}
+      />
       <ExercisePicker visible={showAdd} onClose={() => setShowAdd(false)} onSelect={addExercise} />
       <PlateCalculator
         exercise={plateFor?.name ?? null}
@@ -518,42 +657,38 @@ export default function ActiveWorkoutScreen() {
         initialWeight={plateFor?.weight ?? 0}
         onClose={() => setPlateFor(null)}
       />
-
-      <Pressable style={styles.endButton} onPress={handleEnd}>
-        <Text style={styles.endText}>End workout</Text>
-      </Pressable>
-      <Pressable style={styles.discardBtn} onPress={handleDiscard} hitSlop={HIT}>
-        <Text style={styles.discardText}>Discard workout</Text>
-      </Pressable>
     </View>
   );
 }
 
-function Pill({ label, onPress, danger }: { label: string; onPress: () => void; danger?: boolean }) {
-  return (
-    <Pressable style={styles.pill} onPress={onPress} hitSlop={{ top: 6, bottom: 6 }}>
-      <Text style={[styles.pillText, danger && styles.pillDanger]}>{label}</Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.bg, padding: 20, paddingTop: 16 },
-  centered: { justifyContent: "center", alignItems: "stretch", gap: 16 },
+  container: { flex: 1, backgroundColor: C.bg, paddingHorizontal: 16, paddingTop: 8 },
+  centered: { justifyContent: "center", alignItems: "stretch", gap: 16, padding: 20 },
   message: { color: C.textMuted, fontSize: 15, textAlign: "center", marginVertical: 12 },
-  name: { color: C.text, fontSize: 22, fontWeight: "500", textAlign: "center" },
-  nameInput: { borderBottomWidth: 1, borderBottomColor: C.raised, paddingVertical: 4, alignSelf: "center", minWidth: 180 },
-  timer: { ...T.numBig, fontSize: 52, color: C.accent, textAlign: "center" },
-  tip: { color: C.textFaint, fontSize: 11, textAlign: "center", marginBottom: 10 },
-  scroll: { flex: 1 },
-  scrollContent: { gap: 12, paddingBottom: 12 },
 
-  exerciseCard: { backgroundColor: C.card, borderRadius: R.lg, padding: 14 },
+  header: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 4, marginBottom: 12 },
+  headerText: { flex: 1 },
+  name: { color: C.text, fontSize: 22, fontWeight: "700" },
+  nameInput: { borderBottomWidth: 1, borderBottomColor: C.raised, paddingVertical: 2 },
+  progress: { color: C.textMuted, fontSize: 13, marginTop: 2 },
+  clock: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: C.card, borderRadius: R.pill, paddingHorizontal: 12, paddingVertical: 6,
+  },
+  timer: { ...T.num, fontSize: 20, color: C.accent },
+
+  scroll: { flex: 1 },
+  scrollContent: { gap: 12, paddingBottom: 16 },
+
+  card: { backgroundColor: C.card, borderRadius: R.lg, padding: 14 },
   supersetCard: { borderLeftWidth: 3, borderLeftColor: C.signal },
-  supersetLabel: { color: C.signal, fontSize: 11, fontWeight: "600", textTransform: "uppercase", marginBottom: 4 },
-  exerciseName: { color: C.text, fontSize: 16, fontWeight: "500", marginBottom: 10 },
-  exerciseNameTight: { marginBottom: 2 },
-  bwNote: { color: C.textMuted, fontSize: 12, marginBottom: 10 },
+  cardHeader: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginBottom: 10 },
+  cardTitle: { flex: 1, paddingTop: 4 },
+  supersetLabel: { color: C.signal, fontSize: 11, fontWeight: "600", textTransform: "uppercase", marginBottom: 2 },
+  exerciseName: { color: C.text, fontSize: 17, fontWeight: "600" },
+  bwNote: { color: C.textMuted, fontSize: 12, marginTop: 2 },
+  menuBtn: { width: 36, height: 32, borderRadius: R.sm, alignItems: "center", justifyContent: "center" },
+  menuBtnPressed: { backgroundColor: C.raised },
   noteInput: {
     backgroundColor: C.raised,
     color: C.textSoft,
@@ -564,61 +699,47 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 
-  setRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  setRowBody: { paddingVertical: 4, paddingHorizontal: 4, borderRadius: R.sm, marginHorizontal: -4 },
+  // Columns: set | previous | weight | reps | done
+  row: { flexDirection: "row", alignItems: "center", gap: 8 },
+  colSet: { width: 38, textAlign: "center" },
+  colPrev: { flex: 1 },
+  colWeight: { width: 60 },
+  colReps: { width: 50 },
+  colRpe: { width: 40 },
+  colCheck: { width: 36 },
+  colHead: { color: C.textFaint, fontSize: 11, fontWeight: "600", textTransform: "uppercase", marginBottom: 6 },
+  colHeadInline: { marginBottom: 0 },
+  center: { textAlign: "center" },
+  rpeHead: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 6 },
+  setRow: { paddingVertical: 5, paddingHorizontal: 6, marginHorizontal: -6, borderRadius: R.md },
   setRowDone: { backgroundColor: C.successBg },
-  setNum: { color: C.textMuted, fontSize: 14, width: 24, textAlign: "center", fontWeight: "500" },
-  warmup: { color: C.warning },
-  drop: { color: C.signal },
-  failure: { color: C.danger },
-  normal: {},
-  prevCol: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6, paddingLeft: 4 },
+  prevCell: { flexDirection: "row", alignItems: "center", gap: 6 },
   prev: { color: C.textFaint, fontSize: 13, flexShrink: 1 },
   prPill: { backgroundColor: C.signal, borderRadius: 5, paddingHorizontal: 5, paddingVertical: 1 },
   prText: { color: C.onAccent, fontSize: 11, fontWeight: "700" },
-  colHead: { color: C.textFaint, fontSize: 11, marginBottom: 4 },
-  colFlex: { width: 56, textAlign: "center" },
-  checkCol: { width: 36, alignItems: "center", justifyContent: "center", marginBottom: 4 },
-  setInput: {
+  input: {
     ...T.num,
-    fontSize: 17,
-    width: 56,
+    fontSize: 18,
+    height: 38,
     backgroundColor: C.raised,
     textAlign: "center",
-    paddingVertical: 6,
     borderRadius: R.sm,
   },
 
-  subRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginLeft: 28, marginTop: 4, marginBottom: 10 },
-  subGroup: { flexDirection: "row", alignItems: "center", gap: 6 },
-  subLabel: { color: C.textFaint, fontSize: 12 },
-  subLink: { color: C.accent, fontSize: 12 },
-  subInput: {
-    backgroundColor: C.raised,
-    color: C.textSoft,
-    fontSize: 12,
-    textAlign: "center",
-    paddingVertical: 4,
-    width: 44,
-    borderRadius: R.sm,
+  addSet: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    marginTop: 10, paddingVertical: 10, borderRadius: R.md, backgroundColor: C.raised,
   },
-
-  actions: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 },
-  pill: { backgroundColor: C.raised, borderRadius: R.pill, paddingHorizontal: 12, paddingVertical: 7 },
-  pillText: { color: C.accent, fontSize: 13 },
-  pillDanger: { color: C.danger },
+  addSetPressed: { backgroundColor: C.selected },
+  addSetText: { color: C.accent, fontSize: 14, fontWeight: "600" },
 
   addExerciseBtn: {
-    alignItems: "center",
-    paddingVertical: 12,
-    borderWidth: 0.5,
-    borderColor: C.raised,
-    borderRadius: R.md,
-    borderStyle: "dashed",
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    paddingVertical: 14, borderWidth: 1, borderColor: C.raised, borderRadius: R.lg, borderStyle: "dashed",
   },
-  addExerciseText: { color: C.accent, fontSize: 15 },
-  endButton: { backgroundColor: C.accent, borderRadius: R.md, padding: 16, alignItems: "center", marginTop: 12 },
-  endText: { color: C.onAccent, fontSize: 16, fontWeight: "500" },
-  discardBtn: { alignItems: "center", paddingVertical: 10, marginTop: 2 },
-  discardText: { color: C.textMuted, fontSize: 14 },
+  addExerciseText: { color: C.accent, fontSize: 15, fontWeight: "500" },
+  discardBtn: { alignItems: "center", paddingVertical: 12 },
+  discardText: { color: C.danger, fontSize: 14 },
+  endButton: { backgroundColor: C.accent, borderRadius: R.md, padding: 16, alignItems: "center", marginTop: 8, marginBottom: 24 },
+  endText: { color: C.onAccent, fontSize: 16, fontWeight: "600" },
 });

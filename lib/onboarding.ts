@@ -16,7 +16,7 @@ export const EXPERIENCE: { id: Experience; title: string; detail: string }[] = [
   { id: "experienced", title: "Experienced", detail: "Over 2 years, comfortable with the main lifts." },
 ];
 
-export const WEEKLY_OPTIONS = [2, 3, 4, 5, 6];
+export const WEEKLY_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
 
 // Rest between sets that suits the goal: heavy strength work needs the longest.
 export function restForGoal(goal: Goal): number {
@@ -44,7 +44,7 @@ export function starterPlan(experience: Experience, weeklyGoal: number): Starter
       templateId: "premade-fullbody",
       rotation: ["premade-fullbody"],
       split: "Full body",
-      why: `Training everything each session works every muscle ${weeklyGoal === 2 ? "twice" : "two to three times"} a week, and it's the quickest way to learn the main lifts.`,
+      why: `Training everything each session works every muscle ${["once", "twice", "three times"][weeklyGoal - 1] ?? "once"} a week, and it's the quickest way to learn the main lifts.`,
     };
   }
   if (weeklyGoal === 4 || experience === "new") {

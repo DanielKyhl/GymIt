@@ -22,7 +22,7 @@ export type WorkoutSet = {
   done: boolean;
   type?: SetType; // defaults to "normal" when absent
   restSeconds?: number; // rest to take after this set; 0/undefined = no rest
-  rpe?: number; // rate of perceived exertion, 1–10 (half steps allowed)
+  rpe?: number; // no longer asked for; kept so older workouts that have it still load
 };
 
 // An exercise as performed in a workout, with all its sets

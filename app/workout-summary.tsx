@@ -1,13 +1,19 @@
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
-import { Award, Share2, Sparkles, Trophy } from "lucide-react-native";
+import { Award, Share2, Sparkles } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
 import { captureRef } from "react-native-view-shot";
+import { LifetimeCard } from "../components/LifetimeCard";
+import { RpeHelpButton } from "../components/Rpe";
 import { ShareCard } from "../components/ShareCard";
 import { C, T } from "../constants/theme";
+import { compareVolume, Comparison } from "../lib/funFacts";
+import { lifetimeKg, lifetimeMilestone } from "../lib/milestones";
+import { formatRPE, workoutRPE } from "../lib/rpe";
+import { convertWeight } from "../lib/units";
 import { workoutVolume } from "../lib/stats";
 import { getWorkoutsForStats } from "../lib/storage";
 import { Workout } from "../types/workout";
@@ -31,6 +37,8 @@ export default function WorkoutSummary() {
     records?: string;
   }>();
   const [workout, setWorkout] = useState<Workout | null>(null);
+  const [comparison, setComparison] = useState<Comparison | null>(null);
+  const [lifetime, setLifetime] = useState<{ totalKg: number; newMilestone: boolean } | null>(null);
   const [sharing, setSharing] = useState(false);
   const cardRef = useRef<View>(null);
 
@@ -40,9 +48,23 @@ export default function WorkoutSummary() {
   const achievements = parseList<string>(params.achievements);
   const records = parseList<{ name: string; weight: number; reps: number }>(params.records);
   const celebrate = records.length > 0 || leveledUp;
+  const rpe = workout ? workoutRPE(workout) : null;
 
   useEffect(() => {
-    getWorkoutsForStats().then((all) => setWorkout(all.find((w) => w.id === params.id) ?? null));
+    getWorkoutsForStats().then((all) => {
+      const w = all.find((x) => x.id === params.id) ?? null;
+      setWorkout(w);
+      // Seeded by how many workouts came before, so each new workout gets a
+      // different animal even when the total barely changed.
+      if (w) setComparison(compareVolume(workoutVolume(w), w.unit, all.filter((x) => x.date < w.date).length));
+      // Did this workout take the lifetime total past a new landmark?
+      const totalKg = lifetimeKg(all);
+      const beforeKg = w ? totalKg - convertWeight(workoutVolume(w), w.unit, "kg") : totalKg;
+      setLifetime({
+        totalKg,
+        newMilestone: lifetimeMilestone(totalKg).passed?.id !== lifetimeMilestone(beforeKg).passed?.id,
+      });
+    });
   }, [params.id]);
 
   useEffect(() => {
@@ -65,16 +87,19 @@ export default function WorkoutSummary() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Animated.View entering={ZoomIn.springify().damping(11)} style={styles.hero}>
-        <Trophy size={44} color={C.signal} />
-      </Animated.View>
-      <Animated.Text entering={FadeInDown.delay(120)} style={styles.title}>
+      <Animated.Text entering={ZoomIn.springify().damping(12)} style={styles.title}>
         {records.length > 0 ? "New personal best!" : "Workout complete!"}
       </Animated.Text>
 
       {workout && (
         <Animated.View entering={FadeInDown.delay(220)} style={styles.full}>
-          <ShareCard ref={cardRef} workout={workout} volume={workoutVolume(workout)} records={records} />
+          <ShareCard
+            ref={cardRef}
+            workout={workout}
+            volume={workoutVolume(workout)}
+            records={records}
+            comparison={comparison}
+          />
         </Animated.View>
       )}
 
@@ -87,7 +112,22 @@ export default function WorkoutSummary() {
           <Text style={styles.xpValue}>{level}</Text>
           <Text style={styles.xpLabel}>Level</Text>
         </View>
+        {rpe !== null && (
+          <View style={styles.xpBox}>
+            <Text style={styles.xpValue}>{formatRPE(rpe)}</Text>
+            <View style={styles.rpeLabel}>
+              <Text style={styles.xpLabel}>Avg RPE</Text>
+              <RpeHelpButton size={13} />
+            </View>
+          </View>
+        )}
       </Animated.View>
+
+      {lifetime && workout && (
+        <Animated.View entering={FadeInDown.delay(400)} style={[styles.full, styles.lifetime]}>
+          <LifetimeCard totalKg={lifetime.totalKg} unit={workout.unit} newMilestone={lifetime.newMilestone} />
+        </Animated.View>
+      )}
 
       {leveledUp && (
         <Animated.View entering={ZoomIn.delay(480).springify().damping(10)} style={styles.levelCard}>
@@ -133,12 +173,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   content: { padding: 24, paddingTop: 64, paddingBottom: 40, alignItems: "center" },
   full: { width: "100%" },
-  hero: { marginBottom: 10 },
+  lifetime: { marginTop: 12 },
   title: { color: C.text, fontSize: 26, fontWeight: "bold", marginBottom: 22 },
   xpRow: { flexDirection: "row", gap: 12, width: "100%", marginTop: 12 },
   xpBox: { flex: 1, backgroundColor: C.card, borderRadius: 16, paddingVertical: 16, alignItems: "center" },
   xpValue: { ...T.num, fontSize: 32, color: C.accent },
   xpLabel: { color: C.textMuted, fontSize: 13, marginTop: 2 },
+  rpeLabel: { flexDirection: "row", alignItems: "center", gap: 4 },
   levelCard: {
     backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.rest,
     padding: 16, marginTop: 12, width: "100%",

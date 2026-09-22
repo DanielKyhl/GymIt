@@ -29,7 +29,7 @@ export default function WeeklyGoalScreen() {
       </Text>
 
       <View style={styles.grid}>
-        {Array.from({ length: 14 }, (_, i) => i + 1).map((n) => (
+        {Array.from({ length: 7 }, (_, i) => i + 1).map((n) => (
           <Pressable
             key={n}
             style={[styles.option, goal === n && styles.optionActive]}
@@ -47,9 +47,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg, padding: 20, paddingTop: 16 },
   title: { color: C.text, fontSize: 26, fontWeight: "bold", marginBottom: 8 },
   subtitle: { color: C.textMuted, fontSize: 15, marginBottom: 28, lineHeight: 21 },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  grid: { flexDirection: "row", gap: 6 },
   option: {
-    width: 56, height: 56, borderRadius: 12, backgroundColor: C.card,
+    flex: 1, height: 56, borderRadius: 12, backgroundColor: C.card,
     alignItems: "center", justifyContent: "center",
   },
   optionActive: { backgroundColor: C.selected },

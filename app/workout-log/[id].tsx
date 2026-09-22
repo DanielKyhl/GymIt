@@ -1,17 +1,20 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Check, Pencil, Trash2, X } from "lucide-react-native";
+import { Check, Pencil, Trash2 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Anchor, DropdownMenu, MenuItem } from "../../components/DropdownMenu";
 import { ExercisePicker } from "../../components/ExercisePicker";
 import { NumberInput } from "../../components/NumberInput";
+import { RpeCell, RpeHelpButton, rpeItems } from "../../components/Rpe";
+import { SetBadge, setTypeItems } from "../../components/SetBadge";
 import { C, HIT, R, T } from "../../constants/theme";
-import { nextSetType } from "../../lib/activeWorkout";
+import { setNumber } from "../../lib/activeWorkout";
 import { confirm } from "../../lib/confirm";
+import { formatRPE, workoutRPE } from "../../lib/rpe";
 import { deleteWorkout, getWorkouts, updateWorkout } from "../../lib/storage";
-import { SetType, Workout, WorkoutSet } from "../../types/workout";
+import { Workout, WorkoutSet } from "../../types/workout";
 
-const SET_TYPE_NAME = { warmup: "warm-up", drop: "drop set", failure: "to failure" } as const;
-const TYPE_LABEL: Partial<Record<SetType, string>> = { warmup: "W", drop: "D", failure: "F" };
+const SET_TYPE_NAME = { drop: "drop set", failure: "to failure" } as const;
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
@@ -25,6 +28,7 @@ export default function WorkoutLogDetail() {
   // While editing, changes go to a draft; nothing is saved until "Save".
   const [draft, setDraft] = useState<Workout | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [menu, setMenu] = useState<{ anchor: Anchor; title: string; items: MenuItem[] } | null>(null);
 
   useEffect(() => {
     getWorkouts().then((workouts) => {
@@ -116,18 +120,25 @@ export default function WorkoutLogDetail() {
                 </Pressable>
               </View>
               {ex.sets.map((set, setIndex) => {
-                const type = set.type ?? "normal";
+                const number = setNumber(ex.sets, setIndex);
                 return (
                   <View style={styles.editRow} key={setIndex}>
-                    <Pressable
-                      onPress={() => updateSet(exIndex, setIndex, { type: nextSetType(set.type) })}
-                      hitSlop={HIT}
-                      accessibilityLabel="Change set type"
-                    >
-                      <Text style={[styles.setNum, type !== "normal" && styles[type]]}>
-                        {TYPE_LABEL[type] ?? setIndex + 1}
-                      </Text>
-                    </Pressable>
+                    <SetBadge
+                      type={set.type}
+                      number={number}
+                      onOpen={(anchor) =>
+                        setMenu({
+                          anchor,
+                          title: set.type === "warmup" ? "Warm-up set" : `Set ${number}`,
+                          items: setTypeItems(
+                            set.type,
+                            ex.sets.slice(0, setIndex).filter((s) => s.type !== "warmup").length + 1,
+                            (type) => updateSet(exIndex, setIndex, { type }),
+                            () => removeSet(exIndex, setIndex)
+                          ),
+                        })
+                      }
+                    />
                     <NumberInput
                       style={styles.input}
                       value={set.weight}
@@ -145,13 +156,16 @@ export default function WorkoutLogDetail() {
                       placeholderTextColor={C.textFaint}
                     />
                     <Text style={[styles.unit, styles.flex]}>reps</Text>
-                    <Pressable
-                      onPress={() => removeSet(exIndex, setIndex)}
-                      hitSlop={HIT}
-                      accessibilityLabel="Remove set"
-                    >
-                      <X size={18} color={C.textFaint} />
-                    </Pressable>
+                    <RpeCell
+                      value={set.rpe}
+                      onOpen={(anchor) =>
+                        setMenu({
+                          anchor,
+                          title: "How hard was that set?",
+                          items: rpeItems(set.rpe, (rpe) => updateSet(exIndex, setIndex, { rpe })),
+                        })
+                      }
+                    />
                   </View>
                 );
               })}
@@ -173,6 +187,12 @@ export default function WorkoutLogDetail() {
             setShowAdd(false);
           }}
         />
+        <DropdownMenu
+          anchor={menu?.anchor ?? null}
+          title={menu?.title}
+          items={menu?.items ?? []}
+          onClose={() => setMenu(null)}
+        />
 
         <View style={styles.footer}>
           <Pressable style={[styles.button, styles.secondary]} onPress={() => setDraft(null)}>
@@ -186,12 +206,18 @@ export default function WorkoutLogDetail() {
     );
   }
 
+  const rpe = workoutRPE(workout);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{workout.name}</Text>
-      <Text style={styles.sub}>
-        {formatDate(workout.date)} · {Math.round(workout.durationSeconds / 60)} min
-      </Text>
+      <View style={styles.subRow}>
+        <Text style={[styles.sub, styles.subInline]}>
+          {formatDate(workout.date)} · {Math.round(workout.durationSeconds / 60)} min
+          {rpe !== null ? ` · avg RPE ${formatRPE(rpe)}` : ""}
+        </Text>
+        {rpe !== null && <RpeHelpButton size={13} />}
+      </View>
 
       <ScrollView contentContainerStyle={styles.list}>
         {workout.exercises.map((ex, i) => (
@@ -205,9 +231,10 @@ export default function WorkoutLogDetail() {
               ex.sets.map((set, j) => (
                 <View style={styles.setRow} key={j}>
                   <Text style={styles.setLine}>
-                    Set {j + 1}:  {set.weight} {workout.unit} × {set.reps} reps
-                    {set.type && set.type !== "normal" ? `  · ${SET_TYPE_NAME[set.type]}` : ""}
-                    {set.rpe ? `  · RPE ${set.rpe}` : ""}
+                    {set.type === "warmup" ? "Warm-up" : `Set ${setNumber(ex.sets, j)}`}:  {set.weight} {workout.unit} ×{" "}
+                    {set.reps} reps
+                    {set.type === "drop" || set.type === "failure" ? `  · ${SET_TYPE_NAME[set.type]}` : ""}
+                    {set.rpe ? `  · RPE ${formatRPE(set.rpe)}` : ""}
                   </Text>
                   {set.done && <Check size={14} color={C.success} />}
                 </View>
@@ -257,10 +284,8 @@ const styles = StyleSheet.create({
   notes: { color: C.textMuted, fontSize: 13, fontStyle: "italic", marginBottom: 8 },
 
   editRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
-  setNum: { color: C.textMuted, fontSize: 14, width: 22, textAlign: "center", fontWeight: "500" },
-  warmup: { color: C.warning },
-  drop: { color: C.signal },
-  failure: { color: C.danger },
+  subRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 20 },
+  subInline: { marginBottom: 0, flexShrink: 1 },
   normal: {},
   input: {
     ...T.num,

@@ -36,6 +36,10 @@ export default function RootLayout() {
             headerStyle: { backgroundColor: C.bg },
             headerTintColor: C.text,
             headerShadowVisible: false,
+            // Just the arrow: the label would be the previous screen's route
+            // name, which for the tabs is "(tabs)".
+            headerBackButtonDisplayMode: 'minimal',
+            headerBackTitle: 'Back',
           }}
         >
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />

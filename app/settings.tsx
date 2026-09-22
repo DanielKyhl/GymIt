@@ -146,7 +146,7 @@ export default function Settings() {
 
       <Text style={styles.section}>Weekly workout goal</Text>
       <View style={styles.grid}>
-        {Array.from({ length: 14 }, (_, i) => i + 1).map((n) => (
+        {Array.from({ length: 7 }, (_, i) => i + 1).map((n) => (
           <Pressable
             key={n}
             style={[styles.goalBtn, goal === n && styles.segActive]}
@@ -238,8 +238,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12, width: 80, borderRadius: 10,
   },
   restUnit: { color: C.textMuted, fontSize: 15 },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  goalBtn: { width: 44, height: 44, backgroundColor: C.card, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  grid: { flexDirection: "row", gap: 6 },
+  goalBtn: { flex: 1, height: 44, backgroundColor: C.card, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   action: { color: C.accent, fontSize: 15, marginBottom: 4 },
   hint: { color: C.textMuted, fontSize: 12 },
   dangerCard: { borderWidth: 1, borderColor: C.restOver },

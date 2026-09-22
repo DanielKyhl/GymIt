@@ -35,7 +35,7 @@ describe("starterPlan", () => {
   test("every plan points at real example templates, starting with the first", () => {
     const ids = new Set(PREMADE_TEMPLATES.map((t) => t.id));
     for (const exp of ["new", "some", "experienced"] as const) {
-      for (const days of [2, 3, 4, 5, 6]) {
+      for (const days of [1, 2, 3, 4, 5, 6, 7]) {
         const plan = starterPlan(exp, days);
         expect(plan.rotation[0]).toBe(plan.templateId);
         expect(plan.rotation.every((id) => ids.has(id))).toBe(true);

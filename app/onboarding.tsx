@@ -322,16 +322,16 @@ const styles = StyleSheet.create({
   weightUnit: { ...T.num, color: C.textMuted, fontSize: 22, width: 30 },
   hint: { color: C.textFaint, fontSize: 13, lineHeight: 18, marginTop: 10 },
 
-  weekRow: { flexDirection: "row", gap: 10 },
+  weekRow: { flexDirection: "row", gap: 6 },
   weekCol: { flex: 1, alignItems: "center", gap: 8 },
   weekBtn: {
-    width: "100%", height: 64, borderRadius: 14, backgroundColor: C.card,
+    width: "100%", height: 56, borderRadius: 12, backgroundColor: C.card,
     borderWidth: 1.5, borderColor: C.raised, alignItems: "center", justifyContent: "center",
   },
   weekBtnActive: { borderColor: C.accent, backgroundColor: C.raised },
-  weekNum: { ...T.num, color: C.textSoft, fontSize: 28 },
+  weekNum: { ...T.num, color: C.textSoft, fontSize: 24 },
   weekNumActive: { color: C.text },
-  suggested: { color: C.signal, fontSize: 11, fontWeight: "600" },
+  suggested: { color: C.signal, fontSize: 10, fontWeight: "600", width: 70, textAlign: "center" },
 
   planCard: { backgroundColor: C.card, borderRadius: 20, borderWidth: 1, borderColor: C.raised, padding: 20 },
   planLabel: { color: C.signal, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
