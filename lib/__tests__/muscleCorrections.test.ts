@@ -108,3 +108,42 @@ describe("recovery after braced lifts", () => {
     expect(muscle("Barbell Deadlift", 1, "hamstring").color).toBe(COLOR_TRAINED);
   });
 });
+
+describe("the middle of the back", () => {
+  const colour = (exercises: { name: string }[], hours: number, slug: string) =>
+    computeRecovery([workout("Session", hoursAgo(hours), exercises.map(({ name }) => ({ name, sets: [set(50, 10)] })))], NOW).find(
+      (m) => m.slug === slug
+    )!.color;
+
+  test("a pull day lights up the whole upper back", () => {
+    const pullDay = [
+      { name: "Cable Bar Lateral Pulldown" },
+      { name: "Cable Seated Row" },
+      { name: "Lever Bent Over Row" },
+      { name: "Face Pull" },
+      { name: "Dumbbell Incline Biceps Curl" },
+      { name: "Dumbbell Cross Body Hammer Curl" },
+    ];
+    expect(colour(pullDay, 1, "trapezius")).toBe(COLOR_TRAINED); // the middle strip
+    expect(colour(pullDay, 1, "upper-back")).toBe(COLOR_TRAINED); // the sides
+  });
+
+  test("a row trains both the middle and the sides", () => {
+    expect(colour([{ name: "Cable Seated Row" }], 1, "trapezius")).toBe(COLOR_TRAINED);
+    expect(colour([{ name: "Cable Seated Row" }], 1, "upper-back")).toBe(COLOR_TRAINED);
+  });
+
+  test("a pulldown is mainly the sides, with the middle helping", () => {
+    // The middle is a helper here, like biceps on a row: red at first, then
+    // partly recovered, and clear in half the time the sides take.
+    expect(colour([{ name: "Cable Bar Lateral Pulldown" }], 1, "upper-back")).toBe(COLOR_TRAINED);
+    expect(colour([{ name: "Cable Bar Lateral Pulldown" }], 20, "trapezius")).toBe(COLOR_PARTIAL);
+    expect(colour([{ name: "Cable Bar Lateral Pulldown" }], 31, "trapezius")).toBe(COLOR_RECOVERED);
+    expect(colour([{ name: "Cable Bar Lateral Pulldown" }], 31, "upper-back")).not.toBe(COLOR_RECOVERED);
+  });
+
+  test("shrugs are the middle strip only", () => {
+    expect(colour([{ name: "Barbell Shrug" }], 1, "trapezius")).toBe(COLOR_TRAINED);
+    expect(colour([{ name: "Barbell Shrug" }], 1, "upper-back")).toBe(COLOR_RECOVERED);
+  });
+});

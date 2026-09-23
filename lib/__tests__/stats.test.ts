@@ -4,6 +4,7 @@ import {
     getTrainedExercises,
     getVolumeByTemplate,
     lastUsedDate,
+    weeklyMuscleSets,
     workoutVolume,
 } from "../stats";
 import { set, workout } from "./fixtures";
@@ -88,5 +89,22 @@ describe("lookups", () => {
   test("lastUsedDate finds the newest use of a template", () => {
     expect(lastUsedDate(history, "Push")).toBe("2026-09-05");
     expect(lastUsedDate(history, "Never Done")).toBeNull();
+  });
+});
+describe("weekly sets count each exercise once", () => {
+  const NOW = new Date("2026-09-20T12:00:00.000Z").getTime();
+  const sets = (name: string, n: number) => ({ name, sets: Array.from({ length: n }, () => set(50, 10)) });
+  const week = (...exercises: { name: string; sets: ReturnType<typeof set>[] }[]) =>
+    weeklyMuscleSets([workout("W", "2026-09-19T18:00:00.000Z", exercises)], NOW);
+  const count = (rows: ReturnType<typeof weeklyMuscleSets>, slug: string) => rows.find((r) => r.slug === slug)?.sets ?? 0;
+
+  test("a row counts as Back, not Back and Traps", () => {
+    const rows = week(sets("Cable Seated Row", 3));
+    expect(count(rows, "upper-back")).toBe(3);
+    expect(count(rows, "trapezius")).toBe(0);
+  });
+
+  test("shrugs count as Traps", () => {
+    expect(count(week(sets("Barbell Shrug", 4)), "trapezius")).toBe(4);
   });
 });

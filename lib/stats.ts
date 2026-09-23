@@ -204,7 +204,8 @@ const MAIN_MUSCLES: Slug[] = [
 export type MuscleSets = { slug: Slug; sets: number };
 
 // Finished working sets per muscle over the last 7 days, most trained first.
-// A set counts once for each muscle the exercise works as a primary mover.
+// A set counts once, under the exercise's main muscle: a row is Back, even
+// though it lights up the middle of the back too on the recovery map.
 export function weeklyMuscleSets(workouts: Workout[], now: number = Date.now()): MuscleSets[] {
   const counts: Partial<Record<Slug, number>> = {};
   workouts.forEach((w) => {
@@ -213,9 +214,8 @@ export function weeklyMuscleSets(workouts: Workout[], now: number = Date.now()):
     w.exercises.forEach((ex) => {
       const sets = ex.sets.filter((s) => s.done && s.type !== "warmup").length;
       if (sets === 0) return;
-      new Set(musclesFor(ex.name).primary).forEach((slug) => {
-        counts[slug] = (counts[slug] ?? 0) + sets;
-      });
+      const main = musclesFor(ex.name).primary[0];
+      if (main) counts[main] = (counts[main] ?? 0) + sets;
     });
   });
   const extra = (Object.keys(counts) as Slug[]).filter((s) => !MAIN_MUSCLES.includes(s));

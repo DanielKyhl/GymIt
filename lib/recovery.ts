@@ -28,33 +28,38 @@ const RECOVERY_HOURS: Partial<Record<Slug, number>> = {
   gluteal: 60,
 };
 
-// The catalogue's muscle names -> body-highlighter slugs.
-const MUSCLE_TO_SLUG: Record<string, Slug> = {
-  abdominals: "abs",
-  biceps: "biceps",
-  triceps: "triceps",
-  chest: "chest",
-  forearms: "forearm",
-  shoulders: "deltoids",
-  traps: "trapezius",
-  lats: "upper-back",
-  "middle back": "upper-back",
-  "lower back": "lower-back",
-  quadriceps: "quadriceps",
-  hamstrings: "hamstring",
-  glutes: "gluteal",
-  calves: "calves",
-  adductors: "adductors",
-  abductors: "gluteal", // no abductors slug; approximate to the hip/glute area
-  neck: "neck",
-  obliques: "obliques",
+// The catalogue's muscle names -> body-highlighter slugs. On the diagram's
+// back, "upper-back" is the two sides (lats) and "trapezius" is the strip down
+// the middle, from the neck to between the shoulder blades.
+const MUSCLE_TO_SLUG: Record<string, Slug[]> = {
+  abdominals: ["abs"],
+  biceps: ["biceps"],
+  triceps: ["triceps"],
+  chest: ["chest"],
+  forearms: ["forearm"],
+  shoulders: ["deltoids"],
+  traps: ["trapezius"],
+  lats: ["upper-back"],
+  // Rows, face pulls and the like: the mid-traps and rhomboids squeezing the
+  // shoulder blades together, which sit in the middle strip, with the lats
+  // working either side of them. The first slug is the one the weekly sets
+  // chart counts it under (Back).
+  "middle back": ["upper-back", "trapezius"],
+  "lower back": ["lower-back"],
+  quadriceps: ["quadriceps"],
+  hamstrings: ["hamstring"],
+  glutes: ["gluteal"],
+  calves: ["calves"],
+  adductors: ["adductors"],
+  abductors: ["gluteal"], // no abductors slug; approximate to the hip/glute area
+  neck: ["neck"],
+  obliques: ["obliques"],
 };
 
-// Build once: exercise name -> the muscle slugs it trains.
-const toSlugs = (names: string[] | undefined): Slug[] =>
-  (names ?? [])
-    .map((m) => MUSCLE_TO_SLUG[m.toLowerCase()])
-    .filter((s): s is Slug => Boolean(s));
+// Build once: exercise name -> the muscle slugs it trains, main muscle first.
+const toSlugs = (names: string[] | undefined): Slug[] => [
+  ...new Set((names ?? []).flatMap((m) => MUSCLE_TO_SLUG[m.toLowerCase()] ?? [])),
+];
 
 // primary: what the exercise is for. secondary: muscles that help move the
 // weight. braced: muscles holding the body still while it moves, like the core
