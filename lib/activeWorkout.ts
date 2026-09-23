@@ -1,4 +1,5 @@
-import { SetType, Workout, WorkoutExercise, WorkoutSet } from "../types/workout";
+import { SetType, Template, TemplateSet, Workout, WorkoutExercise, WorkoutSet } from "../types/workout";
+import { isBodyweight } from "./exercises";
 import { estimate1RM, getExerciseSessions } from "./stats";
 import { Unit } from "./units";
 
@@ -194,4 +195,34 @@ export function loggedExercises(exercises: WorkoutExercise[]): WorkoutExercise[]
   return exercises
     .map((ex) => ({ ...ex, sets: ex.sets.filter((s) => s.done || s.reps > 0) }))
     .filter((ex) => ex.sets.length > 0);
+}
+
+// After a workout started from a template: the template with each exercise's
+// sets replaced by the ones ticked off this time, so the template screen, its
+// editor and the next workout from it all start from last time's numbers.
+// Exercises skipped this time keep what they had; exercises added mid-workout
+// aren't added to the template. Null when nothing changed.
+export function templateAfterWorkout(template: Template, done: WorkoutExercise[]): Template | null {
+  const used = new Set<number>();
+  let changed = false;
+  const exercises = template.exercises.map((planned) => {
+    // Paired by name, in order, so an exercise that appears twice matches up.
+    const i = done.findIndex((ex, k) => !used.has(k) && ex.name === planned.name);
+    if (i === -1) return planned;
+    used.add(i);
+    const sets: TemplateSet[] = done[i].sets
+      .filter((s) => s.done)
+      .map((s) => ({
+        // Bodyweight exercises are kept as "BW" (0), so they start at your
+        // body weight on the day.
+        weight: isBodyweight(planned.name) ? 0 : s.weight,
+        reps: s.reps,
+        ...(s.restSeconds !== undefined ? { restSeconds: s.restSeconds } : {}),
+        ...(s.type && s.type !== "normal" ? { type: s.type } : {}),
+      }));
+    if (sets.length === 0 || JSON.stringify(sets) === JSON.stringify(planned.sets ?? [])) return planned;
+    changed = true;
+    return { ...planned, sets };
+  });
+  return changed ? { ...template, exercises } : null;
 }

@@ -8,6 +8,7 @@ import { isBodyweight } from "../lib/exercises";
 import { getDefaultRest, getDefaultUnit, getTemplates, saveTemplate, updateTemplate } from "../lib/storage";
 import { TemplateExercise } from "../types/workout";
 import { C, HIT } from "../constants/theme";
+import { ExerciseInfoButton } from "../components/ExerciseInfo";
 
 export default function CreateTemplate() {
   const router = useRouter();
@@ -101,7 +102,10 @@ export default function CreateTemplate() {
       {exercises.map((ex, exIndex) => (
         <View style={styles.exerciseCard} key={ex.name + exIndex}>
           <View style={styles.exHeader}>
-            <Text style={styles.exerciseName}>{ex.name}</Text>
+            <View style={[styles.nameRow, styles.nameShrink]}>
+              <Text style={[styles.exerciseName, styles.nameShrink]}>{ex.name}</Text>
+              <ExerciseInfoButton name={ex.name} />
+            </View>
             <Pressable onPress={() => removeExercise(exIndex)}>
               <Text style={styles.remove}>Remove</Text>
             </Pressable>
@@ -183,6 +187,8 @@ export default function CreateTemplate() {
 }
 
 const styles = StyleSheet.create({
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  nameShrink: { flexShrink: 1 },
   container: { flex: 1, backgroundColor: C.bg },
   content: { padding: 20, paddingTop: 16, paddingBottom: 40 },
   nameInput: {

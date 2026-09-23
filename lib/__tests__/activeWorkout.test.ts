@@ -10,11 +10,12 @@ import {
   platesPerSide,
   restAfterSet,
   setNumber,
+  templateAfterWorkout,
   toggleSet,
   unlinkFromNext,
   warmupSets,
 } from "../activeWorkout";
-import { WorkoutExercise } from "../../types/workout";
+import { WorkoutExercise, WorkoutSet } from "../../types/workout";
 import { set, workout } from "./fixtures";
 
 describe("timer", () => {
@@ -188,5 +189,63 @@ describe("warmupSets", () => {
 
   test("warm-ups are marked as warm-ups and not done", () => {
     expect(warmupSets(100, "kg", 20).every((s) => s.type === "warmup" && !s.done)).toBe(true);
+  });
+});
+
+describe("templateAfterWorkout", () => {
+  const template = {
+    id: "t1",
+    name: "Pull",
+    exercises: [
+      { name: "Barbell Bent Over Row", sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+      { name: "Pull-Up" },
+      { name: "Barbell Curl", sets: [{ weight: 30, reps: 10 }] },
+    ],
+  };
+  const done = (weight: number, reps: number, extra: Partial<WorkoutSet> = {}): WorkoutSet => ({ weight, reps, done: true, ...extra });
+
+  test("the template takes on the sets you ticked off", () => {
+    const updated = templateAfterWorkout(template, [
+      { name: "Barbell Bent Over Row", sets: [done(20, 10, { type: "warmup" }), done(60, 8, { restSeconds: 120 }), done(60, 7)] },
+      { name: "Pull-Up", sets: [done(82, 8), done(82, 6)] },
+    ])!;
+    expect(updated.exercises[0].sets).toEqual([
+      { weight: 20, reps: 10, type: "warmup" },
+      { weight: 60, reps: 8, restSeconds: 120 },
+      { weight: 60, reps: 7 },
+    ]);
+    // Bodyweight stays "BW", so next time starts at your body weight that day.
+    expect(updated.exercises[1].sets).toEqual([{ weight: 0, reps: 8 }, { weight: 0, reps: 6 }]);
+  });
+
+  test("skipped exercises keep their plan; unticked sets don't count", () => {
+    const updated = templateAfterWorkout(template, [
+      { name: "Barbell Bent Over Row", sets: [done(60, 8), { weight: 60, reps: 8, done: false }] },
+    ])!;
+    expect(updated.exercises[0].sets).toEqual([{ weight: 60, reps: 8 }]);
+    expect(updated.exercises[2].sets).toEqual([{ weight: 30, reps: 10 }]);
+  });
+
+  test("exercises added mid-workout don't join the template", () => {
+    const updated = templateAfterWorkout(template, [
+      { name: "Barbell Curl", sets: [done(32.5, 10)] },
+      { name: "Face Pull", sets: [done(20, 15)] },
+    ])!;
+    expect(updated.exercises.map((e) => e.name)).toEqual(["Barbell Bent Over Row", "Pull-Up", "Barbell Curl"]);
+    expect(updated.exercises[2].sets).toEqual([{ weight: 32.5, reps: 10 }]);
+  });
+
+  test("an exercise listed twice pairs up in order", () => {
+    const twice = { id: "t2", name: "Arms", exercises: [{ name: "Barbell Curl" }, { name: "Barbell Curl" }] };
+    const updated = templateAfterWorkout(twice, [
+      { name: "Barbell Curl", sets: [done(30, 10)] },
+      { name: "Barbell Curl", sets: [done(20, 15)] },
+    ])!;
+    expect(updated.exercises.map((e) => e.sets)).toEqual([[{ weight: 30, reps: 10 }], [{ weight: 20, reps: 15 }]]);
+  });
+
+  test("nothing to write when nothing changed", () => {
+    expect(templateAfterWorkout(template, [{ name: "Barbell Curl", sets: [done(30, 10)] }])).toBeNull();
+    expect(templateAfterWorkout(template, [])).toBeNull();
   });
 });

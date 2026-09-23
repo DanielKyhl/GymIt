@@ -83,7 +83,7 @@ export const LETTERS = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
 export type ExerciseRow =
     | { type: 'section'; title: string }
     | { type: 'header'; letter: string }
-    | { type: 'exercise'; exercise: Exercise; pinned?: 'recent' | 'favourites' };
+    | { type: 'exercise'; exercise: Exercise; pinned?: 'best' | 'recent' | 'favourites' };
 
 export function withLetterHeaders(list: Exercise[]): ExerciseRow[] {
     const rows: ExerciseRow[] = [];

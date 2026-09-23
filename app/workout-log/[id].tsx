@@ -13,6 +13,7 @@ import { confirm } from "../../lib/confirm";
 import { formatRPE, workoutRPE } from "../../lib/rpe";
 import { deleteWorkout, getWorkouts, updateWorkout } from "../../lib/storage";
 import { Workout, WorkoutSet } from "../../types/workout";
+import { ExerciseInfoButton } from "../../components/ExerciseInfo";
 
 const SET_TYPE_NAME = { drop: "drop set", failure: "to failure" } as const;
 
@@ -114,7 +115,10 @@ export default function WorkoutLogDetail() {
           {draft.exercises.map((ex, exIndex) => (
             <View style={styles.card} key={ex.name + exIndex}>
               <View style={styles.cardHeader}>
-                <Text style={[styles.exName, styles.flex]}>{ex.name}</Text>
+                <View style={[styles.nameRow, styles.flex]}>
+                  <Text style={[styles.exName, styles.nameShrink]}>{ex.name}</Text>
+                  <ExerciseInfoButton name={ex.name} />
+                </View>
                 <Pressable onPress={() => removeExercise(exIndex)} hitSlop={HIT}>
                   <Text style={styles.remove}>Remove</Text>
                 </Pressable>
@@ -223,7 +227,10 @@ export default function WorkoutLogDetail() {
         {workout.exercises.map((ex, i) => (
           <View style={styles.card} key={ex.name + i}>
             {ex.supersetId ? <Text style={styles.superset}>Superset</Text> : null}
-            <Text style={styles.exName}>{ex.name}</Text>
+            <View style={styles.nameRow}>
+              <Text style={[styles.exName, styles.nameShrink]}>{ex.name}</Text>
+              <ExerciseInfoButton name={ex.name} />
+            </View>
             {ex.notes ? <Text style={styles.notes}>{ex.notes}</Text> : null}
             {ex.sets.length === 0 ? (
               <Text style={styles.noSets}>No sets logged</Text>
@@ -259,6 +266,8 @@ export default function WorkoutLogDetail() {
 }
 
 const styles = StyleSheet.create({
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  nameShrink: { flexShrink: 1 },
   container: { flex: 1, backgroundColor: C.bg, padding: 20, paddingTop: 16 },
   flex: { flex: 1 },
   title: { color: C.text, fontSize: 28, fontWeight: "bold", marginBottom: 4 },

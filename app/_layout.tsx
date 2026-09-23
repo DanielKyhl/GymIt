@@ -1,13 +1,15 @@
 import { BarlowCondensed_600SemiBold, BarlowCondensed_700Bold, useFonts } from '@expo-google-fonts/barlow-condensed';
 import { DarkTheme, DefaultTheme, ThemeProvider } from "expo-router/react-navigation";
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
+import { ChevronLeft } from 'lucide-react-native';
+import { Platform, Pressable } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { AuthProvider } from '../context/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { C } from "../constants/theme";
+import { C, HIT } from "../constants/theme";
 
 export const unstable_settings = {
   anchor: '(auth)',
@@ -32,7 +34,7 @@ export default function RootLayout() {
     <AuthProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack
-          screenOptions={{
+          screenOptions={({ navigation }) => ({
             headerStyle: { backgroundColor: C.bg },
             headerTintColor: C.text,
             headerShadowVisible: false,
@@ -40,7 +42,26 @@ export default function RootLayout() {
             // name, which for the tabs is "(tabs)".
             headerBackButtonDisplayMode: 'minimal',
             headerBackTitle: 'Back',
-          }}
+            // On the web build (the home-screen app) the stock arrow is a black
+            // image made light with an SVG filter, which iPhone Safari doesn't
+            // apply: the arrow ends up black on the black header. Draw a vector
+            // one there instead. Phones keep their native arrow.
+            ...(Platform.OS === 'web'
+              ? {
+                  headerLeft: () => (
+                    <Pressable
+                      onPress={() => (navigation.canGoBack() ? navigation.goBack() : router.replace('/(tabs)'))}
+                      hitSlop={HIT}
+                      style={{ paddingLeft: 10, paddingRight: 8, paddingVertical: 4 }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Back"
+                    >
+                      <ChevronLeft size={28} color={C.text} />
+                    </Pressable>
+                  ),
+                }
+              : {}),
+          })}
         >
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

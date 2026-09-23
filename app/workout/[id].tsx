@@ -25,6 +25,7 @@ import {
   restAfterSet,
   setNumber,
   toggleSet,
+  templateAfterWorkout,
   unlinkFromNext,
   warmupSets,
 } from "../../lib/activeWorkout";
@@ -43,11 +44,13 @@ import {
   saveActiveWorkout,
   saveTemplate,
   saveWorkout,
+  updateTemplate,
 } from "../../lib/storage";
 import { confirm } from "../../lib/confirm";
 import { summarizeWorkout } from "../../lib/summary";
 import { convertWeight, normalizeUnits } from "../../lib/units";
 import { Workout, WorkoutExercise, WorkoutSet } from "../../types/workout";
+import { ExerciseInfoButton } from "../../components/ExerciseInfo";
 
 // Routes: /workout/<templateId> starts (or resumes) that template,
 // /workout/new starts an empty workout, /workout/resume reopens the
@@ -404,6 +407,14 @@ export default function ActiveWorkoutScreen() {
     await saveWorkout(workout);
     await clearActiveWorkout();
 
+    // A workout from a template leaves its numbers in the template, so the
+    // template shows (and next time starts from) what you did today.
+    if (active.templateId) {
+      const template = (await getTemplates()).find((t) => t.id === active.templateId);
+      const updated = template && templateAfterWorkout(template, workout.exercises);
+      if (updated) await updateTemplate(updated);
+    }
+
     if (active.templateId === null && active.exercises.length > 0) {
       const keep = await confirm("Save as template?", `Start "${workout.name}" from Home next time.`, "Save template", {
         cancel: "Not now",
@@ -500,9 +511,12 @@ export default function ActiveWorkoutScreen() {
               <View style={styles.cardHeader}>
                 <View style={styles.cardTitle}>
                   {ex.supersetId ? <Text style={styles.supersetLabel}>Superset</Text> : null}
-                  <Text style={styles.exerciseName} numberOfLines={2}>
-                    {ex.name}
-                  </Text>
+                  <View style={styles.nameRow}>
+                    <Text style={[styles.exerciseName, styles.nameShrink]} numberOfLines={2}>
+                      {ex.name}
+                    </Text>
+                    <ExerciseInfoButton name={ex.name} />
+                  </View>
                   {bodyweight && (
                     <Text style={styles.bwNote}>
                       {bodyWeight
@@ -663,6 +677,8 @@ export default function ActiveWorkoutScreen() {
 }
 
 const styles = StyleSheet.create({
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  nameShrink: { flexShrink: 1 },
   container: { flex: 1, backgroundColor: C.bg, paddingHorizontal: 16, paddingTop: 8 },
   centered: { justifyContent: "center", alignItems: "stretch", gap: 16, padding: 20 },
   message: { color: C.textMuted, fontSize: 15, textAlign: "center", marginVertical: 12 },

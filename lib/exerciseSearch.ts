@@ -111,6 +111,33 @@ export function matchesQuery(name: string, { terms, whole }: ParsedQuery): boole
   return terms.every((alternatives) => alternatives.some((words) => words.every(has)));
 }
 
+// The results worth putting above the alphabet while searching, since the
+// list itself is A-Z: "pull up" would otherwise leave Pull-Up under P, below
+// "Archer Pull Up" and every other name that contains it. Best first: the
+// name exactly, then names starting with it, then an equipment word plus it
+// ("bench press" -> Barbell Bench Press, Dumbbell Bench Press).
+const BEST_LIMIT = 5;
+
+export function bestMatches(list: Exercise[], query: string, limit = BEST_LIMIT): Exercise[] {
+  const q = spaced(query);
+  if (!q) return [];
+  const qCompact = q.replace(/ /g, "");
+  const qWords = q.split(" ").length;
+  const rank = (name: string) => {
+    const f = formsOf(name);
+    if (f.spaced === q || f.compact === qCompact) return 0;
+    if (f.spaced.startsWith(q) || f.compact.startsWith(qCompact)) return 1;
+    if (f.spaced.endsWith(` ${q}`) && f.spaced.split(" ").length === qWords + 1) return 2;
+    return -1;
+  };
+  return list
+    .map((e) => ({ e, r: rank(e.name) }))
+    .filter((x) => x.r >= 0)
+    .sort((a, b) => a.r - b.r || a.e.name.length - b.e.name.length || a.e.name.localeCompare(b.e.name))
+    .slice(0, limit)
+    .map((x) => x.e);
+}
+
 // ---------------------------------------------------------------------------
 // Filters
 
@@ -192,9 +219,14 @@ export function favouriteExercises(names: string[]): Exercise[] {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-// The picker's whole list: Recent, then Favourites, then the alphabet.
-export function buildPickerRows(all: Exercise[], recent: Exercise[], favourites: Exercise[]): ExerciseRow[] {
+// The picker's whole list: Best matches (while searching), Recent, then
+// Favourites, then the alphabet.
+export function buildPickerRows(all: Exercise[], recent: Exercise[], favourites: Exercise[], best: Exercise[] = []): ExerciseRow[] {
   const rows: ExerciseRow[] = [];
+  if (best.length > 0) {
+    rows.push({ type: "section", title: "Best matches" });
+    best.forEach((exercise) => rows.push({ type: "exercise", exercise, pinned: "best" }));
+  }
   if (recent.length > 0) {
     rows.push({ type: "section", title: "Recent" });
     recent.forEach((exercise) => rows.push({ type: "exercise", exercise, pinned: "recent" }));

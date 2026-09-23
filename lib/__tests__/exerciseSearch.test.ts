@@ -1,5 +1,6 @@
 import { exercises } from "../exercises";
 import {
+  bestMatches,
   buildPickerRows,
   favouriteExercises,
   filterExercises,
@@ -168,5 +169,34 @@ describe("the picker's rows", () => {
       "Barbell Full Squat",
       "Barbell Romanian Deadlift",
     ]);
+  });
+});
+
+describe("best matches while searching", () => {
+  const best = (query: string) => bestMatches(filterExercises(exercises, { query, muscle: null, equipment: null }), query).map((e) => e.name);
+
+  test("the exact name comes first, not whatever sorts first", () => {
+    expect(best("pull up")[0]).toBe("Pull-Up");
+    expect(best("Pull-Up")[0]).toBe("Pull-Up");
+    expect(best("chin up")[0]).toBe("Chin-Up");
+  });
+
+  test("then names that start with it", () => {
+    expect(best("pull up")).toContain("Pull Up (Neutral Grip)");
+  });
+
+  test("an equipment word plus the search counts too", () => {
+    expect(best("bench press")).toEqual(expect.arrayContaining(["Barbell Bench Press", "Dumbbell Bench Press"]));
+  });
+
+  test("nothing when nothing's typed, never more than five", () => {
+    expect(best("")).toEqual([]);
+    expect(best("dumbbell").length).toBeLessThanOrEqual(5);
+  });
+
+  test("they sit above everything else in the list", () => {
+    const rows = buildPickerRows([], [], [], bestMatches(exercises, "pull up"));
+    expect(rows[0]).toEqual({ type: "section", title: "Best matches" });
+    expect(rows[1]).toMatchObject({ type: "exercise", pinned: "best", exercise: { name: "Pull-Up" } });
   });
 });

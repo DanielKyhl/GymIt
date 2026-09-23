@@ -6,6 +6,7 @@ import { plural } from "../../lib/format";
 import { deleteTemplate, getTemplates } from "../../lib/storage";
 import { Template } from "../../types/workout";
 import { C } from "../../constants/theme";
+import { ExerciseInfoButton } from "../../components/ExerciseInfo";
 
 export default function TemplateDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -59,7 +60,10 @@ export default function TemplateDetail() {
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
           <View style={styles.row}>
-            <Text style={styles.rowText}>{item.name}</Text>
+            <View style={styles.nameRow}>
+              <Text style={[styles.rowText, styles.nameShrink]}>{item.name}</Text>
+              <ExerciseInfoButton name={item.name} />
+            </View>
             <Text style={styles.rowSub}>
               {item.sets && item.sets.length > 0
                 ? item.sets.map((s) => `${!s.weight && isBodyweight(item.name) ? "BW" : s.weight}×${s.reps}`).join("   ")
@@ -89,6 +93,8 @@ export default function TemplateDetail() {
 }
 
 const styles = StyleSheet.create({
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  nameShrink: { flexShrink: 1 },
   container: { flex: 1, backgroundColor: C.bg, padding: 20, paddingTop: 16 },
   title: { color: C.text, fontSize: 28, fontWeight: "bold", marginBottom: 4 },
   subtitle: { color: C.textMuted, fontSize: 14, marginBottom: 24 },
