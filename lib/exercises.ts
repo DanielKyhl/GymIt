@@ -37,10 +37,11 @@ export function barWeight(name: string, unit: 'kg' | 'lb'): number {
     return 0;
 }
 
-export function searchExercises(query: string): Exercise[] {
-    const q = query.trim().toLowerCase();
-    if (!q) return exercises;
-    return exercises.filter((e) => e.name.toLowerCase().includes(q));
+const BY_NAME = new Map(exercises.map((e) => [e.name, e]));
+
+// The full entry for a name, or undefined for names not in the list.
+export function exerciseByName(name: string): Exercise | undefined {
+    return BY_NAME.get(name);
 }
 
 // The letter an exercise files under. Names that start with a digit ("3/4
@@ -52,11 +53,14 @@ export function letterFor(name: string): string {
 
 export const LETTERS = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
 
-// One flat list of letter headings and exercises, so the picker can show where
-// it is in the alphabet and jump straight to a letter.
+// One flat list of headings and exercises, so the picker can show where it is
+// in the alphabet and jump straight to a letter. Pinned lists (recent,
+// starred) sit above the alphabet under a section heading, and their rows are
+// marked so the same exercise can appear twice without clashing.
 export type ExerciseRow =
+    | { type: 'section'; title: string }
     | { type: 'header'; letter: string }
-    | { type: 'exercise'; exercise: Exercise };
+    | { type: 'exercise'; exercise: Exercise; pinned?: 'recent' | 'favourites' };
 
 export function withLetterHeaders(list: Exercise[]): ExerciseRow[] {
     const rows: ExerciseRow[] = [];

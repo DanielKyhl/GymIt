@@ -27,6 +27,7 @@ type Settings = SyncRecord & {
     experience?: Experience;
     onboarded?: boolean; // finished or skipped the first-run setup
     planTemplates?: string[]; // the split picked during setup, e.g. upper then lower
+    favoriteExercises?: string[]; // starred in the exercise picker, A-Z
 };
 
 // Writes need an account to belong to; reaching one signed out is a bug.
@@ -162,6 +163,26 @@ export async function getDefaultUnit(): Promise<'kg' | 'lb'> {
 
 export async function setDefaultUnit(unit: 'kg' | 'lb'): Promise<void> {
     await setSetting({ defaultUnit: unit });
+}
+
+export async function getFavoriteExercises(): Promise<string[]> {
+    return (await getSettings()).favoriteExercises ?? [];
+}
+
+// Stars or unstars one exercise. Reads the list inside the write, so quick
+// taps on several stars can't overwrite each other.
+export async function setFavoriteExercise(name: string, on: boolean): Promise<void> {
+    await updateRecord<Settings>(await requireUid(), 'meta', SETTINGS_ID, (current) => {
+        const names = new Set(current?.favoriteExercises ?? []);
+        if (on) names.add(name);
+        else names.delete(name);
+        return {
+            ...current,
+            favoriteExercises: [...names].sort((a, b) => a.localeCompare(b)),
+            id: SETTINGS_ID,
+            updatedAt: Date.now(),
+        };
+    });
 }
 
 export async function getDefaultRest(): Promise<number> {
