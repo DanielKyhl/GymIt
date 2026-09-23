@@ -11,6 +11,7 @@ import {
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { auth } from '../lib/firebase';
+import { migrateExerciseNames } from '../lib/storage';
 import { hasSyncedBefore, syncAll, wipeAccount } from '../lib/sync';
 
 type User = {
@@ -39,6 +40,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // showing the app anyway.
 const FIRST_SYNC_TIMEOUT_MS = 8000;
 
+// Sync, then move any old exercise names over (lib/exerciseNames.ts). The
+// renaming runs even when the sync fails, e.g. offline: it works on this
+// device's copy and uploads with the next sync.
+function syncAndMigrate(uid: string): Promise<void> {
+    return syncAll(uid)
+        .catch(() => undefined)
+        .then(() => migrateExerciseNames(uid))
+        .catch(() => undefined);
+}
+
 function withTimeout(promise: Promise<void>, ms: number): Promise<void> {
     return Promise.race([promise, new Promise<void>((resolve) => setTimeout(resolve, ms))]);
 }
@@ -59,11 +70,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const uid = fbUser.uid;
             if (await hasSyncedBefore(uid)) {
                 // Local copy already here: show it now, refresh behind the scenes.
-                syncAll(uid).catch(() => undefined);
+                syncAndMigrate(uid);
             } else {
                 // First time on this device. Screens load their data once when
                 // they open, so wait for the download rather than show empty lists.
-                await withTimeout(syncAll(uid), FIRST_SYNC_TIMEOUT_MS).catch(() => undefined);
+                await withTimeout(syncAndMigrate(uid), FIRST_SYNC_TIMEOUT_MS);
             }
             // They may have signed out (or switched account) while we waited.
             if (auth.currentUser?.uid !== uid) return;

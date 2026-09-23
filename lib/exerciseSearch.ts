@@ -26,24 +26,29 @@ const SYNONYMS: Record<string, string[]> = {
   bb: ["barbell"],
   kb: ["kettlebell"],
   dl: ["deadlift"],
+  machine: ["lever", "sled", "smith"], // what ExerciseDB calls its machines
   rdl: ["romanian deadlift"],
-  sldl: ["stiff legged deadlift", "stiff leg deadlift"],
-  ohp: ["shoulder press", "military press"],
+  sldl: ["stiff leg deadlift", "straight leg deadlift"],
+  ohp: ["overhead press", "military press", "shoulder press"],
   "overhead press": ["shoulder press", "military press"],
-  "military press": ["shoulder press"],
+  "military press": ["shoulder press", "overhead press"],
+  "shoulder press": ["overhead press", "military press"],
   cgbp: ["close grip bench press"],
-  "skull crusher": ["skullcrusher", "lying triceps"],
-  skullcrusher: ["skull crusher", "lying triceps"],
-  "pec deck": ["butterfly"],
-  "cable fly": ["cable crossover"],
-  flies: ["flye", "fly"],
-  "rear delt fly": ["reverse flye", "rear delt fly"],
+  "lat pulldown": ["pulldown"],
+  "skull crusher": ["skullcrusher", "lying triceps extension", "lying extension"],
+  skullcrusher: ["skull crusher", "lying triceps extension", "lying extension"],
+  "pec deck": ["lever seated fly", "butterfly"],
+  butterfly: ["lever seated fly"],
+  "cable fly": ["cable cross over", "cable standing fly", "cable middle fly"],
+  crossover: ["cross over"],
+  flies: ["fly"],
+  "rear delt fly": ["reverse fly", "rear delt"],
   bulgarian: ["split squat"],
   ghr: ["glute ham raise"],
-  hspu: ["handstand push up"],
-  "ab wheel": ["ab roller"],
-  "farmers carry": ["farmer walk"],
-  "farmer carry": ["farmer walk"],
+  hspu: ["handstand push"],
+  "ab wheel": ["rollerout", "rollout"],
+  "farmers carry": ["farmers walk"],
+  "farmer carry": ["farmers walk"],
 };
 
 // Longest first, so "rear delt fly" is taken whole before anything shorter.
@@ -120,12 +125,12 @@ export const MUSCLE_GROUPS = [
 ] as const;
 
 export const EQUIPMENT_GROUPS = [
-  { id: "barbell", label: "Barbell", equipment: ["barbell", "e-z curl bar"] },
+  { id: "barbell", label: "Barbell", equipment: ["barbell", "olympic barbell", "ez barbell", "trap bar"] },
   { id: "dumbbell", label: "Dumbbell", equipment: ["dumbbell"] },
   { id: "cable", label: "Cable", equipment: ["cable"] },
-  { id: "machine", label: "Machine", equipment: ["machine"] },
-  { id: "bodyweight", label: "Bodyweight", equipment: ["body only"] },
-  { id: "kettlebell", label: "Kettlebell", equipment: ["kettlebells"] },
+  { id: "machine", label: "Machine", equipment: ["leverage machine", "smith machine", "sled machine", "assisted"] },
+  { id: "bodyweight", label: "Bodyweight", equipment: ["body weight", "weighted"] },
+  { id: "kettlebell", label: "Kettlebell", equipment: ["kettlebell"] },
 ] as const;
 
 export type MuscleGroupId = (typeof MUSCLE_GROUPS)[number]["id"];

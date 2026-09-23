@@ -5,14 +5,10 @@ const make = (name: string): Exercise => ({
   id: name,
   name,
   equipment: null,
+  bodyPart: null,
   primaryMuscles: [],
   secondaryMuscles: [],
-  category: "strength",
-  images: [],
   instructions: [],
-  level: "beginner",
-  mechanic: null,
-  force: null,
 });
 
 describe("letterFor", () => {

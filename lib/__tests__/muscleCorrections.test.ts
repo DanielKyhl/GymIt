@@ -22,21 +22,21 @@ const muscle = (name: string, hours: number, slug: string) =>
 describe("stabiliserMuscles", () => {
   test("braced compounds train the core", () => {
     expect(stabiliserMuscles(byName("Barbell Deadlift"))).toContain("abs");
-    expect(stabiliserMuscles(byName("Barbell Squat"))).toContain("abs");
-    expect(stabiliserMuscles(byName("Front Barbell Squat"))).toContain("abs");
+    expect(stabiliserMuscles(byName("Barbell Full Squat"))).toContain("abs");
+    expect(stabiliserMuscles(byName("Barbell Front Squat"))).toContain("abs");
     expect(stabiliserMuscles(byName("Standing Military Press"))).toContain("abs");
-    expect(stabiliserMuscles(byName("Bent Over Barbell Row"))).toContain("abs");
+    expect(stabiliserMuscles(byName("Barbell Bent Over Row"))).toContain("abs");
   });
 
   test("supported and isolation work does not", () => {
     for (const name of [
-      "Barbell Bench Press - Medium Grip",
+      "Barbell Bench Press",
       "Barbell Curl",
-      "Leg Press",
-      "Lying Leg Curls",
-      "Triceps Pushdown",
-      "Seated Cable Rows",
-      "Leg Extensions",
+      "Sled 45° Leg Press",
+      "Lever Lying Leg Curl",
+      "Cable Pushdown",
+      "Cable Seated Row",
+      "Lever Leg Extension",
     ]) {
       expect(stabiliserMuscles(byName(name))).toEqual([]);
     }
@@ -44,7 +44,7 @@ describe("stabiliserMuscles", () => {
 
   test("unilateral and rotational work hits the obliques", () => {
     expect(stabiliserMuscles(byName("Barbell Lunge"))).toContain("obliques");
-    expect(stabiliserMuscles(byName("Barbell Side Bend"))).toContain("obliques");
+    expect(stabiliserMuscles(byName("Dumbbell Side Bend"))).toContain("obliques");
   });
 
   test("obliques are reachable at all", () => {
@@ -69,7 +69,7 @@ describe("recovery after braced lifts", () => {
   });
 
   test("a bench press leaves the core alone", () => {
-    expect(muscle("Barbell Bench Press - Medium Grip", 1, "abs").color).toBe(
+    expect(muscle("Barbell Bench Press", 1, "abs").color).toBe(
       COLOR_RECOVERED
     );
   });

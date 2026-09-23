@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import { authErrorMessage } from "../lib/authErrors";
+import { EXERCISE_CREDIT } from "../lib/exercises";
 import { convertWeight, parseWeight } from "../lib/units";
 import {
   exportAll,
@@ -190,6 +191,8 @@ export default function Settings() {
         <Text style={styles.hint}>Permanently deletes your account and every workout, template and setting.</Text>
       </Pressable>
 
+      <Text style={styles.credit}>{EXERCISE_CREDIT}</Text>
+
       <Modal visible={deleting} transparent animationType="fade" onRequestClose={() => setDeleting(false)}>
         <View style={styles.backdrop}>
           <View style={styles.dialog}>
@@ -243,6 +246,7 @@ const styles = StyleSheet.create({
   goalBtn: { flex: 1, height: 44, backgroundColor: C.card, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   action: { color: C.accent, fontSize: 15, marginBottom: 4 },
   hint: { color: C.textMuted, fontSize: 12 },
+  credit: { color: C.textFaint, fontSize: 12, textAlign: "center", marginTop: 28 },
   dangerCard: { borderWidth: 1, borderColor: C.restOver },
   dangerAction: { color: C.danger, fontSize: 15, fontWeight: "500", marginBottom: 4 },
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", padding: 20 },

@@ -102,6 +102,21 @@ achievements, stats, recovery, unit conversion and the sync merge.
 | `context/` | Auth state |
 | `firestore.rules` | Access rules: an account can only touch its own data |
 
+## Exercise data
+
+The 1,500 exercises and their animations come from the free tier of
+[ExerciseDB](https://oss.exercisedb.dev) by AscendAPI. It's free for personal
+and non-commercial apps, with credit to AscendAPI (shown in the exercise
+sheet and in Settings). Charging for the app or running ads would need their
+paid plan. The animations load from ExerciseDB's own server; only the data is
+bundled.
+
+`scripts/import-exercises.cjs` rebuilds `assets/exercises.json` from it. It
+also records how names from the previous exercise list map onto the new ones
+(`assets/legacyNames.json`), which the app applies to saved workouts and
+templates, and what the unmatched old names trained
+(`assets/legacyExercises.json`), so history under them still counts.
+
 ## Built with
 
 - Expo SDK 57, React Native 0.86, Expo Router, TypeScript

@@ -1,16 +1,18 @@
+// One entry in the exercise catalogue (assets/exercises.json, built by
+// scripts/import-exercises.cjs). Muscles use the app's own names: "chest",
+// "lats", "middle back", "quadriceps"...; the main muscle comes first.
 export type Exercise = {
   id: string;
   name: string;
-  equipment: string | null;
+  equipment: string | null; // ExerciseDB's words: "barbell", "body weight", "leverage machine"...
+  bodyPart: string | null;
   primaryMuscles: string[];
   secondaryMuscles: string[];
-  category: string;
-  // Extra fields carried by the bundled free-exercise-db data.
-  images: string[]; // repo-relative paths, e.g. "Barbell_Curl/0.jpg"
   instructions: string[]; // one string per step
-  level: string; // beginner | intermediate | expert
-  mechanic: string | null; // compound | isolation
-  force: string | null; // push | pull | static
+  gif?: boolean; // has an ExerciseDB animation, named after gifId or else the id
+  // The few staples ExerciseDB lacks show the closest movement it does have:
+  gifId?: string; // that animation's id
+  gifOf?: string; // and the name of the exercise it actually shows
 }
 // One set performed within an exercise (e.g. 60kg x 8 reps)
 // warmup: excluded from stats. drop / failure: working sets, just labelled.

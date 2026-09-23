@@ -1,39 +1,62 @@
 import exercisesData from '../assets/exercises.json';
+import legacyData from '../assets/legacyExercises.json';
 import { Exercise } from '../types/workout';
 
-// free-exercise-db ships the photos in its own repo; serving them from a CDN
-// keeps ~1700 images out of the app bundle.
-const IMAGE_BASE =
-    'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises';
+// The catalogue is ExerciseDB's free dataset (built by
+// scripts/import-exercises.cjs). Its animations are free for personal and
+// non-commercial apps, with credit to AscendAPI, and are served from
+// ExerciseDB's own host rather than bundled.
+const GIF_BASE = 'https://static.exercisedb.dev/media';
+
+export const EXERCISE_CREDIT = 'Exercise animations by AscendAPI (ExerciseDB)';
 
 // Sorted once at startup so every list that shows exercises is alphabetical.
 export const exercises = (exercisesData as unknown as Exercise[])
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name));
 
+// Names from the previous catalogue that aren't in this one, with what they
+// trained, so workouts logged under them still count on the charts and the
+// recovery map. Saved names move to their new equivalent where there's a
+// clear one (lib/storage.ts, migrateExerciseNames); the rest stay as they are.
+type LegacyEntry = [primary: string[], secondary: string[], equipment: string | null, stretch: 0 | 1];
+const LEGACY = legacyData as unknown as Record<string, LegacyEntry>;
+
+export type LegacyExercise = { name: string; primaryMuscles: string[]; secondaryMuscles: string[]; equipment: string | null };
+
+export function legacyExercise(name: string): LegacyExercise | undefined {
+    const entry = LEGACY[name];
+    if (!entry) return undefined;
+    return { name, primaryMuscles: entry[0], secondaryMuscles: entry[1], equipment: entry[2] };
+}
+
 // Exercises where you move your own body weight (pull-ups, push-ups, dips...).
-// Sets for these start at the user's body weight. A few lack an equipment
-// value but say "Bodyweight" in the name. Stretches are excluded: holding a
-// stretch isn't lifting your body weight, so it shouldn't add volume.
-const BODYWEIGHT = new Set(
-    exercises
-        .filter((e) => e.equipment === 'body only' || /\bbodyweight\b/i.test(e.name))
-        .filter((e) => e.category !== 'stretching')
-        .map((e) => e.name)
-);
+// Sets for these start at the user's body weight. Stretches, yoga poses and
+// cardio are left out: they don't add lifting volume.
+const BODYWEIGHT = new Set([
+    ...exercises
+        .filter((e) => e.equipment === 'body weight' && e.primaryMuscles.length > 0 && !/stretch|pose\b/i.test(e.name))
+        .map((e) => e.name),
+    ...Object.entries(LEGACY)
+        .filter(([name, [, , equipment, stretch]]) => (equipment === 'body weight' || /\bbodyweight\b/i.test(name)) && !stretch)
+        .map(([name]) => name),
+]);
 
 export function isBodyweight(name: string): boolean {
     return BODYWEIGHT.has(name);
 }
 
-const EQUIPMENT = new Map(exercises.map((e) => [e.name, e.equipment]));
+const EQUIPMENT = new Map<string, string | null>([
+    ...Object.entries(LEGACY).map(([name, entry]) => [name, entry[2]] as const),
+    ...exercises.map((e) => [e.name, e.equipment] as const),
+]);
 
 // Empty-bar weight for exercises loaded with plates, 0 for everything else.
 // Used by the plate and warm-up calculators.
 export function barWeight(name: string, unit: 'kg' | 'lb'): number {
     const equipment = EQUIPMENT.get(name);
-    if (equipment === 'barbell') return unit === 'kg' ? 20 : 45;
-    if (equipment === 'e-z curl bar') return unit === 'kg' ? 10 : 25;
+    if (equipment === 'barbell' || equipment === 'olympic barbell') return unit === 'kg' ? 20 : 45;
+    if (equipment === 'ez barbell') return unit === 'kg' ? 10 : 25;
     return 0;
 }
 
@@ -85,10 +108,9 @@ export function letterPositions(rows: ExerciseRow[]): Record<string, number> {
     return at;
 }
 
-// Full URL for one of an exercise's photos, or null if it has none.
-export function exerciseImageUrl(exercise: Exercise, index = 0): string | null {
-    const path = exercise.images?.[index];
-    return path ? `${IMAGE_BASE}/${path}` : null;
+// The exercise's animation, or null if it has none.
+export function exerciseImageUrl(exercise: Exercise): string | null {
+    return exercise.gif ? `${GIF_BASE}/${exercise.gifId ?? exercise.id}.gif` : null;
 }
 
 // "chest, triceps" -> "Chest, Triceps"

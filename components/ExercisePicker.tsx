@@ -14,7 +14,7 @@ import {
   View,
 } from "react-native";
 import { C, HIT } from "../constants/theme";
-import { ExerciseRow, exerciseImageUrl, exercises, LETTERS, letterPositions, muscleList } from "../lib/exercises";
+import { EXERCISE_CREDIT, ExerciseRow, exerciseImageUrl, exercises, LETTERS, letterPositions, muscleList } from "../lib/exercises";
 import {
   buildPickerRows,
   EQUIPMENT_GROUPS,
@@ -28,7 +28,7 @@ import {
 import { getFavoriteExercises, getWorkouts, setFavoriteExercise } from "../lib/storage";
 import { Exercise } from "../types/workout";
 
-// Fixed heights let FlatList skip measuring 873 rows while scrolling, and let
+// Fixed heights let FlatList skip measuring 1,500 rows while scrolling, and let
 // the A-Z rail work out exactly where a letter starts.
 const ROW_HEIGHT = 76;
 const HEADER_HEIGHT = 30;
@@ -407,7 +407,9 @@ function AlphabetRail({
   );
 }
 
-// Small square photo, with the exercise's initial as a fallback.
+// Small square picture, with the exercise's initial as a fallback. The
+// animation is held on its first frame here: dozens of them playing in a
+// scrolling list would chew through battery for no benefit.
 function Thumb({ exercise }: { exercise: Exercise }) {
   const url = exerciseImageUrl(exercise);
   if (!url) {
@@ -424,6 +426,7 @@ function Thumb({ exercise }: { exercise: Exercise }) {
       contentFit="cover"
       transition={120}
       cachePolicy="disk"
+      autoplay={false}
     />
   );
 }
@@ -443,11 +446,8 @@ function ExerciseDetails({
 }) {
   if (!exercise) return null;
 
-  const start = exerciseImageUrl(exercise, 0);
-  const finish = exerciseImageUrl(exercise, 1);
-  const tags = [exercise.equipment, exercise.level, exercise.mechanic].filter(
-    (t): t is string => Boolean(t)
-  );
+  const picture = exerciseImageUrl(exercise);
+  const tags = [exercise.equipment, exercise.bodyPart].filter((t): t is string => Boolean(t));
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
@@ -464,23 +464,22 @@ function ExerciseDetails({
           </View>
 
           <ScrollView contentContainerStyle={styles.detailsContent}>
-            {start && (
-              <Image
-                source={start}
-                style={styles.bigImage}
-                contentFit="cover"
-                transition={150}
-                cachePolicy="disk"
-              />
+            {picture && (
+              // The animations are 180 px, so they're shown at a size that
+              // keeps them sharp rather than stretched across the sheet.
+              <View style={styles.pictureWrap}>
+                <Image
+                  source={picture}
+                  style={styles.animation}
+                  contentFit="contain"
+                  transition={150}
+                  cachePolicy="disk"
+                  accessibilityLabel={`How to do ${exercise.name}`}
+                />
+              </View>
             )}
-            {finish && (
-              <Image
-                source={finish}
-                style={styles.bigImage}
-                contentFit="cover"
-                transition={150}
-                cachePolicy="disk"
-              />
+            {exercise.gifOf && (
+              <Text style={styles.standIn}>Closest animation: {exercise.gifOf}</Text>
             )}
 
             {tags.length > 0 && (
@@ -517,6 +516,8 @@ function ExerciseDetails({
                 ))}
               </>
             )}
+
+            {exercise.gif && <Text style={styles.credit}>{EXERCISE_CREDIT}</Text>}
           </ScrollView>
 
           <Pressable style={styles.addBtn} onPress={() => onAdd(exercise.name)}>
@@ -631,13 +632,17 @@ const styles = StyleSheet.create({
   clearText: { color: C.accent, fontSize: 14, fontWeight: "500" },
 
   detailsContent: { padding: 16, paddingBottom: 8, gap: 4 },
-  bigImage: {
-    width: "100%",
-    aspectRatio: 4 / 3,
+  // The animations are drawn on white, so they sit on a white panel.
+  pictureWrap: {
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
-    backgroundColor: C.raised,
+    alignItems: "center",
+    overflow: "hidden",
     marginBottom: 10,
   },
+  animation: { width: 240, height: 240 },
+  standIn: { color: C.textFaint, fontSize: 12, marginTop: -4, marginBottom: 8 },
+  credit: { color: C.textFaint, fontSize: 11, marginTop: 12 },
   tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 6 },
   tag: {
     backgroundColor: C.raised,

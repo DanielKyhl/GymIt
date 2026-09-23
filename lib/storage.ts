@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Template, Workout } from '../types/workout';
 import { ActiveWorkout } from './activeWorkout';
 import { addWeighIn, BodyWeight, BodyWeightEntry, todayKey } from './bodyweight';
+import { currentName, withCurrentNames } from './exerciseNames';
 import { Experience, Goal, needsOnboarding, restForGoal } from './onboarding';
 import { hasSyncedBefore, isNewAccount, putRecords, readLocal, readyUid, SETTINGS_ID, updateRecord } from './sync';
 import { live, SyncRecord } from './syncMerge';
@@ -120,6 +121,42 @@ export async function deleteTemplate(id: string): Promise<void> {
         deleted: true,
         updatedAt: Date.now(),
     }));
+}
+
+// ---------------------------------------------------------------------------
+// Moving saved exercise names to the current exercise list (see
+// lib/exerciseNames.ts). Run after each sign-in sync: it only writes records
+// that still use an old name, so once everything's moved it does nothing, and
+// it also catches anything an older copy of the app writes later.
+
+export async function migrateExerciseNames(uid: string): Promise<void> {
+    for (const coll of ['workouts', 'templates'] as const) {
+        const records = live(await readLocal<Synced<Workout | Template>>(uid, coll));
+        for (const record of records) {
+            if (!withCurrentNames(record)) continue;
+            // Re-read inside the write, in case it changed since.
+            await updateRecord<Synced<Workout | Template>>(uid, coll, record.id, (current) => {
+                const base = current ?? record;
+                const renamed = withCurrentNames(base);
+                return renamed ? { ...renamed, updatedAt: Date.now() } : base;
+            });
+        }
+    }
+
+    const raw = await AsyncStorage.getItem(activeKey(uid));
+    const active = raw ? (JSON.parse(raw) as ActiveWorkout) : null;
+    const renamedActive = active && withCurrentNames(active);
+    if (renamedActive) await AsyncStorage.setItem(activeKey(uid), JSON.stringify(renamedActive));
+
+    const favourites = (await getSettings()).favoriteExercises ?? [];
+    if (favourites.some((name) => currentName(name) !== name)) {
+        await updateRecord<Settings>(uid, 'meta', SETTINGS_ID, (current) => ({
+            ...current,
+            favoriteExercises: [...new Set((current?.favoriteExercises ?? []).map(currentName))].sort((a, b) => a.localeCompare(b)),
+            id: SETTINGS_ID,
+            updatedAt: Date.now(),
+        }));
+    }
 }
 
 // ---------------------------------------------------------------------------

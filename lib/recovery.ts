@@ -1,7 +1,7 @@
 import { Slug } from "react-native-body-highlighter";
 import { Template, Workout } from "../types/workout";
-import { exercises } from "./exercises";
-import { stabiliserMuscles } from "./muscleCorrections";
+import { exercises, legacyExercise } from "./exercises";
+import { MuscleSource, stabiliserMuscles } from "./muscleCorrections";
 
 export const COLOR_RECOVERED = "#1d9e75"; // green
 export const COLOR_PARTIAL = "#e6b800"; // yellow
@@ -28,7 +28,7 @@ const RECOVERY_HOURS: Partial<Record<Slug, number>> = {
   gluteal: 60,
 };
 
-// free-exercise-db muscle names -> body-highlighter slugs.
+// The catalogue's muscle names -> body-highlighter slugs.
 const MUSCLE_TO_SLUG: Record<string, Slug> = {
   abdominals: "abs",
   biceps: "biceps",
@@ -47,6 +47,7 @@ const MUSCLE_TO_SLUG: Record<string, Slug> = {
   adductors: "adductors",
   abductors: "gluteal", // no abductors slug; approximate to the hip/glute area
   neck: "neck",
+  obliques: "obliques",
 };
 
 // Build once: exercise name -> the muscle slugs it trains.
@@ -55,8 +56,9 @@ const toSlugs = (names: string[] | undefined): Slug[] =>
     .map((m) => MUSCLE_TO_SLUG[m.toLowerCase()])
     .filter((s): s is Slug => Boolean(s));
 
-const muscleMap: Record<string, { primary: Slug[]; secondary: Slug[] }> = {};
-exercises.forEach((e) => {
+type Trained = { primary: Slug[]; secondary: Slug[] };
+
+function trainedBy(e: MuscleSource): Trained {
   const primary = toSlugs(e.primaryMuscles);
   const secondary = new Set(toSlugs(e.secondaryMuscles));
   // Stabilisers the source data omits (core bracing, anti-rotation). Skipped
@@ -64,12 +66,23 @@ exercises.forEach((e) => {
   stabiliserMuscles(e).forEach((s) => {
     if (!primary.includes(s)) secondary.add(s);
   });
-  muscleMap[e.name] = { primary, secondary: [...secondary] };
-});
+  primary.forEach((s) => secondary.delete(s));
+  return { primary, secondary: [...secondary] };
+}
 
-// The muscles an exercise trains (empty for names not in the exercise list).
-export function musclesFor(name: string): { primary: Slug[]; secondary: Slug[] } {
-  return muscleMap[name] ?? { primary: [], secondary: [] };
+const muscleMap = new Map<string, Trained>(exercises.map((e) => [e.name, trainedBy(e)]));
+
+// The muscles an exercise trains. Names from the old catalogue still resolve,
+// so history logged under them counts; anything else is empty.
+export function musclesFor(name: string): Trained {
+  let found = muscleMap.get(name);
+  if (!found) {
+    const legacy = legacyExercise(name);
+    if (!legacy) return { primary: [], secondary: [] };
+    found = trainedBy(legacy);
+    muscleMap.set(name, found);
+  }
+  return found;
 }
 
 // Every muscle a template works as a primary mover, each listed once.
@@ -93,8 +106,7 @@ export function computeRecovery(workouts: Workout[], now: number = Date.now()): 
     const elapsedH = (now - new Date(w.date).getTime()) / (1000 * 60 * 60);
     w.exercises.forEach((ex) => {
       if (ex.sets.length === 0) return;
-      const mm = muscleMap[ex.name];
-      if (!mm) return;
+      const mm = musclesFor(ex.name);
       const apply = (slug: Slug, factor: number) => {
         const base = RECOVERY_HOURS[slug];
         if (!base) return;
