@@ -1,6 +1,6 @@
 import { exercises } from "../exercises";
 import { stabiliserMuscles } from "../muscleCorrections";
-import { COLOR_RECOVERED, COLOR_TRAINED, computeRecovery } from "../recovery";
+import { COLOR_PARTIAL, COLOR_RECOVERED, COLOR_TRAINED, computeRecovery } from "../recovery";
 import { set, workout } from "./fixtures";
 
 const HOUR = 60 * 60 * 1000;
@@ -58,14 +58,43 @@ describe("stabiliserMuscles", () => {
 });
 
 describe("recovery after braced lifts", () => {
-  test("the core is red right after deadlifts", () => {
-    expect(muscle("Barbell Deadlift", 1, "abs").color).toBe(COLOR_TRAINED);
+  test("bracing shows the core as worked, never as just trained", () => {
+    expect(muscle("Barbell Deadlift", 1, "abs").color).toBe(COLOR_PARTIAL);
+    expect(muscle("Barbell Deadlift", 0, "abs").color).toBe(COLOR_PARTIAL);
   });
 
-  test("bracing recovers in half the time of direct ab work", () => {
-    // abs base is 36h; as a stabiliser it counts at half, so 18h.
-    expect(muscle("Barbell Deadlift", 1, "abs").hoursLeft).toBe(17);
-    expect(muscle("Barbell Deadlift", 19, "abs").color).toBe(COLOR_RECOVERED);
+  test("bracing clears in a quarter of the time of direct ab work", () => {
+    // abs base is 36h; bracing counts at a quarter, so 9h.
+    expect(muscle("Barbell Deadlift", 1, "abs").hoursLeft).toBe(8);
+    expect(muscle("Barbell Deadlift", 9, "abs").color).toBe(COLOR_RECOVERED);
+  });
+
+  test("core listed as a helper on a non-ab exercise counts as bracing too", () => {
+    // ExerciseDB lists core as a secondary muscle of the back squat.
+    expect(muscle("Barbell Full Squat", 1, "abs").color).toBe(COLOR_PARTIAL);
+  });
+
+  test("direct ab work still makes the core red", () => {
+    expect(muscle("Crunch Floor", 1, "abs").color).toBe(COLOR_TRAINED);
+    expect(muscle("Hanging Leg Raise", 1, "abs").color).toBe(COLOR_TRAINED);
+  });
+
+  test("a pull day with a standing row: core lightly worked, not red", () => {
+    const pullDay = workout("Pull", hoursAgo(1), [
+      { name: "Cable Bar Lateral Pulldown", sets: [set(60, 10)] },
+      { name: "Cable Seated Row", sets: [set(55, 10)] },
+      { name: "Lever Bent Over Row", sets: [set(40, 10)] }, // standing landmine row
+      { name: "Face Pull", sets: [set(20, 15)] },
+      { name: "Dumbbell Incline Biceps Curl", sets: [set(12, 10)] },
+      { name: "Dumbbell Cross Body Hammer Curl", sets: [set(14, 10)] },
+    ]);
+    const colour = (slug: string) => computeRecovery([pullDay], NOW).find((m) => m.slug === slug)!.color;
+    expect(colour("abs")).toBe(COLOR_PARTIAL);
+    expect(colour("upper-back")).toBe(COLOR_TRAINED);
+    expect(colour("biceps")).toBe(COLOR_TRAINED);
+    // and none of the other five touch the core at all
+    const withoutRow = workout("Pull", hoursAgo(1), pullDay.exercises.filter((e) => e.name !== "Lever Bent Over Row"));
+    expect(computeRecovery([withoutRow], NOW).find((m) => m.slug === "abs")!.color).toBe(COLOR_RECOVERED);
   });
 
   test("a bench press leaves the core alone", () => {

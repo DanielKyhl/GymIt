@@ -56,18 +56,32 @@ const toSlugs = (names: string[] | undefined): Slug[] =>
     .map((m) => MUSCLE_TO_SLUG[m.toLowerCase()])
     .filter((s): s is Slug => Boolean(s));
 
-type Trained = { primary: Slug[]; secondary: Slug[] };
+// primary: what the exercise is for. secondary: muscles that help move the
+// weight. braced: muscles holding the body still while it moves, like the core
+// in a bent-over row. Bracing is real work but light, so it counts for less
+// and clears sooner (see computeRecovery).
+type Trained = { primary: Slug[]; secondary: Slug[]; braced: Slug[] };
+
+const CORE: Slug[] = ["abs", "obliques"];
 
 function trainedBy(e: MuscleSource): Trained {
   const primary = toSlugs(e.primaryMuscles);
   const secondary = new Set(toSlugs(e.secondaryMuscles));
-  // Stabilisers the source data omits (core bracing, anti-rotation). Skipped
-  // where the muscle is already the point of the exercise.
-  stabiliserMuscles(e).forEach((s) => {
-    if (!primary.includes(s)) secondary.add(s);
+  // Bracing the source data leaves out (core in squats, rows, carries).
+  const braced = new Set(stabiliserMuscles(e));
+  // Core listed as a helper on something that isn't an ab exercise is the
+  // same thing: holding the trunk still, not moving it.
+  if (!primary.some((s) => CORE.includes(s))) {
+    CORE.forEach((s) => {
+      if (secondary.delete(s)) braced.add(s);
+    });
+  }
+  primary.forEach((s) => {
+    secondary.delete(s);
+    braced.delete(s);
   });
-  primary.forEach((s) => secondary.delete(s));
-  return { primary, secondary: [...secondary] };
+  secondary.forEach((s) => braced.delete(s));
+  return { primary, secondary: [...secondary], braced: [...braced] };
 }
 
 const muscleMap = new Map<string, Trained>(exercises.map((e) => [e.name, trainedBy(e)]));
@@ -78,7 +92,7 @@ export function musclesFor(name: string): Trained {
   let found = muscleMap.get(name);
   if (!found) {
     const legacy = legacyExercise(name);
-    if (!legacy) return { primary: [], secondary: [] };
+    if (!legacy) return { primary: [], secondary: [], braced: [] };
     found = trainedBy(legacy);
     muscleMap.set(name, found);
   }
@@ -107,17 +121,22 @@ export function computeRecovery(workouts: Workout[], now: number = Date.now()): 
     w.exercises.forEach((ex) => {
       if (ex.sets.length === 0) return;
       const mm = musclesFor(ex.name);
-      const apply = (slug: Slug, factor: number) => {
+      // floor: the least recovered this can make a muscle look.
+      const apply = (slug: Slug, factor: number, floor = 0) => {
         const base = RECOVERY_HOURS[slug];
         if (!base) return;
         const eff = base * factor;
-        const fraction = Math.min(1, elapsedH / eff);
+        const fraction = elapsedH >= eff ? 1 : Math.max(floor, elapsedH / eff);
         const hoursLeft = Math.max(0, eff - elapsedH);
         const cur = best[slug];
         if (!cur || fraction < cur.fraction) best[slug] = { fraction, hoursLeft };
       };
       mm.primary.forEach((s) => apply(s, 1));
       mm.secondary.forEach((s) => apply(s, 0.5));
+      // Bracing alone never reads as "just trained" (red): a few sets of rows
+      // or squats don't tire the core like direct ab work. It shows as partly
+      // worked, and clears in a quarter of the usual time.
+      mm.braced.forEach((s) => apply(s, 0.25, 0.5));
     });
   });
 
