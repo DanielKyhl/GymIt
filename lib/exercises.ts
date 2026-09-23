@@ -43,6 +43,44 @@ export function searchExercises(query: string): Exercise[] {
     return exercises.filter((e) => e.name.toLowerCase().includes(q));
 }
 
+// The letter an exercise files under. Names that start with a digit ("3/4
+// Sit-Up") go under "#", which sorts first, the same way the list does.
+export function letterFor(name: string): string {
+    const c = name.trim()[0]?.toUpperCase() ?? '#';
+    return c >= 'A' && c <= 'Z' ? c : '#';
+}
+
+export const LETTERS = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
+
+// One flat list of letter headings and exercises, so the picker can show where
+// it is in the alphabet and jump straight to a letter.
+export type ExerciseRow =
+    | { type: 'header'; letter: string }
+    | { type: 'exercise'; exercise: Exercise };
+
+export function withLetterHeaders(list: Exercise[]): ExerciseRow[] {
+    const rows: ExerciseRow[] = [];
+    let current = '';
+    list.forEach((exercise) => {
+        const letter = letterFor(exercise.name);
+        if (letter !== current) {
+            rows.push({ type: 'header', letter });
+            current = letter;
+        }
+        rows.push({ type: 'exercise', exercise });
+    });
+    return rows;
+}
+
+// Where each letter's heading sits in that list, for the A-Z rail.
+export function letterPositions(rows: ExerciseRow[]): Record<string, number> {
+    const at: Record<string, number> = {};
+    rows.forEach((row, i) => {
+        if (row.type === 'header') at[row.letter] = i;
+    });
+    return at;
+}
+
 // Full URL for one of an exercise's photos, or null if it has none.
 export function exerciseImageUrl(exercise: Exercise, index = 0): string | null {
     const path = exercise.images?.[index];

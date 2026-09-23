@@ -1,7 +1,9 @@
+import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
+  GestureResponderEvent,
   Modal,
   Pressable,
   ScrollView,
@@ -10,13 +12,24 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { exerciseImageUrl, muscleList, searchExercises } from "../lib/exercises";
+import {
+  ExerciseRow,
+  exerciseImageUrl,
+  LETTERS,
+  letterPositions,
+  muscleList,
+  searchExercises,
+  withLetterHeaders,
+} from "../lib/exercises";
 import { Exercise } from "../types/workout";
 import { C, HIT } from "../constants/theme";
 import { X } from "lucide-react-native";
 
-// Fixed row height lets FlatList skip measuring 873 rows while scrolling.
+// Fixed heights let FlatList skip measuring 873 rows while scrolling, and let
+// the A-Z rail work out exactly where a letter starts.
 const ROW_HEIGHT = 76;
+const HEADER_HEIGHT = 30;
+const RAIL_WIDTH = 24;
 
 type Props = {
   visible: boolean;
@@ -27,8 +40,44 @@ type Props = {
 export function ExercisePicker({ visible, onClose, onSelect }: Props) {
   const [query, setQuery] = useState("");
   const [details, setDetails] = useState<Exercise | null>(null);
+  const list = useRef<FlatList<ExerciseRow>>(null);
 
-  const results = useMemo(() => searchExercises(query), [query]);
+  const rows = useMemo(() => withLetterHeaders(searchExercises(query)), [query]);
+  const positions = useMemo(() => letterPositions(rows), [rows]);
+
+  // Every row's offset, so a jump to a letter lands exactly on its heading.
+  const offsets = useMemo(() => {
+    let y = 0;
+    return rows.map((row) => {
+      const at = y;
+      y += row.type === "header" ? HEADER_HEIGHT : ROW_HEIGHT;
+      return at;
+    });
+  }, [rows]);
+
+  const jumpTo = useCallback(
+    (letter: string) => {
+      const index = positions[letter];
+      if (index === undefined) return;
+      list.current?.scrollToOffset({ offset: offsets[index], animated: false });
+    },
+    [positions, offsets]
+  );
+
+  // The letter at the top of the list, which the rail highlights.
+  const [active, setActive] = useState("");
+  const onScroll = useCallback(
+    (y: number) => {
+      let letter = "";
+      for (let i = 0; i < rows.length; i++) {
+        if (offsets[i] > y + 1) break;
+        const row = rows[i];
+        if (row.type === "header") letter = row.letter;
+      }
+      setActive((prev) => (prev === letter ? prev : letter));
+    },
+    [rows, offsets]
+  );
 
   // Reset on open rather than on close, so the list doesn't visibly snap back
   // to all 873 exercises while the modal is still fading out.
@@ -36,6 +85,7 @@ export function ExercisePicker({ visible, onClose, onSelect }: Props) {
     if (visible) {
       setQuery("");
       setDetails(null);
+      setActive("");
     }
   }, [visible]);
 
@@ -66,43 +116,56 @@ export function ExercisePicker({ visible, onClose, onSelect }: Props) {
             />
           </View>
 
-          <FlatList
-            data={results}
-            keyExtractor={(item) => item.id}
-            keyboardShouldPersistTaps="handled"
-            initialNumToRender={12}
-            windowSize={7}
-            removeClippedSubviews
-            getItemLayout={(_, index) => ({
-              length: ROW_HEIGHT,
-              offset: ROW_HEIGHT * index,
-              index,
-            })}
-            ListEmptyComponent={
-              <Text style={styles.empty}>No exercises match “{query}”.</Text>
-            }
-            renderItem={({ item }) => (
-              <Pressable style={styles.row} onPress={() => choose(item.name)}>
-                <Thumb exercise={item} />
-                <View style={styles.rowText}>
-                  <Text style={styles.rowName} numberOfLines={1}>
-                    {item.name}
-                  </Text>
-                  <Text style={styles.rowMeta} numberOfLines={1}>
-                    {muscleList(item.primaryMuscles)}
-                    {item.equipment ? ` · ${item.equipment}` : ""}
-                  </Text>
-                </View>
-                <Pressable
-                  style={styles.detailsBtn}
-                  hitSlop={8}
-                  onPress={() => setDetails(item)}
-                >
-                  <Text style={styles.detailsText}>Details</Text>
-                </Pressable>
-              </Pressable>
-            )}
-          />
+          <View style={styles.listWrap}>
+            <FlatList
+              ref={list}
+              style={styles.list}
+              data={rows}
+              keyExtractor={(item) => (item.type === "header" ? `#${item.letter}` : item.exercise.id)}
+              keyboardShouldPersistTaps="handled"
+              initialNumToRender={12}
+              windowSize={7}
+              removeClippedSubviews
+              scrollEventThrottle={32}
+              onScroll={(e) => onScroll(e.nativeEvent.contentOffset.y)}
+              getItemLayout={(_, index) => ({
+                length: rows[index]?.type === "header" ? HEADER_HEIGHT : ROW_HEIGHT,
+                offset: offsets[index] ?? 0,
+                index,
+              })}
+              ListEmptyComponent={
+                <Text style={styles.empty}>No exercises match “{query}”.</Text>
+              }
+              renderItem={({ item }) =>
+                item.type === "header" ? (
+                  <View style={styles.letterRow}>
+                    <Text style={styles.letterText}>{item.letter}</Text>
+                  </View>
+                ) : (
+                  <Pressable style={styles.row} onPress={() => choose(item.exercise.name)}>
+                    <Thumb exercise={item.exercise} />
+                    <View style={styles.rowText}>
+                      <Text style={styles.rowName} numberOfLines={1}>
+                        {item.exercise.name}
+                      </Text>
+                      <Text style={styles.rowMeta} numberOfLines={1}>
+                        {muscleList(item.exercise.primaryMuscles)}
+                        {item.exercise.equipment ? ` · ${item.exercise.equipment}` : ""}
+                      </Text>
+                    </View>
+                    <Pressable
+                      style={styles.detailsBtn}
+                      hitSlop={8}
+                      onPress={() => setDetails(item.exercise)}
+                    >
+                      <Text style={styles.detailsText}>Details</Text>
+                    </Pressable>
+                  </Pressable>
+                )
+              }
+            />
+            <AlphabetRail active={active} has={positions} onPick={jumpTo} />
+          </View>
         </View>
       </View>
 
@@ -112,6 +175,83 @@ export function ExercisePicker({ visible, onClose, onSelect }: Props) {
         onAdd={choose}
       />
     </Modal>
+  );
+}
+
+// The A-Z strip down the right edge. Tap a letter or slide down it, the way
+// Contacts works; letters with nothing under them are dimmed and do nothing.
+function AlphabetRail({
+  active,
+  has,
+  onPick,
+}: {
+  active: string;
+  has: Record<string, number>;
+  onPick: (letter: string) => void;
+}) {
+  const rail = useRef<View>(null);
+  const box = useRef({ top: 0, height: 0 });
+  const last = useRef("");
+
+  // Where the rail sits on screen. A drag's locationY is relative to whichever
+  // letter the finger is over, so the maths uses pageY against this instead.
+  const measure = () =>
+    rail.current?.measureInWindow((_x, top, _w, height) => {
+      box.current = { top, height };
+    });
+
+  const pickAt = (e: GestureResponderEvent) => {
+    const { top, height } = box.current;
+    if (!height) return;
+    const i = Math.floor(((e.nativeEvent.pageY - top) / height) * LETTERS.length);
+    const letter = LETTERS[Math.min(LETTERS.length - 1, Math.max(0, i))];
+    // Only when the finger crosses into a new letter, so a slide doesn't fire
+    // dozens of jumps and buzzes on the way past.
+    if (letter === last.current || has[letter] === undefined) return;
+    last.current = letter;
+    onPick(letter);
+    Haptics.selectionAsync().catch(() => undefined);
+  };
+
+  // A tap is handled by each letter's own Pressable, which works the same on
+  // web as on a phone; the container only takes over once a finger moves, so
+  // sliding down the rail scrubs through the letters.
+  return (
+    <View
+      ref={rail}
+      style={styles.rail}
+      onLayout={measure}
+      onStartShouldSetResponder={() => false}
+      onMoveShouldSetResponder={() => true}
+      onResponderGrant={(e) => {
+        measure(); // the panel may have moved since layout, e.g. for the keyboard
+        pickAt(e);
+      }}
+      onResponderMove={pickAt}
+      onResponderRelease={() => {
+        last.current = "";
+      }}
+    >
+      {LETTERS.map((letter) => (
+        <Pressable
+          key={letter}
+          onPress={() => has[letter] !== undefined && onPick(letter)}
+          hitSlop={{ left: 8, right: 8, top: 2, bottom: 2 }}
+          accessibilityRole="button"
+          accessibilityLabel={`Jump to ${letter}`}
+        >
+          <Text
+            style={[
+              styles.railLetter,
+              has[letter] === undefined && styles.railLetterOff,
+              letter === active && styles.railLetterOn,
+            ]}
+          >
+            {letter}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
   );
 }
 
@@ -270,6 +410,28 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     fontSize: 15,
   },
+
+  listWrap: { flex: 1, flexDirection: "row" },
+  list: { flex: 1 },
+
+  letterRow: {
+    height: HEADER_HEIGHT,
+    justifyContent: "flex-end",
+    paddingHorizontal: 12,
+    paddingBottom: 5,
+    backgroundColor: C.bg,
+  },
+  letterText: { color: C.textFaint, fontSize: 12, fontWeight: "700", letterSpacing: 1.2 },
+
+  rail: {
+    width: RAIL_WIDTH,
+    paddingVertical: 8,
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  railLetter: { color: C.textMuted, fontSize: 10, lineHeight: 12, fontWeight: "600" },
+  railLetterOff: { color: C.raised },
+  railLetterOn: { color: C.accent, fontWeight: "800" },
 
   row: {
     height: ROW_HEIGHT,
