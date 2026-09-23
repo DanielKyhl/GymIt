@@ -1,4 +1,5 @@
 import legacyNames from "../../assets/legacyNames.json";
+import missingMedia from "../../scripts/exercisedb-missing-media.json";
 import { currentName, withCurrentNames } from "../exerciseNames";
 import { barWeight, exerciseByName, exercises, isBodyweight } from "../exercises";
 import { PREMADE_TEMPLATES } from "../premadeTemplates";
@@ -97,6 +98,17 @@ describe("the new list", () => {
 
   test("every exercise has an animation", () => {
     expect(exercises.filter((e) => !e.gif)).toEqual([]);
+  });
+
+  test("and none points at one ExerciseDB doesn't actually have", () => {
+    const missing = new Set(missingMedia as string[]);
+    expect(exercises.filter((e) => missing.has(e.gifId ?? e.id)).map((e) => e.name)).toEqual([]);
+  });
+
+  test("the copies without pictures lead to the real exercise", () => {
+    expect(currentName("Pure Chin-Up")).toBe("Chin-Up");
+    expect(currentName("Traditional Barbell Romanian Deadlift")).toBe("Barbell Romanian Deadlift");
+    expect(currentName("Cable Seated Row with Reverse")).toBe("Cable Seated Row");
   });
 
   test("the few ExerciseDB lacks show the closest movement, and say so", () => {

@@ -29,6 +29,8 @@ const arg = (flag) => {
 };
 const OLD_PATH = arg("--old");
 const RAW_PATH = arg("--raw") ?? path.join(os.tmpdir(), "exercisedb-raw.json");
+// Kept in the repo: which ExerciseDB ids have no media. Delete it to re-check.
+const MISSING_PATH = path.join(__dirname, "exercisedb-missing-media.json");
 if (!OLD_PATH) throw new Error("Pass --old <path to the previous assets/exercises.json>");
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -59,6 +61,68 @@ async function download() {
   process.stdout.write("\n");
   fs.writeFileSync(RAW_PATH, JSON.stringify(all));
   return all;
+}
+
+// ---------------------------------------------------------------------------
+// Which animations actually exist. About one in nine entries in the free set
+// has no media on ExerciseDB's server (and no still image either). Checked
+// once, gently, and kept in scripts/exercisedb-missing-media.json.
+
+async function missingMedia(raw) {
+  const cache = MISSING_PATH;
+  if (fs.existsSync(cache)) return new Set(JSON.parse(fs.readFileSync(cache, "utf8")));
+  const missing = [];
+  let next = 0;
+  const worker = async () => {
+    while (next < raw.length) {
+      const e = raw[next++];
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const res = await fetch(`https://static.exercisedb.dev/media/${e.exerciseId}.gif`, { method: "HEAD" }).catch(() => null);
+        if (res && (res.status === 200 || res.status === 404)) {
+          if (res.status === 404) missing.push(e.exerciseId);
+          break;
+        }
+        await sleep(3000 * (attempt + 1));
+      }
+      await sleep(60);
+    }
+  };
+  await Promise.all(Array.from({ length: 6 }, worker));
+  fs.writeFileSync(cache, JSON.stringify(missing));
+  return new Set(missing);
+}
+
+// Every entry without media turns out to be a generated copy of a real
+// exercise with a word or two added: "Pure Chin-Up", "Gentle Style Cable
+// Pulldown", "Cable Seated Row with Reverse", "... - Chair Variation". They're
+// dropped, and anything saved under one is renamed to the original, which is
+// in the list with its own animation.
+
+const nameWords = (n) =>
+  new Set(
+    n
+      .toLowerCase()
+      .replace(/в?°/g, " degrees ")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+      .split(" ")
+      .map((w) => (w === "ups" ? "up" : w))
+      .filter(Boolean)
+  );
+
+// The real exercise an entry without media was copied from: same equipment,
+// every one of its words in ours, and one to three words fewer.
+function originalOf(entry, withMedia) {
+  const own = nameWords(entry.name);
+  let best = null;
+  for (const e of withMedia) {
+    if (e.equipments[0] !== entry.equipments[0]) continue;
+    const w = nameWords(e.name);
+    const extra = own.size - w.size;
+    if (extra < 1 || extra > 3 || ![...w].every((x) => own.has(x))) continue;
+    if (!best || w.size > best.size) best = { e, size: w.size };
+  }
+  return best;
 }
 
 // ---------------------------------------------------------------------------
@@ -322,10 +386,22 @@ const sameSet = (a, b) => a.size === b.size && [...a].every((x) => b.has(x));
   const old = JSON.parse(fs.readFileSync(OLD_PATH, "utf8"));
   const oldByName = new Map(old.map((e) => [e.name, e]));
 
+  // Entries without an animation make way for the exercise they copy.
+  const noMedia = await missingMedia(raw);
+  const withMedia = raw.filter((e) => !noMedia.has(e.exerciseId));
+  const droppedFor = new Map(); // exerciseId -> the original's raw entry
+  for (const e of raw.filter((x) => noMedia.has(x.exerciseId))) {
+    const original = originalOf(e, withMedia);
+    if (!original) throw new Error(`No animation, and no original it copies: ${e.name}`);
+    droppedFor.set(e.exerciseId, original.e);
+  }
+  const kept = raw.filter((e) => !droppedFor.has(e.exerciseId));
+
   // New catalogue.
   const seen = new Map();
   const byRawName = new Map();
-  const catalogue = raw.map((e) => {
+  const byId = new Map();
+  const catalogue = kept.map((e) => {
     let name = displayName(e.name);
     const n = (seen.get(name) ?? 0) + 1;
     seen.set(name, n);
@@ -340,15 +416,21 @@ const sameSet = (a, b) => a.size === b.size && [...a].every((x) => b.has(x));
       gif: true,
     };
     if (!byRawName.has(e.name)) byRawName.set(e.name, entry);
+    byId.set(e.exerciseId, entry);
     return entry;
   });
+  // A raw name whose every copy was dropped leads to its original instead.
+  const resolveRaw = (rawName) =>
+    byRawName.get(rawName) ??
+    byId.get([...droppedFor].find(([id]) => raw.find((e) => e.exerciseId === id)?.name === rawName)?.[1].exerciseId);
 
-  // Kept staples, with their equipment moved to ExerciseDB's words.
+  // Old-catalogue staples ExerciseDB lacks, with their equipment moved to
+  // ExerciseDB's words.
   const EQUIP_TO_NEW = { machine: "leverage machine", "body only": "body weight", kettlebells: "kettlebell", "e-z curl bar": "ez barbell", bands: "band", "exercise ball": "stability ball", "foam roll": "roller" };
-  const kept = Object.entries(KEEP).map(([n, standIn]) => {
+  const staples = Object.entries(KEEP).map(([n, standIn]) => {
     const o = oldByName.get(n);
-    const shown = byRawName.get(standIn);
-    if (!o || !shown) throw new Error(`Kept exercise or its animation not found: ${n} -> ${standIn}`);
+    const shown = resolveRaw(standIn);
+    if (!o || !shown || shown.gifId) throw new Error(`Kept exercise or its animation not found: ${n} -> ${standIn}`);
     return {
       id: `fedb-${o.id}`,
       name: o.name,
@@ -362,18 +444,18 @@ const sameSet = (a, b) => a.size === b.size && [...a].every((x) => b.has(x));
       gifOf: shown.name,
     };
   });
-  const full = [...catalogue, ...kept].sort((a, b) => a.name.localeCompare(b.name));
+  const full = [...catalogue, ...staples].sort((a, b) => a.name.localeCompare(b.name));
   const names = new Set(full.map((e) => e.name));
 
   // Renames: hand-paired first, then exact word matches with the same equipment.
   const renames = {};
-  const missing = [];
+  const problems = [];
   for (const [from, toRaw] of Object.entries(OVERRIDES)) {
-    const to = byRawName.get(toRaw);
-    if (!to) missing.push(`${from} -> ${toRaw}`);
+    const to = resolveRaw(toRaw);
+    if (!to) problems.push(`${from} -> ${toRaw}`);
     else if (from !== to.name) renames[from] = to.name;
   }
-  const newIndex = raw.map((e) => ({ raw: e.name, t: tokens(e.name), fam: FAMILY_NEW[e.equipments[0]] }));
+  const newIndex = kept.map((e) => ({ raw: e.name, t: tokens(e.name), fam: FAMILY_NEW[e.equipments[0]] }));
   for (const o of old) {
     if (renames[o.name] || OVERRIDES[o.name] || names.has(o.name) || KEEP[o.name]) continue;
     const t = tokens(o.name);
@@ -381,9 +463,15 @@ const sameSet = (a, b) => a.size === b.size && [...a].every((x) => b.has(x));
     const hit = newIndex.find((n) => (!fam || n.fam === fam) && sameSet(t, n.t));
     if (hit) renames[o.name] = byRawName.get(hit.raw).name;
   }
+  // Dropped copies point at their original, in case one was already saved.
+  for (const [id, original] of droppedFor) {
+    const from = displayName(raw.find((e) => e.exerciseId === id).name);
+    const to = byId.get(original.exerciseId).name;
+    if (!names.has(from) && from !== to) renames[from] = to;
+  }
 
   // Muscles for every old name that isn't in the new catalogue, so history
-  // under it still counts. [primary, secondary, equipment]
+  // under it still counts. [primary, secondary, equipment, stretch]
   const legacy = {};
   for (const o of old) {
     if (names.has(o.name)) continue;
@@ -391,17 +479,20 @@ const sameSet = (a, b) => a.size === b.size && [...a].every((x) => b.has(x));
   }
 
   const unknownOld = Object.keys(OVERRIDES).filter((n) => !oldByName.has(n));
-  if (unknownOld.length) missing.push(...unknownOld.map((n) => `(not in the old catalogue) ${n}`));
-  if (missing.length) throw new Error("Hand-paired names that don't exist:\n  " + missing.join("\n  "));
+  if (unknownOld.length) problems.push(...unknownOld.map((n) => `(not in the old catalogue) ${n}`));
+  if (problems.length) throw new Error("Hand-paired names that don't exist:\n  " + problems.join("\n  "));
+  const withoutPicture = full.filter((e) => noMedia.has(e.gifId ?? e.id));
+  if (withoutPicture.length) throw new Error("Still without a picture: " + withoutPicture.map((e) => e.name).join(", "));
 
   const write = (file, data) => fs.writeFileSync(path.join(ROOT, "assets", file), JSON.stringify(data));
   write("exercises.json", full);
   write("legacyExercises.json", legacy);
   write("legacyNames.json", renames);
 
-  console.log(`catalogue: ${catalogue.length} from ExerciseDB + ${kept.length} kept = ${full.length}`);
-  console.log(`renamed old names: ${Object.keys(renames).length} of ${old.length} (${Object.keys(OVERRIDES).length} by hand)`);
-  console.log(`old names kept with their muscles only: ${Object.keys(legacy).length - Object.keys(renames).length}`);
+  console.log(`ExerciseDB: ${raw.length}, of which ${noMedia.size} have no animation:`);
+  console.log(`  all copies of a real exercise; ${droppedFor.size} dropped in favour of the original`);
+  console.log(`catalogue: ${catalogue.length} from ExerciseDB + ${staples.length} old staples = ${full.length}`);
+  console.log(`renames: ${Object.keys(renames).length} (${Object.keys(OVERRIDES).length} by hand)`);
 })().catch((e) => {
   console.error(e.message);
   process.exit(1);
