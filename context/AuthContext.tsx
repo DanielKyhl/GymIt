@@ -11,7 +11,7 @@ import {
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { auth } from '../lib/firebase';
-import { migrateExerciseNames } from '../lib/storage';
+import { fillBlankTemplates, migrateExerciseNames } from '../lib/storage';
 import { hasSyncedBefore, syncAll, wipeAccount } from '../lib/sync';
 
 type User = {
@@ -40,13 +40,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // showing the app anyway.
 const FIRST_SYNC_TIMEOUT_MS = 8000;
 
-// Sync, then move any old exercise names over (lib/exerciseNames.ts). The
-// renaming runs even when the sync fails, e.g. offline: it works on this
-// device's copy and uploads with the next sync.
+// Sync, then move any old exercise names over (lib/exerciseNames.ts) and
+// give blank templates the numbers from last time. Both run even when the
+// sync fails, e.g. offline: they work on this device's copy and upload with
+// the next sync.
 function syncAndMigrate(uid: string): Promise<void> {
     return syncAll(uid)
         .catch(() => undefined)
         .then(() => migrateExerciseNames(uid))
+        .then(() => fillBlankTemplates(uid))
         .catch(() => undefined);
 }
 

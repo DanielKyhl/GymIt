@@ -226,3 +226,28 @@ export function templateAfterWorkout(template: Template, done: WorkoutExercise[]
   });
   return changed ? { ...template, exercises } : null;
 }
+
+// A plan with nothing in it: no sets, or sets with no reps (added in the
+// editor and never filled in).
+const isBlankPlan = (sets?: TemplateSet[]) => !sets?.length || sets.every((s) => !s.reps);
+
+// For templates that were never given numbers, including ones used before
+// workouts wrote theirs back: each blank exercise takes the sets from the
+// last time you did it, in any workout. Exercises that have a plan are left
+// alone. `workouts` newest first, in the template's unit. Null if there's
+// nothing to fill.
+export function fillBlankTemplate(template: Template, workouts: Workout[]): Template | null {
+  const lastTimes: WorkoutExercise[] = [];
+  template.exercises
+    .filter((e) => isBlankPlan(e.sets))
+    .forEach((e) => {
+      for (const w of workouts) {
+        const sets = w.exercises.find((x) => x.name === e.name)?.sets.filter((s) => s.done || s.reps > 0);
+        if (sets?.length) {
+          lastTimes.push({ name: e.name, sets: sets.map((s) => ({ ...s, done: true })) });
+          return;
+        }
+      }
+    });
+  return lastTimes.length > 0 ? templateAfterWorkout(template, lastTimes) : null;
+}

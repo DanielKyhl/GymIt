@@ -9,6 +9,7 @@ import {
   loggedExercises,
   platesPerSide,
   restAfterSet,
+  fillBlankTemplate,
   setNumber,
   templateAfterWorkout,
   toggleSet,
@@ -247,5 +248,49 @@ describe("templateAfterWorkout", () => {
   test("nothing to write when nothing changed", () => {
     expect(templateAfterWorkout(template, [{ name: "Barbell Curl", sets: [done(30, 10)] }])).toBeNull();
     expect(templateAfterWorkout(template, [])).toBeNull();
+  });
+});
+
+describe("fillBlankTemplate", () => {
+  const set = (weight: number, reps: number, extra: Partial<WorkoutSet> = {}): WorkoutSet => ({ weight, reps, done: true, ...extra });
+  const session = (date: string, exercises: WorkoutExercise[]) => ({ id: date, name: "Pull", date, durationSeconds: 3600, unit: "kg" as const, exercises });
+  // Newest first, like the app keeps them.
+  const history = [
+    session("2026-09-20T18:00:00.000Z", [
+      { name: "Cable Seated Row", sets: [set(55, 10), set(55, 9)] },
+      { name: "Pull-Up", sets: [set(80, 8)] },
+    ]),
+    session("2026-09-13T18:00:00.000Z", [
+      { name: "Cable Seated Row", sets: [set(50, 10)] },
+      { name: "Face Pull", sets: [set(20, 15), set(20, 15)] },
+    ]),
+  ];
+  const blank = (name: string, n = 2) => ({ name, sets: Array.from({ length: n }, () => ({ weight: 0, reps: 0 })) });
+
+  test("blank exercises take the sets from the last time they were done", () => {
+    const t = { id: "t", name: "Pull-", exercises: [blank("Cable Seated Row"), blank("Face Pull"), blank("Pull-Up")] };
+    const filled = fillBlankTemplate(t, history)!;
+    expect(filled.exercises[0].sets).toEqual([{ weight: 55, reps: 10 }, { weight: 55, reps: 9 }]); // the latest, not the older 50x10
+    expect(filled.exercises[1].sets).toEqual([{ weight: 20, reps: 15 }, { weight: 20, reps: 15 }]); // only in the older workout
+    expect(filled.exercises[2].sets).toEqual([{ weight: 0, reps: 8 }]); // bodyweight stays BW
+  });
+
+  test("exercises that have a plan are left alone", () => {
+    const t = { id: "t", name: "Pull-", exercises: [{ name: "Cable Seated Row", sets: [{ weight: 60, reps: 8 }] }, blank("Face Pull")] };
+    const filled = fillBlankTemplate(t, history)!;
+    expect(filled.exercises[0].sets).toEqual([{ weight: 60, reps: 8 }]);
+    expect(filled.exercises[1].sets).toHaveLength(2);
+  });
+
+  test("no sets at all counts as blank too", () => {
+    const t = { id: "t", name: "Pull-", exercises: [{ name: "Face Pull" }] };
+    expect(fillBlankTemplate(t, history)!.exercises[0].sets).toHaveLength(2);
+  });
+
+  test("nothing to do without history, or once filled", () => {
+    const t = { id: "t", name: "Pull-", exercises: [blank("Barbell Curl")] };
+    expect(fillBlankTemplate(t, history)).toBeNull();
+    const once = fillBlankTemplate({ id: "t", name: "Pull-", exercises: [blank("Face Pull")] }, history)!;
+    expect(fillBlankTemplate(once, history)).toBeNull();
   });
 });

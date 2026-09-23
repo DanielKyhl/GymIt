@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Template, Workout } from '../types/workout';
-import { ActiveWorkout } from './activeWorkout';
+import { ActiveWorkout, fillBlankTemplate } from './activeWorkout';
 import { addWeighIn, BodyWeight, BodyWeightEntry, todayKey } from './bodyweight';
 import { currentName, withCurrentNames } from './exerciseNames';
 import { Experience, Goal, needsOnboarding, restForGoal } from './onboarding';
@@ -156,6 +156,23 @@ export async function migrateExerciseNames(uid: string): Promise<void> {
             id: SETTINGS_ID,
             updatedAt: Date.now(),
         }));
+    }
+}
+
+// Templates still blank (0x0) take the numbers from the last time each
+// exercise was done (lib/activeWorkout.ts, fillBlankTemplate). Run after each
+// sign-in sync; it only writes templates that still have blank exercises with
+// history behind them, so it settles after one pass.
+export async function fillBlankTemplates(uid: string): Promise<void> {
+    const templates = live(await readLocal<Synced<Template>>(uid, 'templates'));
+    const workouts = await getWorkoutsForStats();
+    for (const template of templates) {
+        if (!fillBlankTemplate(template, workouts)) continue;
+        await updateRecord<Synced<Template>>(uid, 'templates', template.id, (current) => {
+            const base = current ?? template;
+            const filled = fillBlankTemplate(base, workouts);
+            return filled ? { ...filled, updatedAt: Date.now() } : base;
+        });
     }
 }
 
