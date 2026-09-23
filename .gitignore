@@ -45,6 +45,10 @@ app-example
 # Firebase project config (see .env.example)
 .env
 
+# Which Firebase project to deploy to: set locally with `firebase use`, kept
+# out of the repo like .env
+.firebaserc
+
 # Firebase emulator / CLI debris
 firebase-debug.log
 firestore-debug.log

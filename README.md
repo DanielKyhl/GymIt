@@ -52,8 +52,16 @@ screen without an app store or a developer account:
 npm run deploy
 ```
 
-That exports the web build to `dist/` and pushes it to Firebase Hosting (the
-first time, run `npx firebase-tools login` once). Then on the phone, open the
+That exports the web build to `dist/` and pushes it to Firebase Hosting. Once,
+before the first deploy:
+
+```
+npx firebase-tools login
+npx firebase-tools use <your-project-id>
+```
+
+`firebase use` writes `.firebaserc`, which stays out of the repo along with
+`.env`. Then on the phone, open the
 URL and choose **Add to Home Screen** — Share menu on iOS, the ⋮ menu on
 Android. It launches full-screen with its own icon, keeps you signed in, and
 the service worker in `public/sw.js` keeps it working with no signal.
