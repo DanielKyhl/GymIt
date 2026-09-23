@@ -10,7 +10,9 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "build:web": "expo export --platform web",
+    "deploy": "expo export --platform web && npx firebase-tools deploy --only hosting"
   },
   "jest": {
     "preset": "jest-expo",

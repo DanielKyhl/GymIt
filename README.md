@@ -43,6 +43,24 @@ only, nothing else is used). After creating one, enable Email/Password sign-in
 and publish `firestore.rules` from Firestore → Rules, which is what keeps each
 account's data private and lets an account delete itself.
 
+## Putting it on a phone
+
+GymIt also builds as an installable web app, which is how it gets onto a home
+screen without an app store or a developer account:
+
+```
+npm run deploy
+```
+
+That exports the web build to `dist/` and pushes it to Firebase Hosting (the
+first time, run `npx firebase-tools login` once). Then on the phone, open the
+URL and choose **Add to Home Screen** — Share menu on iOS, the ⋮ menu on
+Android. It launches full-screen with its own icon, keeps you signed in, and
+the service worker in `public/sw.js` keeps it working with no signal.
+
+Two things don't survive the web build: haptics do nothing, and the summary's
+share card is hidden, because the screenshot library it uses is native-only.
+
 ## Developing against the emulators
 
 Nothing has to touch the real project:
