@@ -178,7 +178,7 @@ export default function WorkoutSummary() {
             )}
           </Pressable>
         )}
-        <Pressable style={styles.doneBtn} onPress={() => router.replace("/(tabs)")} accessibilityRole="button">
+        <Pressable style={styles.doneBtn} onPress={() => router.dismissTo("/(tabs)")} accessibilityRole="button">
           <Text style={styles.doneText}>Done</Text>
         </Pressable>
       </View>

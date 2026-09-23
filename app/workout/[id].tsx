@@ -51,6 +51,7 @@ import { summarizeWorkout } from "../../lib/summary";
 import { convertWeight, normalizeUnits } from "../../lib/units";
 import { Workout, WorkoutExercise, WorkoutSet } from "../../types/workout";
 import { ExerciseInfoButton } from "../../components/ExerciseInfo";
+import { useKeepScreenOn } from "../../hooks/useKeepScreenOn";
 
 // Routes: /workout/<templateId> starts (or resumes) that template,
 // /workout/new starts an empty workout, /workout/resume reopens the
@@ -92,6 +93,8 @@ const blankSets = (weight: number, restSeconds: number): WorkoutSet[] =>
 export default function ActiveWorkoutScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  // No dimming mid-set: the screen stays on while this workout is open.
+  useKeepScreenOn();
   const [active, setActive] = useState<ActiveWorkout | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "missing">("loading");
   const [defaultRest, setDefaultRest] = useState(120);
@@ -134,7 +137,7 @@ export default function ActiveWorkoutScreen() {
 
       if (id === "resume") {
         if (existing) open(existing);
-        else router.replace("/(tabs)");
+        else router.dismissTo("/(tabs)");
         return;
       }
       if (id !== "new" && !template) {
@@ -201,7 +204,7 @@ export default function ActiveWorkoutScreen() {
     return (
       <View style={[styles.container, styles.centered]}>
         <Text style={styles.message}>This template no longer exists.</Text>
-        <Pressable style={styles.endButton} onPress={() => router.replace("/(tabs)")}>
+        <Pressable style={styles.endButton} onPress={() => router.dismissTo("/(tabs)")}>
           <Text style={styles.endText}>Back to Home</Text>
         </Pressable>
       </View>
@@ -461,7 +464,7 @@ export default function ActiveWorkoutScreen() {
     if (!ok) return;
     finished.current = true;
     await clearActiveWorkout();
-    router.replace("/(tabs)");
+    router.dismissTo("/(tabs)");
   };
 
   const totalSets = active.exercises.reduce((n, ex) => n + ex.sets.length, 0);
@@ -595,6 +598,7 @@ export default function ActiveWorkoutScreen() {
                         placeholderTextColor={C.textFaint}
                         value={set.weight}
                         onChangeValue={(v) => updateSet(exIndex, setIndex, { weight: v })}
+                        accessibilityLabel={`${ex.name} set ${setIndex + 1} weight`}
                       />
                       <NumberInput
                         style={[styles.input, styles.colReps]}
@@ -603,6 +607,7 @@ export default function ActiveWorkoutScreen() {
                         placeholderTextColor={C.textFaint}
                         value={set.reps}
                         onChangeValue={(v) => updateSet(exIndex, setIndex, { reps: v })}
+                        accessibilityLabel={`${ex.name} set ${setIndex + 1} reps`}
                       />
                       <RpeCell
                         value={set.rpe}
