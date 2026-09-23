@@ -104,7 +104,7 @@ achievements, stats, recovery, unit conversion and the sync merge.
 
 ## Exercise data
 
-The 1,328 exercises and their animations come from the free tier of
+The 1,255 exercises and their animations come from the free tier of
 [ExerciseDB](https://oss.exercisedb.dev) by AscendAPI. It's free for personal
 and non-commercial apps, with credit to AscendAPI (shown in the exercise
 sheet and in Settings). Charging for the app or running ads would need their
@@ -113,7 +113,8 @@ bundled.
 
 `scripts/import-exercises.cjs` rebuilds `assets/exercises.json` from it,
 leaving out the 176 entries ExerciseDB has no animation for (all generated
-copies of exercises that are in the list). It
+copies of exercises that are in the list) and anything you can't log as
+weight and reps: stretches, yoga poses, cardio machines and runs. It
 also records how names from the previous exercise list map onto the new ones
 (`assets/legacyNames.json`), which the app applies to saved workouts and
 templates, and what the unmatched old names trained

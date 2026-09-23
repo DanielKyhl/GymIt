@@ -1,3 +1,4 @@
+import legacyExercises from "../../assets/legacyExercises.json";
 import legacyNames from "../../assets/legacyNames.json";
 import missingMedia from "../../scripts/exercisedb-missing-media.json";
 import { currentName, withCurrentNames } from "../exerciseNames";
@@ -123,5 +124,27 @@ describe("the new list", () => {
   test("the pec deck is ExerciseDB's own", () => {
     expect(currentName("Butterfly")).toBe("Lever Seated Fly");
     expect(exerciseByName("Lever Seated Fly")!.primaryMuscles).toEqual(["chest"]);
+  });
+});
+
+describe("only things you log as weight and reps", () => {
+  test("no stretches, yoga poses or cardio machines in the list", () => {
+    const unloggable = exercises.filter((e) =>
+      /stretch|yoga|\bpose\b|sphinx|upward facing dog|cross trainer|elliptical|stepmill|stationary bike|treadmill|^run\b/i.test(e.name)
+    );
+    expect(unloggable.map((e) => e.name)).toEqual([]);
+  });
+
+  test("rep-based conditioning stays", () => {
+    ["Burpee", "Mountain Climber", "Jump Rope"].forEach((n) => expect(exerciseByName(n)).toBeDefined());
+  });
+
+  test("a stretch in history trains nothing, old list or new", () => {
+    expect(musclesFor("All Fours Squad Stretch")).toEqual({ primary: [], secondary: [], braced: [] }); // was in the list briefly
+    const oldStretch = Object.keys(legacyExercises).find((n) => /stretch/i.test(n))!;
+    expect(musclesFor(oldStretch).primary).toEqual([]);
+    const now = new Date("2026-09-10T12:00:00.000Z").getTime();
+    const stretching = workout("Mobility", "2026-09-09T18:00:00.000Z", [{ name: "All Fours Squad Stretch", sets: [set(0, 30)] }]);
+    expect(weeklyMuscleSets([stretching], now).every((m) => m.sets === 0)).toBe(true);
   });
 });

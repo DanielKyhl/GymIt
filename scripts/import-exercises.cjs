@@ -350,6 +350,18 @@ const OVERRIDES = {
   "Butterfly": "lever seated fly", // the pec deck
 };
 
+// Not for a weight-and-reps log: stretches, yoga poses and foam-roller
+// mobility (timed holds), and cardio machines and runs (time and distance).
+// Logged, a stretch would count as a training set for its muscle and turn it
+// red on the recovery map. Rep-based conditioning (burpees, jumping jacks,
+// mountain climbers) stays.
+const NOT_LOGGABLE =
+  /stretch|\byoga\b|\bpose\b|^sphinx$|^upward facing dog$|flexor depresor retractor|cross trainer|elliptical|stepmill|stationary bike|treadmill|^run\b|^short stride run/i;
+
+// The old catalogue's equivalents: in history they keep their name but train
+// nothing, so they never count on the charts or the recovery map.
+const OLD_NOT_LOGGABLE = (o) => o.category === "stretching" || o.category === "cardio";
+
 // Staples ExerciseDB's free set doesn't have. They stay in the catalogue
 // under their own name and muscles, shown with the animation of the closest
 // movement it does have (the exercise sheet says it's the closest match).
@@ -395,7 +407,7 @@ const sameSet = (a, b) => a.size === b.size && [...a].every((x) => b.has(x));
     if (!original) throw new Error(`No animation, and no original it copies: ${e.name}`);
     droppedFor.set(e.exerciseId, original.e);
   }
-  const kept = raw.filter((e) => !droppedFor.has(e.exerciseId));
+  const kept = raw.filter((e) => !droppedFor.has(e.exerciseId) && !NOT_LOGGABLE.test(e.name));
 
   // New catalogue.
   const seen = new Map();
@@ -460,11 +472,12 @@ const sameSet = (a, b) => a.size === b.size && [...a].every((x) => b.has(x));
     if (renames[o.name] || OVERRIDES[o.name] || names.has(o.name) || KEEP[o.name]) continue;
     const t = tokens(o.name);
     const fam = FAMILY_OLD[o.equipment];
-    const hit = newIndex.find((n) => (!fam || n.fam === fam) && sameSet(t, n.t));
+    const hit = OLD_NOT_LOGGABLE(o) ? null : newIndex.find((n) => (!fam || n.fam === fam) && sameSet(t, n.t));
     if (hit) renames[o.name] = byRawName.get(hit.raw).name;
   }
   // Dropped copies point at their original, in case one was already saved.
   for (const [id, original] of droppedFor) {
+    if (!byId.has(original.exerciseId)) continue;
     const from = displayName(raw.find((e) => e.exerciseId === id).name);
     const to = byId.get(original.exerciseId).name;
     if (!names.has(from) && from !== to) renames[from] = to;
@@ -475,7 +488,13 @@ const sameSet = (a, b) => a.size === b.size && [...a].every((x) => b.has(x));
   const legacy = {};
   for (const o of old) {
     if (names.has(o.name)) continue;
-    legacy[o.name] = [o.primaryMuscles, o.secondaryMuscles, EQUIP_TO_NEW[o.equipment] ?? o.equipment ?? null, o.category === "stretching" ? 1 : 0];
+    const trains = !OLD_NOT_LOGGABLE(o);
+    legacy[o.name] = [
+      trains ? o.primaryMuscles : [],
+      trains ? o.secondaryMuscles : [],
+      EQUIP_TO_NEW[o.equipment] ?? o.equipment ?? null,
+      o.category === "stretching" ? 1 : 0,
+    ];
   }
 
   const unknownOld = Object.keys(OVERRIDES).filter((n) => !oldByName.has(n));
@@ -491,6 +510,7 @@ const sameSet = (a, b) => a.size === b.size && [...a].every((x) => b.has(x));
 
   console.log(`ExerciseDB: ${raw.length}, of which ${noMedia.size} have no animation:`);
   console.log(`  all copies of a real exercise; ${droppedFor.size} dropped in favour of the original`);
+  console.log(`  ${raw.filter((e) => !droppedFor.has(e.exerciseId) && NOT_LOGGABLE.test(e.name)).length} stretches, poses and cardio machines left out`);
   console.log(`catalogue: ${catalogue.length} from ExerciseDB + ${staples.length} old staples = ${full.length}`);
   console.log(`renames: ${Object.keys(renames).length} (${Object.keys(OVERRIDES).length} by hand)`);
 })().catch((e) => {
