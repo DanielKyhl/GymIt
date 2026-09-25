@@ -1,6 +1,6 @@
 import { SetType, Template, TemplateSet, Workout, WorkoutExercise, WorkoutSet } from "../types/workout";
 import { isBodyweight } from "./exercises";
-import { estimate1RM, getExerciseSessions } from "./stats";
+import { countedSets, exerciseTotal } from "./stats";
 import { Unit } from "./units";
 
 // The workout in progress. Saved on the device after every change, so closing
@@ -58,22 +58,35 @@ export function setNumber(sets: WorkoutSet[], index: number): number {
 // ---------------------------------------------------------------------------
 // Live personal records.
 
-// The best estimated 1RM this exercise reached before this workout.
-export function historyBest1RM(pastWorkouts: Workout[], name: string): number {
-  return getExerciseSessions(pastWorkouts, name).reduce((best, s) => Math.max(best, s.best1RM), 0);
+export type HistoryBests = { total: number; heaviest: number };
+
+// What this exercise has to beat today: its best total from any past workout
+// (see exerciseTotal) and the heaviest weight it was ever lifted with. Zeros
+// when it's new, which makes today only its baseline.
+export function historyBests(pastWorkouts: Workout[], name: string): HistoryBests {
+  const bests = { total: 0, heaviest: 0 };
+  pastWorkouts.forEach((w) => {
+    const sets = w.exercises.filter((e) => e.name === name).flatMap((e) => e.sets);
+    bests.total = Math.max(bests.total, exerciseTotal(name, sets));
+    if (!isBodyweight(name)) countedSets(sets).forEach((s) => (bests.heaviest = Math.max(bests.heaviest, s.weight)));
+  });
+  return bests;
 }
 
-// A finished working set is a PR if it beats the exercise's history and every
-// earlier set of it in this workout. First-ever sessions only set a baseline,
-// matching how PRs are counted for XP.
+// The PR badge goes on the set that takes today's total past the best ever.
 export function isLivePR(exercise: WorkoutExercise, setIndex: number, historyBest: number): boolean {
   const set = exercise.sets[setIndex];
-  if (!set?.done || set.type === "warmup" || historyBest <= 0) return false;
-  const e1rm = estimate1RM(set.weight, set.reps);
-  if (e1rm <= historyBest) return false;
-  return exercise.sets
-    .slice(0, setIndex)
-    .every((s) => !s.done || s.type === "warmup" || estimate1RM(s.weight, s.reps) < e1rm);
+  if (!set || historyBest <= 0 || countedSets([set]).length === 0) return false;
+  const before = exerciseTotal(exercise.name, exercise.sets.slice(0, setIndex));
+  return before <= historyBest && exerciseTotal(exercise.name, exercise.sets.slice(0, setIndex + 1)) > historyBest;
+}
+
+// The first set today at a weight never lifted on this exercise before gets a
+// "first" note. Bodyweight exercises never do: their weight is your own.
+export function isLiveMilestone(exercise: WorkoutExercise, setIndex: number, historyHeaviest: number): boolean {
+  const set = exercise.sets[setIndex];
+  if (!set || historyHeaviest <= 0 || isBodyweight(exercise.name) || countedSets([set]).length === 0) return false;
+  return set.weight > historyHeaviest && countedSets(exercise.sets.slice(0, setIndex)).every((s) => s.weight < set.weight);
 }
 
 // ---------------------------------------------------------------------------

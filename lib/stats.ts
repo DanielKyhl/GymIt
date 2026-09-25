@@ -1,5 +1,6 @@
 import { Slug } from "react-native-body-highlighter";
 import { Workout, WorkoutSet } from "../types/workout";
+import { isBodyweight } from "./exercises";
 import { musclesFor } from "./recovery";
 
 // Epley formula: estimate a one-rep max from a weight lifted for some reps.
@@ -110,6 +111,105 @@ export function getVolumeByTemplate(
 
 // ---------------------------------------------------------------------------
 // Personal records
+//
+// A PR belongs to an exercise in a workout: its total (weight × reps added up
+// over its sets) beat the best total it ever had. Bodyweight exercises count
+// total reps instead, since their "weight" is only what you weighed that day.
+// A milestone is quieter: the first time you lift a weight heavier than ever
+// on that exercise. It isn't counted and gives no XP. The first time you do
+// an exercise only sets its baseline.
+
+// Working sets you ticked off: the sets records and History count.
+export function countedSets(sets: WorkoutSet[]): WorkoutSet[] {
+  return sets.filter((s) => s.done && s.type !== "warmup" && s.reps > 0);
+}
+
+// What a PR compares: total weight moved, or total reps for bodyweight exercises.
+export function exerciseTotal(name: string, sets: WorkoutSet[]): number {
+  const counted = countedSets(sets);
+  const total = isBodyweight(name)
+    ? counted.reduce((n, s) => n + s.reps, 0)
+    : counted.reduce((n, s) => n + s.weight * s.reps, 0);
+  // Weights converted from lb carry decimals; keep float noise out of comparisons.
+  return Math.round(total * 100) / 100;
+}
+
+export type ExerciseRecord = {
+  exercise: string;
+  // Beat its best total. inReps: a bodyweight exercise, so the totals are reps.
+  pr?: { total: number; previous: number; inReps: boolean };
+  // Heavier than it had ever been lifted.
+  milestone?: { weight: number; previous: number };
+};
+
+function oldestFirst(workouts: Workout[]): Workout[] {
+  // Storage keeps newest first; reversing first keeps same-time workouts in order.
+  return [...workouts].reverse().sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+}
+
+// An exercise done twice in one workout counts as one, with all its sets.
+function setsByExercise(workout: Workout): Map<string, WorkoutSet[]> {
+  const byName = new Map<string, WorkoutSet[]>();
+  workout.exercises.forEach((ex) => byName.set(ex.name, [...(byName.get(ex.name) ?? []), ...ex.sets]));
+  return byName;
+}
+
+// Every workout's PRs and milestones by workout id, worked out from the whole
+// history oldest first, so editing or deleting a workout changes what comes
+// after it. Pass the workouts in one unit (getWorkoutsForStats).
+export function workoutRecords(workouts: Workout[]): Map<string, ExerciseRecord[]> {
+  const bests = new Map<string, { total: number; heaviest: number }>();
+  const result = new Map<string, ExerciseRecord[]>();
+  oldestFirst(workouts).forEach((w) => {
+    const records: ExerciseRecord[] = [];
+    setsByExercise(w).forEach((sets, name) => {
+      const total = exerciseTotal(name, sets);
+      if (total <= 0) return;
+      const bodyweight = isBodyweight(name);
+      const heaviest = bodyweight ? 0 : Math.max(...countedSets(sets).map((s) => s.weight));
+      const best = bests.get(name);
+      if (!best) {
+        bests.set(name, { total, heaviest });
+        return;
+      }
+      const record: ExerciseRecord = { exercise: name };
+      if (total > best.total) {
+        record.pr = { total, previous: best.total, inReps: bodyweight };
+        best.total = total;
+      }
+      if (heaviest > best.heaviest) {
+        record.milestone = { weight: heaviest, previous: best.heaviest };
+        best.heaviest = heaviest;
+      }
+      if (record.pr || record.milestone) records.push(record);
+    });
+    if (records.length > 0) result.set(w.id, records);
+  });
+  return result;
+}
+
+// How many PRs in a list of records; milestones don't count.
+export function prCount(records: ExerciseRecord[] | undefined): number {
+  return records?.filter((r) => r.pr).length ?? 0;
+}
+
+// The PRs and milestones of a just-finished workout.
+export function newRecords(past: Workout[], workout: Workout): ExerciseRecord[] {
+  return workoutRecords([workout, ...past.filter((w) => w.id !== workout.id)]).get(workout.id) ?? [];
+}
+
+export type PersonalRecord = { date: string; total: number; previous: number; inReps: boolean };
+
+// Every PR this exercise set, newest first.
+export function prHistory(workouts: Workout[], name: string): PersonalRecord[] {
+  const records = workoutRecords(workouts);
+  return oldestFirst(workouts)
+    .flatMap((w) => {
+      const pr = records.get(w.id)?.find((r) => r.exercise === name)?.pr;
+      return pr ? [{ date: w.date, ...pr }] : [];
+    })
+    .reverse();
+}
 
 export type BestSet = { weight: number; reps: number; oneRM: number };
 
@@ -125,43 +225,12 @@ export function bestSet(sets: WorkoutSet[]): BestSet | null {
   return best;
 }
 
-export type PersonalRecord = BestSet & { date: string; previous: number };
-
-// Every time this exercise beat its best estimated 1RM, newest first. The
-// first session only sets the baseline, the same rule the XP count uses.
-export function prHistory(workouts: Workout[], name: string): PersonalRecord[] {
-  const records: PersonalRecord[] = [];
-  let best = 0;
-  [...workouts].reverse().forEach((w) => {
-    const ex = w.exercises.find((e) => e.name === name);
-    const top = ex ? bestSet(ex.sets) : null;
-    if (!top || top.oneRM <= best) return;
-    if (best > 0) records.push({ ...top, date: w.date, previous: best });
-    best = top.oneRM;
-  });
-  return records.reverse();
-}
-
-// The records set in a just-finished workout, compared with everything before it.
-export function newRecords(past: Workout[], workout: Workout): (PersonalRecord & { name: string })[] {
-  const records: (PersonalRecord & { name: string })[] = [];
-  workout.exercises.forEach((ex) => {
-    const top = bestSet(ex.sets);
-    if (!top) return;
-    const previous = getExerciseSessions(past, ex.name).reduce((m, s) => Math.max(m, s.best1RM), 0);
-    if (previous > 0 && top.oneRM > previous) {
-      records.push({ ...top, name: ex.name, date: workout.date, previous });
-    }
-  });
-  return records;
-}
-
 // ---------------------------------------------------------------------------
 // Calendar views. All in local time, weeks starting on Monday.
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function dayKey(d: Date): string {
+export function dayKey(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${d.getFullYear()}-${m}-${day}`;
@@ -193,6 +262,35 @@ export function consistencyGrid(workouts: Workout[], weeks: number, now: number 
     grid.push(column);
   }
   return grid;
+}
+
+export type MonthDay = { date: string; day: number; today: boolean; future: boolean };
+
+// One month for the calendar, as weeks of seven from Monday to Sunday. Days
+// outside the month are null. month is 0-11, as in Date.
+export function monthGrid(year: number, month: number, now: number = Date.now()): (MonthDay | null)[][] {
+  const todayKey = dayKey(new Date(now));
+  const lead = (new Date(year, month, 1).getDay() + 6) % 7;
+  const days = new Date(year, month + 1, 0).getDate();
+  const cells: (MonthDay | null)[] = Array(lead).fill(null);
+  for (let d = 1; d <= days; d++) {
+    const date = dayKey(new Date(year, month, d));
+    cells.push({ date, day: d, today: date === todayKey, future: date > todayKey });
+  }
+  while (cells.length % 7 !== 0) cells.push(null);
+  const weeks: (MonthDay | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+  return weeks;
+}
+
+// Workouts by local calendar day ("2026-09-23"), in the order given.
+export function workoutsByDay<W extends { date: string }>(workouts: W[]): Map<string, W[]> {
+  const byDay = new Map<string, W[]>();
+  workouts.forEach((w) => {
+    const k = dayKey(new Date(w.date));
+    byDay.set(k, [...(byDay.get(k) ?? []), w]);
+  });
+  return byDay;
 }
 
 // The big muscle groups always shown in "sets per muscle", even at zero.

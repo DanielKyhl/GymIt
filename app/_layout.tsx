@@ -75,6 +75,7 @@ export default function RootLayout() {
           <Stack.Screen name="weekly-goal" options={{ title: 'Weekly goal' }} />
           <Stack.Screen name="settings" options={{ title: 'Settings' }} />
           <Stack.Screen name="achievements" options={{ title: 'Achievements' }} />
+          <Stack.Screen name="calendar" options={{ title: 'Calendar' }} />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>

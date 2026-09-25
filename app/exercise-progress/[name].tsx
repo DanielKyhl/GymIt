@@ -5,6 +5,7 @@ import { Flame } from "lucide-react-native";
 import { getDefaultUnit, getWorkoutsForStats } from "../../lib/storage";
 import { ExerciseSession, getExerciseSessions, PersonalRecord, prHistory } from "../../lib/stats";
 import { C, T } from "../../constants/theme";
+import { prGain, prTotal } from "../../lib/format";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
@@ -66,7 +67,7 @@ export default function ExerciseProgress() {
         <Text style={styles.empty}>
           {sessions.length === 0
             ? "No logged sets yet."
-            : "Beat your best estimated 1RM and the record shows up here."}
+            : "Beat your best total for this exercise and the record shows up here."}
         </Text>
       ) : (
         <View style={styles.prList}>
@@ -74,14 +75,12 @@ export default function ExerciseProgress() {
             <View key={r.date} style={[styles.prRow, i === records.length - 1 && styles.prRowLast]}>
               <Flame size={18} color={C.signal} />
               <View style={styles.prMain}>
-                <Text style={styles.prSet}>
-                  {r.weight} {unit} × {r.reps}
-                </Text>
+                <Text style={styles.prSet}>{prTotal(r, unit)}</Text>
                 <Text style={styles.prDate}>{formatDate(r.date)}</Text>
               </View>
               <View style={styles.prRight}>
-                <Text style={styles.prValue}>{r.oneRM}</Text>
-                <Text style={styles.prDelta}>+{r.oneRM - r.previous} est. 1RM</Text>
+                <Text style={styles.prValue}>{prGain(r, unit)}</Text>
+                <Text style={styles.prDelta}>on your best</Text>
               </View>
             </View>
           ))}

@@ -4,20 +4,20 @@ import { StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { C, FONT, T } from "../constants/theme";
 import { Comparison } from "../lib/funFacts";
-import { formatNumber } from "../lib/format";
+import { formatNumber, prGain, prTotal } from "../lib/format";
 import { rankFor } from "../lib/ranks";
-import { bestSet } from "../lib/stats";
+import { bestSet, ExerciseRecord } from "../lib/stats";
 import { AnimalIcon } from "./AnimalIcon";
 import { FRAMES, RankBadge } from "./RankBadge";
 import { Workout } from "../types/workout";
 
-type Line = { name: string; weight: number; reps: number };
+type Line = { name: string; value: string };
 
 type Props = {
   ref?: Ref<View>;
   workout: Workout;
   volume: number;
-  records: Line[];
+  records: ExerciseRecord[]; // this workout's PRs
   comparison?: Comparison | null; // "the weight of 7 elephants"
   level?: number; // frames the card in the colours of your rank
 };
@@ -33,13 +33,18 @@ export function ShareCard({ ref, workout, volume, records, comparison, level }: 
   const minutes = Math.max(1, Math.round(workout.durationSeconds / 60));
   const date = new Date(workout.date).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 
-  // With no records, show the best set of each exercise instead.
+  // Each PR's new total and what it beat the best by; with no PRs, the best
+  // set of each exercise instead.
   const lines: Line[] =
     records.length > 0
-      ? records
+      ? records.flatMap((r) =>
+          r.pr ? [{ name: r.exercise, value: `${prTotal(r.pr, unit)} (${prGain(r.pr, unit)})` }] : []
+        )
       : workout.exercises.flatMap((ex) => {
           const top = bestSet(ex.sets.filter((s) => s.done));
-          return top && top.weight > 0 ? [{ name: ex.name, weight: top.weight, reps: top.reps }] : [];
+          return top && top.weight > 0
+            ? [{ name: ex.name, value: `${formatNumber(top.weight)} ${unit} × ${top.reps}` }]
+            : [];
         });
 
   const rank = level ? rankFor(level) : null;
@@ -112,7 +117,7 @@ export function ShareCard({ ref, workout, volume, records, comparison, level }: 
             <View style={styles.linesHeader}>
               {records.length > 0 && <Flame size={14} color={C.signal} />}
               <Text style={[styles.linesTitle, records.length > 0 && { color: C.signal }]}>
-                {records.length > 0 ? (records.length === 1 ? "New record" : "New records") : "Best sets"}
+                {records.length > 0 ? (records.length === 1 ? "New PR" : "New PRs") : "Best sets"}
               </Text>
             </View>
             {lines.slice(0, 4).map((l) => (
@@ -120,9 +125,7 @@ export function ShareCard({ ref, workout, volume, records, comparison, level }: 
                 <Text style={styles.lineName} numberOfLines={1}>
                   {l.name}
                 </Text>
-                <Text style={styles.lineSet}>
-                  {formatNumber(l.weight)} {unit} × {l.reps}
-                </Text>
+                <Text style={styles.lineSet}>{l.value}</Text>
               </View>
             ))}
             {lines.length > 4 && <Text style={styles.more}>+{lines.length - 4} more</Text>}

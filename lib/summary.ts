@@ -1,7 +1,7 @@
 import { Workout } from "../types/workout";
 import { getAchievements } from "./achievements";
 import { computeXP, levelInfo } from "./gamification";
-import { newRecords, PersonalRecord, workoutVolume } from "./stats";
+import { ExerciseRecord, newRecords, prCount, workoutVolume } from "./stats";
 
 export type WorkoutSummary = {
   xpGained: number;
@@ -9,7 +9,7 @@ export type WorkoutSummary = {
   levelAfter: number;
   leveledUp: boolean;
   newPRs: number;
-  records: (PersonalRecord & { name: string })[];
+  records: ExerciseRecord[]; // PRs and milestones
   newAchievements: string[];
   volume: number;
 };
@@ -42,7 +42,7 @@ export function summarizeWorkout(
     levelBefore,
     levelAfter,
     leveledUp: levelAfter > levelBefore,
-    newPRs: records.length,
+    newPRs: prCount(records),
     records,
     newAchievements,
     volume: workoutVolume(newWorkout),

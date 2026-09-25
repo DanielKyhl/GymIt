@@ -3,7 +3,8 @@ import { expect, Locator, Page, test } from "@playwright/test";
 // One walk through the app the way it gets used: sign up, build a template,
 // train from it, and come back to it. Along the way it checks the things that
 // have broken on iPhone before: back arrows, the "?" sheets, templates
-// keeping their numbers, and the screen staying on during a workout.
+// keeping their numbers, and the screen staying on during a workout. Then a
+// heavier second workout: its PR on the summary, in History and the calendar.
 
 const onScreen = (l: Locator) => l.filter({ visible: true });
 const text = (page: Page, t: string | RegExp) => onScreen(page.getByText(t, { exact: typeof t === "string" }));
@@ -170,14 +171,59 @@ test("sign up, build a template, train from it, come back to it", async ({ page 
     await expectWorkingBackArrow(page, /\/$/);
   });
 
-  await test.step("the past workout has a back arrow and '?'", async () => {
+  await test.step("History shows each exercise's sets, and the workout opens", async () => {
     // One tab bar: finishing a workout goes back to Home rather than stacking a new one.
     await expect(page.getByRole("tab", { name: "History" })).toHaveCount(1);
     await page.getByRole("tab", { name: "History" }).click();
     await expect(page).toHaveURL(/\/history$/);
+    await expect(text(page, "BW × 8")).toBeVisible();
+    await expect(text(page, "60 kg × 8")).toBeVisible();
     await tap(page, "E2E Pull");
     await expect(page).toHaveURL(/\/workout-log\//);
     await expect(labelled(page, "About Pull-Up")).toBeVisible();
+    await expectWorkingBackArrow(page, /\/history$/);
+  });
+
+  await test.step("a bigger total on the row is a PR, and 65 kg a first", async () => {
+    await page.getByRole("tab", { name: "Home" }).click();
+    await tap(page, "E2E Pull");
+    await expect(page).toHaveURL(/\/template\//);
+    await tap(page, "Start workout");
+    await expect(page).toHaveURL(/\/workout\//);
+    // Last time's numbers are filled in: BW × 8 and 60 × 8. Go heavier on the row.
+    await labelled(page, "Barbell Bent Over Row set 1 weight").fill("65");
+    const markDone = onScreen(page.getByLabel("Mark set done", { exact: true }));
+    await markDone.first().click();
+    await markDone.first().click();
+    await expect(text(page, "PR")).toHaveCount(1); // the row, not the same-reps pull-ups
+    await expect(text(page, "↑ 1st")).toBeVisible();
+
+    await tap(page, "Finish workout");
+    await expect(text(page, "New PR!")).toBeVisible();
+    await expect(text(page, "520 kg (+40 kg)")).toBeVisible();
+    await expect(text(page, /First time at 65 kg/)).toBeVisible();
+    await tap(page, "Done");
+    await expect(labelled(page, "Settings")).toBeVisible();
+  });
+
+  await test.step("History counts the PR", async () => {
+    await page.getByRole("tab", { name: "History" }).click();
+    await expect(page).toHaveURL(/\/history$/);
+    await expect(text(page, "1 PR")).toBeVisible();
+    await expect(text(page, /^2 workouts · 1 PR$/)).toBeVisible();
+    await expect(text(page, /^65 kg × 8 · \+40 kg · ↑ first 65 kg$/)).toBeVisible();
+  });
+
+  await test.step("the calendar marks today and opens its workouts", async () => {
+    await labelled(page, "Calendar").click();
+    await expect(page).toHaveURL(/\/calendar$/);
+    const today = onScreen(page.getByLabel(/: 2 workouts, PR$/));
+    await expect(today).toHaveCount(1);
+    await today.click();
+    await expect(text(page, "Which workout?")).toBeVisible();
+    await tap(page, "E2E Pull");
+    await expect(page).toHaveURL(/\/workout-log\//);
+    await expectWorkingBackArrow(page, /\/calendar$/);
     await expectWorkingBackArrow(page, /\/history$/);
   });
 });

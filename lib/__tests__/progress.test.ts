@@ -1,6 +1,6 @@
 import { addWeighIn, todayKey, weighInsIn } from "../bodyweight";
 import { computeRecovery, readinessScore, templateMuscles } from "../recovery";
-import { consistencyGrid, newRecords, prHistory, weeklyMuscleSets } from "../stats";
+import { consistencyGrid, monthGrid, weeklyMuscleSets, workoutsByDay } from "../stats";
 import { suggestTemplate } from "../suggest";
 import { Template } from "../../types/workout";
 import { set, workout } from "./fixtures";
@@ -16,54 +16,6 @@ const at = (daysAgo: number, hour = 12) => {
   const d = new Date(NOW);
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() - daysAgo, hour).toISOString();
 };
-
-describe("prHistory", () => {
-  // Newest first, as storage returns them.
-  const history = [
-    workout("Push", "2026-09-10", [{ name: BENCH, sets: [set(100, 5)] }]), // 117
-    workout("Push", "2026-09-07", [{ name: BENCH, sets: [set(90, 5)] }]), // 105, not a record
-    workout("Push", "2026-09-04", [{ name: BENCH, sets: [set(95, 6), set(60, 12, { type: "warmup" })] }]), // 114
-    workout("Push", "2026-09-01", [{ name: BENCH, sets: [set(90, 5)] }]), // 105, baseline
-  ];
-
-  test("lists each time the estimated 1RM went up, newest first", () => {
-    expect(prHistory(history, BENCH)).toEqual([
-      { date: "2026-09-10", weight: 100, reps: 5, oneRM: 117, previous: 114 },
-      { date: "2026-09-04", weight: 95, reps: 6, oneRM: 114, previous: 105 },
-    ]);
-  });
-
-  test("the first session is only a baseline", () => {
-    expect(prHistory(history.slice(-1), BENCH)).toEqual([]);
-  });
-
-  test("warm-ups never count", () => {
-    const w = [
-      workout("Push", "2026-09-02", [{ name: BENCH, sets: [set(200, 5, { type: "warmup" }), set(80, 5)] }]),
-      workout("Push", "2026-09-01", [{ name: BENCH, sets: [set(90, 5)] }]),
-    ];
-    expect(prHistory(w, BENCH)).toEqual([]);
-  });
-});
-
-describe("newRecords", () => {
-  const past = [workout("Push", "2026-09-01", [{ name: BENCH, sets: [set(90, 5)] }])];
-
-  test("names the exercises that beat their best, with the set that did it", () => {
-    const today = workout("Push", "2026-09-05", [
-      { name: BENCH, sets: [set(92.5, 5), set(80, 8)] },
-      { name: SQUAT, sets: [set(100, 5)] }, // first time: no record
-    ]);
-    expect(newRecords(past, today)).toEqual([
-      { name: BENCH, date: "2026-09-05", weight: 92.5, reps: 5, oneRM: 108, previous: 105 },
-    ]);
-  });
-
-  test("matching your best isn't a record", () => {
-    const today = workout("Push", "2026-09-05", [{ name: BENCH, sets: [set(90, 5)] }]);
-    expect(newRecords(past, today)).toEqual([]);
-  });
-});
 
 describe("consistencyGrid", () => {
   test("columns are weeks, oldest first, Monday to Sunday", () => {
@@ -85,6 +37,45 @@ describe("consistencyGrid", () => {
     expect(week.map((c) => c.count)).toEqual([1, 0, 2, 0, 0, 0, 0]);
     expect(week.map((c) => c.today)).toEqual([false, false, true, false, false, false, false]);
     expect(week.map((c) => c.future)).toEqual([false, false, false, true, true, true, true]);
+  });
+});
+
+describe("monthGrid", () => {
+  test("weeks run Monday to Sunday, padded with empty days", () => {
+    const weeks = monthGrid(2026, 8, NOW); // September 2026 starts on a Tuesday
+    expect(weeks).toHaveLength(5);
+    expect(weeks.every((w) => w.length === 7)).toBe(true);
+    expect(weeks[0][0]).toBeNull();
+    expect(weeks[0][1]).toEqual({ date: "2026-09-01", day: 1, today: false, future: false });
+    expect(weeks[4].filter(Boolean).map((d) => d!.day)).toEqual([28, 29, 30]);
+  });
+
+  test("marks today and the days after it", () => {
+    const days = monthGrid(2026, 8, NOW).flat().filter(Boolean);
+    expect(days.find((d) => d!.today)?.date).toBe("2026-09-16");
+    expect(days.find((d) => d!.day === 15)?.future).toBe(false);
+    expect(days.find((d) => d!.day === 17)?.future).toBe(true);
+  });
+
+  test("knows month lengths, and a month can start on a Sunday", () => {
+    const feb = monthGrid(2026, 1, NOW).flat();
+    expect(feb.slice(0, 7).map((d) => d?.day ?? null)).toEqual([null, null, null, null, null, null, 1]);
+    expect(feb.filter(Boolean)).toHaveLength(28);
+  });
+
+  test("no day goes missing when the clocks change", () => {
+    const march = monthGrid(2026, 2, NOW).flat().filter(Boolean).map((d) => d!.date);
+    expect(march).toHaveLength(31);
+    expect(march.slice(27)).toEqual(["2026-03-28", "2026-03-29", "2026-03-30", "2026-03-31"]);
+  });
+});
+
+describe("workoutsByDay", () => {
+  test("groups by local calendar day", () => {
+    const w = [workout("A", at(0, 18), []), workout("B", at(0, 7), []), workout("C", at(1), [])];
+    const byDay = workoutsByDay(w);
+    expect(byDay.get("2026-09-16")?.map((x) => x.name)).toEqual(["A", "B"]);
+    expect(byDay.get("2026-09-15")?.map((x) => x.name)).toEqual(["C"]);
   });
 });
 

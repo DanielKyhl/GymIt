@@ -1,5 +1,5 @@
 import { Workout } from "../types/workout";
-import { estimate1RM } from "./stats";
+import { prCount, workoutRecords } from "./stats";
 
 export const XP_PER_WORKOUT = 50;
 export const XP_PER_SET = 5;
@@ -19,35 +19,11 @@ function weekKey(iso: string): string {
   return `${monday.getFullYear()}-${month}-${day}`;
 }
 
-// The single best estimated 1RM logged for an exercise in one workout.
-function sessionBest1RM(sets: { weight: number; reps: number; type?: string }[]): number {
-  let best = 0;
-  sets
-    .filter((s) => s.type !== "warmup")
-    .forEach((s) => {
-      const oneRM = estimate1RM(s.weight, s.reps);
-      if (oneRM > best) best = oneRM;
-    });
-  return best;
-}
-
-// How many personal records were set across the whole history (an exercise
-// beating its own previous best est. 1RM). The first time an exercise appears
-// establishes a baseline and does not count.
+// How many PRs were set across the whole history: exercises beating their
+// best total (see workoutRecords). Milestones don't count.
 export function countPRs(workouts: Workout[]): number {
-  const best: Record<string, number> = {};
   let prs = 0;
-  [...workouts].reverse().forEach((w) => {
-    w.exercises.forEach((ex) => {
-      const now = sessionBest1RM(ex.sets);
-      if (now <= 0) return;
-      const prev = best[ex.name] ?? 0;
-      if (now > prev) {
-        if (prev > 0) prs += 1;
-        best[ex.name] = now;
-      }
-    });
-  });
+  workoutRecords(workouts).forEach((records) => (prs += prCount(records)));
   return prs;
 }
 

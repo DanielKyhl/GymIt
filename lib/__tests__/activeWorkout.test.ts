@@ -3,7 +3,8 @@ import {
   elapsedSeconds,
   formatClock,
   formatRest,
-  historyBest1RM,
+  historyBests,
+  isLiveMilestone,
   isLivePR,
   linkWithNext,
   loggedExercises,
@@ -89,33 +90,36 @@ describe("toggleSet and the rest timer", () => {
 });
 
 describe("live PRs", () => {
-  const past = [workout("Push", "2026-09-07T08:00:00.000Z", [{ name: "Bench", sets: [set(80, 8)] }])];
-  const best = historyBest1RM(past, "Bench"); // 80 × 8 → 101
+  const past = [workout("Push", "2026-09-07T08:00:00.000Z", [{ name: "Bench", sets: [set(90, 7), set(90, 6)] }])];
+  const bests = historyBests(past, "Bench");
 
   const bench = (...sets: ReturnType<typeof set>[]): WorkoutExercise => ({ name: "Bench", sets });
 
-  test("history best comes from past sessions", () => {
-    expect(best).toBe(101);
+  test("history bests are the best total and heaviest weight so far", () => {
+    expect(bests).toEqual({ total: 1170, heaviest: 90 });
   });
 
-  test("a finished set beating history is a PR", () => {
-    expect(isLivePR(bench(set(85, 7)), 0, best)).toBe(true);
+  test("the badge goes on the set that takes today's total past the best", () => {
+    const today = bench(set(90, 7), set(90, 7), set(90, 5)); // 630, 1,260, 1,710
+    expect([0, 1, 2].map((i) => isLivePR(today, i, bests.total))).toEqual([false, true, false]);
   });
 
-  test("unfinished sets, warm-ups and weaker sets are not", () => {
-    expect(isLivePR(bench(set(85, 7, { done: false })), 0, best)).toBe(false);
-    expect(isLivePR(bench(set(85, 7, { type: "warmup" })), 0, best)).toBe(false);
-    expect(isLivePR(bench(set(80, 8)), 0, best)).toBe(false);
-  });
-
-  test("a set only counts if it also beats earlier sets today", () => {
-    const today = bench(set(90, 6), set(85, 7));
-    expect(isLivePR(today, 0, best)).toBe(true);
-    expect(isLivePR(today, 1, best)).toBe(false);
+  test("unfinished sets and warm-ups add nothing", () => {
+    const today = bench(set(90, 7), set(90, 7, { done: false }), set(90, 7, { type: "warmup" }));
+    expect([0, 1, 2].map((i) => isLivePR(today, i, bests.total))).toEqual([false, false, false]);
   });
 
   test("a first-ever session is a baseline, not a PR", () => {
-    expect(isLivePR(bench(set(85, 7)), 0, 0)).toBe(false);
+    expect(isLivePR(bench(set(90, 7), set(90, 7)), 1, 0)).toBe(false);
+  });
+
+  test("the first set at a weight never lifted before gets the milestone note", () => {
+    const today = bench(set(95, 5), set(95, 5), set(100, 2));
+    expect([0, 1, 2].map((i) => isLiveMilestone(today, i, bests.heaviest))).toEqual([true, false, true]);
+  });
+
+  test("bodyweight exercises never do: the weight is your own", () => {
+    expect(isLiveMilestone({ name: "Pullups", sets: [set(85, 5)] }, 0, 80)).toBe(false);
   });
 });
 

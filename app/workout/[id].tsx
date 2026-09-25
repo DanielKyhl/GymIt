@@ -17,7 +17,8 @@ import {
   elapsedSeconds,
   formatClock,
   formatRest,
-  historyBest1RM,
+  historyBests,
+  isLiveMilestone,
   isLivePR,
   linkWithNext,
   loggedExercises,
@@ -195,7 +196,7 @@ export default function ActiveWorkoutScreen() {
     return Object.fromEntries(
       names.map((name) => [
         name,
-        { best: historyBest1RM(pastWorkouts, name), prev: getLastPerformance(pastWorkouts, name) },
+        { bests: historyBests(pastWorkouts, name), prev: getLastPerformance(pastWorkouts, name) },
       ])
     );
   }, [pastWorkouts, exerciseNames]);
@@ -260,7 +261,7 @@ export default function ActiveWorkoutScreen() {
   const toggleDone = (exIndex: number, setIndex: number) => {
     const next = toggleSet(active, exIndex, setIndex, Date.now());
     const ex = next.exercises[exIndex];
-    if (ex.sets[setIndex].done && isLivePR(ex, setIndex, history[ex.name]?.best ?? 0)) {
+    if (ex.sets[setIndex].done && isLivePR(ex, setIndex, history[ex.name]?.bests.total ?? 0)) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     }
     setActive(next);
@@ -452,7 +453,7 @@ export default function ActiveWorkoutScreen() {
         levelBefore: String(s.levelBefore),
         leveledUp: s.leveledUp ? "1" : "0",
         achievements: JSON.stringify(s.newAchievements),
-        records: JSON.stringify(s.records.map(({ name, weight, reps }) => ({ name, weight, reps }))),
+        records: JSON.stringify(s.records),
       },
     });
   };
@@ -504,7 +505,7 @@ export default function ActiveWorkoutScreen() {
 
         {active.exercises.map((ex, exIndex) => {
           const prev = history[ex.name]?.prev ?? [];
-          const best = history[ex.name]?.best ?? 0;
+          const bests = history[ex.name]?.bests ?? { total: 0, heaviest: 0 };
           const bodyweight = isBodyweight(ex.name);
           const noteOpen = ex.notes !== undefined || openNotes.includes(`${exIndex}:${ex.name}`);
           const allDone = ex.sets.length > 0 && ex.sets.every((s) => s.done);
@@ -586,9 +587,14 @@ export default function ActiveWorkoutScreen() {
                         <Text style={styles.prev} numberOfLines={1}>
                           {p ? `${!p.weight && bodyweight ? "BW" : p.weight} × ${p.reps}` : "–"}
                         </Text>
-                        {isLivePR(ex, setIndex, best) && (
+                        {isLivePR(ex, setIndex, bests.total) && (
                           <View style={styles.prPill}>
                             <Text style={styles.prText}>PR</Text>
+                          </View>
+                        )}
+                        {isLiveMilestone(ex, setIndex, bests.heaviest) && (
+                          <View style={styles.firstPill} accessibilityLabel="First time at this weight">
+                            <Text style={styles.firstText}>↑ 1st</Text>
                           </View>
                         )}
                       </View>
@@ -739,6 +745,8 @@ const styles = StyleSheet.create({
   prev: { color: C.textFaint, fontSize: 13, flexShrink: 1 },
   prPill: { backgroundColor: C.signal, borderRadius: 5, paddingHorizontal: 5, paddingVertical: 1 },
   prText: { color: C.onAccent, fontSize: 11, fontWeight: "700" },
+  firstPill: { borderWidth: 1, borderColor: C.textSoft, borderRadius: 5, paddingHorizontal: 4 },
+  firstText: { color: C.textSoft, fontSize: 10, fontWeight: "600" },
   input: {
     ...T.num,
     fontSize: 18,

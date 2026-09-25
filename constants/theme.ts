@@ -22,6 +22,7 @@ export const C = {
   accentDim: '#77746E', // half-strength accent: lighter heatmap days, bars under target
   onAccent: '#171614', // text/icons on accent
   signal: '#E9A23B', // one warm highlight: streaks, PRs, "new"
+  signalBg: '#3A2A12', // behind signal-coloured text: the PR badge
 
   success: '#1D9E75',
   successBg: '#1B2A24', // row tint for a finished set

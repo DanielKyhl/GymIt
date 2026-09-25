@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Check, Pencil, Trash2 } from "lucide-react-native";
+import { ArrowUp, Check, Pencil, Trash2, Trophy } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Anchor, DropdownMenu, MenuItem } from "../../components/DropdownMenu";
@@ -10,8 +10,10 @@ import { SetBadge, setTypeItems } from "../../components/SetBadge";
 import { C, HIT, R, T } from "../../constants/theme";
 import { setNumber } from "../../lib/activeWorkout";
 import { confirm } from "../../lib/confirm";
+import { formatNumber, plural, prGain, prTotal } from "../../lib/format";
 import { formatRPE, workoutRPE } from "../../lib/rpe";
-import { deleteWorkout, getWorkouts, updateWorkout } from "../../lib/storage";
+import { countedSets, ExerciseRecord, prCount, workoutRecords } from "../../lib/stats";
+import { deleteWorkout, getWorkouts, getWorkoutsForStats, updateWorkout } from "../../lib/storage";
 import { Workout, WorkoutSet } from "../../types/workout";
 import { ExerciseInfoButton } from "../../components/ExerciseInfo";
 
@@ -30,6 +32,8 @@ export default function WorkoutLogDetail() {
   const [draft, setDraft] = useState<Workout | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [menu, setMenu] = useState<{ anchor: Anchor; title: string; items: MenuItem[] } | null>(null);
+  // This workout's PRs and milestones, in the unit they were worked out in.
+  const [records, setRecords] = useState<{ list: ExerciseRecord[]; unit: string }>({ list: [], unit: "kg" });
 
   useEffect(() => {
     getWorkouts().then((workouts) => {
@@ -38,6 +42,17 @@ export default function WorkoutLogDetail() {
       setMissing(!found);
     });
   }, [id]);
+
+  // Worked out again after an edit, since the edit can make or break a record.
+  useEffect(() => {
+    if (!workout) return;
+    getWorkoutsForStats().then((all) =>
+      setRecords({
+        list: workoutRecords(all).get(workout.id) ?? [],
+        unit: all.find((w) => w.id === workout.id)?.unit ?? workout.unit,
+      })
+    );
+  }, [workout]);
 
   if (missing) {
     return (
@@ -211,6 +226,9 @@ export default function WorkoutLogDetail() {
   }
 
   const rpe = workoutRPE(workout);
+  const counted = workout.exercises.flatMap((ex) => countedSets(ex.sets));
+  const volume = counted.reduce((n, s) => n + s.weight * s.reps, 0);
+  const prs = prCount(records.list);
 
   return (
     <View style={styles.container}>
@@ -218,37 +236,65 @@ export default function WorkoutLogDetail() {
       <View style={styles.subRow}>
         <Text style={[styles.sub, styles.subInline]}>
           {formatDate(workout.date)} · {Math.round(workout.durationSeconds / 60)} min
+          {volume > 0 ? ` · ${formatNumber(volume, 0)} ${workout.unit}` : ""}
           {rpe !== null ? ` · avg RPE ${formatRPE(rpe)}` : ""}
         </Text>
         {rpe !== null && <RpeHelpButton size={13} />}
       </View>
+      {prs > 0 && (
+        <View style={styles.prBadge}>
+          <Trophy size={13} color={C.signal} />
+          <Text style={styles.prBadgeText}>{plural(prs, "PR")}</Text>
+        </View>
+      )}
 
       <ScrollView contentContainerStyle={styles.list}>
-        {workout.exercises.map((ex, i) => (
-          <View style={styles.card} key={ex.name + i}>
-            {ex.supersetId ? <Text style={styles.superset}>Superset</Text> : null}
-            <View style={styles.nameRow}>
-              <Text style={[styles.exName, styles.nameShrink]}>{ex.name}</Text>
-              <ExerciseInfoButton name={ex.name} />
-            </View>
-            {ex.notes ? <Text style={styles.notes}>{ex.notes}</Text> : null}
-            {ex.sets.length === 0 ? (
-              <Text style={styles.noSets}>No sets logged</Text>
-            ) : (
-              ex.sets.map((set, j) => (
-                <View style={styles.setRow} key={j}>
-                  <Text style={styles.setLine}>
-                    {set.type === "warmup" ? "Warm-up" : `Set ${setNumber(ex.sets, j)}`}:  {set.weight} {workout.unit} ×{" "}
-                    {set.reps} reps
-                    {set.type === "drop" || set.type === "failure" ? `  · ${SET_TYPE_NAME[set.type]}` : ""}
-                    {set.rpe ? `  · RPE ${formatRPE(set.rpe)}` : ""}
+        {workout.exercises.map((ex, i) => {
+          // An exercise done twice shows its record under the first one.
+          const first = workout.exercises.findIndex((e) => e.name === ex.name) === i;
+          const record = first ? records.list.find((r) => r.exercise === ex.name) : undefined;
+          return (
+            <View style={styles.card} key={ex.name + i}>
+              {ex.supersetId ? <Text style={styles.superset}>Superset</Text> : null}
+              <View style={styles.nameRow}>
+                <Text style={[styles.exName, styles.nameShrink]}>{ex.name}</Text>
+                <ExerciseInfoButton name={ex.name} />
+              </View>
+              {record?.pr && (
+                <View style={styles.recordRow}>
+                  <Trophy size={14} color={C.signal} />
+                  <Text style={styles.prLine}>
+                    PR · {prTotal(record.pr, records.unit)} ({prGain(record.pr, records.unit)})
                   </Text>
-                  {set.done && <Check size={14} color={C.success} />}
                 </View>
-              ))
-            )}
-          </View>
-        ))}
+              )}
+              {record?.milestone && (
+                <View style={styles.recordRow}>
+                  <ArrowUp size={14} color={C.textSoft} />
+                  <Text style={styles.milestoneLine}>
+                    First time at {formatNumber(record.milestone.weight)} {records.unit}
+                  </Text>
+                </View>
+              )}
+              {ex.notes ? <Text style={styles.notes}>{ex.notes}</Text> : null}
+              {ex.sets.length === 0 ? (
+                <Text style={styles.noSets}>No sets logged</Text>
+              ) : (
+                ex.sets.map((set, j) => (
+                  <View style={styles.setRow} key={j}>
+                    <Text style={styles.setLine}>
+                      {set.type === "warmup" ? "Warm-up" : `Set ${setNumber(ex.sets, j)}`}:  {set.weight} {workout.unit} ×{" "}
+                      {set.reps} reps
+                      {set.type === "drop" || set.type === "failure" ? `  · ${SET_TYPE_NAME[set.type]}` : ""}
+                      {set.rpe ? `  · RPE ${formatRPE(set.rpe)}` : ""}
+                    </Text>
+                    {set.done && <Check size={14} color={C.success} />}
+                  </View>
+                ))
+              )}
+            </View>
+          );
+        })}
       </ScrollView>
 
       <View style={styles.footer}>
@@ -291,6 +337,15 @@ const styles = StyleSheet.create({
   setLine: { color: C.textSoft, fontSize: 14 },
   superset: { color: C.signal, fontSize: 11, fontWeight: "600", textTransform: "uppercase", marginBottom: 2 },
   notes: { color: C.textMuted, fontSize: 13, fontStyle: "italic", marginBottom: 8 },
+  prBadge: {
+    flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start",
+    backgroundColor: C.signalBg, borderRadius: R.pill, paddingHorizontal: 10, paddingVertical: 3,
+    marginTop: -10, marginBottom: 16,
+  },
+  prBadgeText: { color: C.signal, fontSize: 13, fontWeight: "600" },
+  recordRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8, marginTop: -2 },
+  prLine: { color: C.signal, fontSize: 13, fontWeight: "600" },
+  milestoneLine: { color: C.textSoft, fontSize: 13 },
 
   editRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
   subRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 20 },

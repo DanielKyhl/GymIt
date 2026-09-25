@@ -1,7 +1,7 @@
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
-import { Award, Share2, Sparkles } from "lucide-react-native";
+import { ArrowUp, Award, Share2, Sparkles } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
@@ -16,7 +16,8 @@ import { lifetimeKg, lifetimeMilestone } from "../lib/milestones";
 import { rankFor } from "../lib/ranks";
 import { formatRPE, workoutRPE } from "../lib/rpe";
 import { convertWeight } from "../lib/units";
-import { workoutVolume } from "../lib/stats";
+import { formatNumber } from "../lib/format";
+import { ExerciseRecord, workoutVolume } from "../lib/stats";
 import { getWorkoutsForStats } from "../lib/storage";
 import { Workout } from "../types/workout";
 
@@ -51,8 +52,10 @@ export default function WorkoutSummary() {
   const levelBefore = Number(params.levelBefore ?? level);
   const newRank = rankFor(level).id !== rankFor(levelBefore).id;
   const achievements = parseList<string>(params.achievements);
-  const records = parseList<{ name: string; weight: number; reps: number }>(params.records);
-  const celebrate = records.length > 0 || leveledUp;
+  const records = parseList<ExerciseRecord>(params.records);
+  const prs = records.filter((r) => r.pr);
+  const milestones = records.filter((r) => r.milestone);
+  const celebrate = prs.length > 0 || leveledUp;
   const rpe = workout ? workoutRPE(workout) : null;
 
   useEffect(() => {
@@ -93,7 +96,7 @@ export default function WorkoutSummary() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Animated.Text entering={ZoomIn.springify().damping(12)} style={styles.title}>
-        {records.length > 0 ? "New personal best!" : "Workout complete!"}
+        {prs.length === 0 ? "Workout complete!" : prs.length === 1 ? "New PR!" : `${prs.length} new PRs!`}
       </Animated.Text>
 
       {workout && (
@@ -102,7 +105,7 @@ export default function WorkoutSummary() {
             ref={cardRef}
             workout={workout}
             volume={workoutVolume(workout)}
-            records={records}
+            records={prs}
             comparison={comparison}
             level={level}
           />
@@ -128,6 +131,21 @@ export default function WorkoutSummary() {
           </View>
         )}
       </Animated.View>
+
+      {milestones.length > 0 && workout && (
+        <Animated.View entering={FadeInDown.delay(360)} style={[styles.full, styles.milestones]}>
+          <Text style={styles.milestonesHeader}>Milestones</Text>
+          {milestones.map((r) => (
+            <View key={r.exercise} style={styles.milestoneRow}>
+              <ArrowUp size={16} color={C.textSoft} />
+              <Text style={styles.milestoneText} numberOfLines={2}>
+                First time at {formatNumber(r.milestone!.weight)} {workout.unit}
+                <Text style={styles.milestoneName}> · {r.exercise}</Text>
+              </Text>
+            </View>
+          ))}
+        </Animated.View>
+      )}
 
       {lifetime && workout && (
         <Animated.View entering={FadeInDown.delay(400)} style={[styles.full, styles.lifetime]}>
@@ -191,6 +209,11 @@ const styles = StyleSheet.create({
   content: { padding: 24, paddingTop: 64, paddingBottom: 40, alignItems: "center" },
   full: { width: "100%" },
   lifetime: { marginTop: 12 },
+  milestones: { backgroundColor: C.card, borderRadius: 16, padding: 14, marginTop: 12, gap: 8 },
+  milestonesHeader: { color: C.textMuted, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
+  milestoneRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  milestoneText: { flex: 1, color: C.text, fontSize: 14 },
+  milestoneName: { color: C.textMuted },
   title: { color: C.text, fontSize: 26, fontWeight: "bold", marginBottom: 22 },
   xpRow: { flexDirection: "row", gap: 12, width: "100%", marginTop: 12 },
   xpBox: { flex: 1, backgroundColor: C.card, borderRadius: 16, paddingVertical: 16, alignItems: "center" },
