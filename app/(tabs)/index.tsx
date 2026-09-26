@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 
 import { BodyWeightPrompt } from "../../components/BodyWeightPrompt";
 import { LevelCard } from "../../components/LevelCard";
 import { useAuth } from "../../context/AuthContext";
+import { useWorkoutSheet } from "../../context/WorkoutSheet";
 import { relativeDay } from "../../lib/format";
 import { computeXP, levelInfo, thisWeekCount } from "../../lib/gamification";
 import { computeRecovery } from "../../lib/recovery";
@@ -11,7 +12,6 @@ import { consistencyGrid, lastUsedDate } from "../../lib/stats";
 import { computeStreak } from "../../lib/streak";
 import { Suggestion, suggestTemplate } from "../../lib/suggest";
 import {
-  getActiveWorkout,
   getDefaultUnit,
   getPlanTemplates,
   getTemplates,
@@ -23,18 +23,18 @@ import {
 } from "../../lib/storage";
 import { Template, Workout } from "../../types/workout";
 import { ChevronRight, Clock, Play, Plus, Settings, Shield, Trophy } from "lucide-react-native";
-import { ActiveWorkout, elapsedSeconds } from "../../lib/activeWorkout";
 import { C, HIT, T } from "../../constants/theme";
 
 export default function HomeScreen() {
   const router = useRouter();
   const { logout } = useAuth();
+  // A workout under way sits in the sheet, and its bar shows above the tabs.
+  const { workout, start } = useWorkoutSheet();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [weeklyGoal, setWeeklyGoal] = useState(3);
   const [askWeight, setAskWeight] = useState(false);
   const [unit, setUnit] = useState<"kg" | "lb">("kg");
-  const [inProgress, setInProgress] = useState<ActiveWorkout | null>(null);
   const [planIds, setPlanIds] = useState<string[]>([]);
 
   useFocusEffect(
@@ -44,7 +44,6 @@ export default function HomeScreen() {
       getWeeklyGoal().then(setWeeklyGoal);
       getDefaultUnit().then(setUnit);
       shouldAskBodyWeight().then(setAskWeight);
-      getActiveWorkout().then(setInProgress);
       getPlanTemplates().then(setPlanIds);
     }, [])
   );
@@ -94,7 +93,7 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {!inProgress && suggestion && (
+      {!workout && suggestion && (
         <View style={styles.hero}>
           <Text style={styles.heroLabel}>Up next</Text>
           <Pressable onPress={() => router.push(`/template/${suggestion.template.id}`)} hitSlop={HIT}>
@@ -105,28 +104,13 @@ export default function HomeScreen() {
           <Text style={styles.heroMeta}>{heroReason(suggestion)}</Text>
           <Pressable
             style={styles.heroBtn}
-            onPress={() => router.push(`/workout/${suggestion.template.id}`)}
+            onPress={() => start(suggestion.template.id)}
             accessibilityRole="button"
           >
             <Play size={18} color={C.onAccent} fill={C.onAccent} />
             <Text style={styles.heroBtnText}>Start workout</Text>
           </Pressable>
         </View>
-      )}
-
-      {inProgress && (
-        <Pressable style={styles.resumeCard} onPress={() => router.push("/workout/resume")}>
-          <View style={styles.resumeText}>
-            <Text style={styles.resumeLabel}>Workout in progress</Text>
-            <Text style={styles.resumeName} numberOfLines={1}>
-              {inProgress.name} · {Math.floor(elapsedSeconds(inProgress.startedAt, Date.now()) / 60)} min
-            </Text>
-          </View>
-          <View style={styles.resumeBtn}>
-            <Play size={16} color={C.onAccent} />
-            <Text style={styles.resumeBtnText}>Resume</Text>
-          </View>
-        </Pressable>
       )}
 
       {streak.shieldUsedLastWeek && (
@@ -152,7 +136,7 @@ export default function HomeScreen() {
         onEditGoal={() => router.push("/weekly-goal")}
       />
 
-      <Pressable style={styles.emptyWorkout} onPress={() => router.push("/workout/new")}>
+      <Pressable style={styles.emptyWorkout} onPress={() => start("new")}>
         <Plus size={18} color={C.accent} />
         <Text style={styles.emptyWorkoutText}>Start empty workout</Text>
       </Pressable>
@@ -235,18 +219,6 @@ const styles = StyleSheet.create({
     backgroundColor: C.accent, borderRadius: 12, paddingVertical: 15,
   },
   heroBtnText: { color: C.onAccent, fontSize: 16, fontWeight: "600" },
-  resumeCard: {
-    flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12,
-    backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.signal, padding: 14,
-  },
-  resumeText: { flex: 1 },
-  resumeLabel: { color: C.signal, fontSize: 12, fontWeight: "600", textTransform: "uppercase" },
-  resumeName: { color: C.text, fontSize: 15, fontWeight: "500", marginTop: 2 },
-  resumeBtn: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    backgroundColor: C.accent, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9,
-  },
-  resumeBtnText: { color: C.onAccent, fontSize: 14, fontWeight: "600" },
   emptyWorkout: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12,
     borderWidth: 1, borderColor: C.raised, borderRadius: 14, paddingVertical: 14,

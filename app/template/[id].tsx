@@ -7,10 +7,12 @@ import { deleteTemplate, getTemplates } from "../../lib/storage";
 import { Template } from "../../types/workout";
 import { C } from "../../constants/theme";
 import { ExerciseInfoButton } from "../../components/ExerciseInfo";
+import { useWorkoutSheet } from "../../context/WorkoutSheet";
 
 export default function TemplateDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { start } = useWorkoutSheet();
   const [template, setTemplate] = useState<Template | null>(null);
 
   useFocusEffect(
@@ -73,7 +75,14 @@ export default function TemplateDetail() {
         )}
       />
 
-      <Pressable style={styles.startButton} onPress={() => router.push(`/workout/${template.id}`)}>
+      <Pressable
+        style={styles.startButton}
+        onPress={() => {
+          // Home goes behind the workout, so pulling it down lands there.
+          start(template.id);
+          router.dismissTo("/(tabs)");
+        }}
+      >
         <Text style={styles.startText}>Start workout</Text>
       </Pressable>
 

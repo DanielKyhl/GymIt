@@ -2,6 +2,10 @@ import { Redirect, Tabs } from 'expo-router';
 import { ChartLine, History, House, PersonStanding } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { HapticTab } from '@/components/haptic-tab';
+import { WorkoutBar } from '@/components/WorkoutBar';
+// The stock tab bar, to put the workout bar on top of it. expo-router doesn't
+// re-export it, so this is its own copy, the one its Tabs render.
+import { BottomTabBar } from 'expo-router/build/react-navigation/bottom-tabs';
 import { useAuth } from '../../context/AuthContext';
 import { shouldOnboard } from '../../lib/storage';
 import { C } from '../../constants/theme';
@@ -27,6 +31,13 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      // A workout pulled down out of the way waits just above the tabs.
+      tabBar={(props) => (
+        <>
+          <WorkoutBar />
+          <BottomTabBar {...props} />
+        </>
+      )}
       screenOptions={{
         tabBarActiveTintColor: C.accent,
         tabBarInactiveTintColor: C.textMuted,

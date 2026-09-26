@@ -70,6 +70,26 @@ async function expectWorkingBackArrow(page: Page, returnsTo: RegExp) {
   await expect(page).toHaveURL(returnsTo);
 }
 
+// The workout sheet covers the screen, with its minimize arrow at the top.
+async function expectWorkoutOpen(page: Page) {
+  await expect(labelled(page, "Minimize workout")).toBeVisible();
+}
+
+// Pulls the workout sheet down by the handle at its top, in big jumps, the
+// way a quick thumb (or a mouse) does: the pointer gets ahead of the sheet,
+// over its text, and the pull has to hold on regardless.
+async function pullWorkoutDown(page: Page) {
+  const box = await labelled(page, "Minimize workout").boundingBox();
+  if (!box) throw new Error("the workout sheet isn't open");
+  const x = page.viewportSize()!.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y + 20);
+  await page.mouse.move(x, y + 320, { steps: 2 });
+  await page.mouse.up();
+}
+
 test("sign up, build a template, train from it, come back to it", async ({ page }) => {
   page.on("dialog", (d) => d.accept()); // "Finish workout?" and friends
 
@@ -140,7 +160,7 @@ test("sign up, build a template, train from it, come back to it", async ({ page 
 
   await test.step("a workout from it keeps the screen on and logs sets", async () => {
     await tap(page, "Start workout");
-    await expect(page).toHaveURL(/\/workout\//);
+    await expectWorkoutOpen(page);
     await expect.poll(() => page.evaluate(() => (window as unknown as { __wakeLocks: number }).__wakeLocks)).toBeGreaterThan(0);
 
     await expect(labelled(page, "About Pull-Up")).toBeVisible();
@@ -192,7 +212,7 @@ test("sign up, build a template, train from it, come back to it", async ({ page 
     await tap(page, "E2E Pull");
     await expect(page).toHaveURL(/\/template\//);
     await tap(page, "Start workout");
-    await expect(page).toHaveURL(/\/workout\//);
+    await expectWorkoutOpen(page);
     // Last time's numbers are filled in: BW × 8 and 60 × 8. Go heavier on the row.
     await labelled(page, "Barbell Bent Over Row set 1 weight").fill("65");
     const markDone = onScreen(page.getByLabel("Mark set done", { exact: true }));
@@ -270,7 +290,7 @@ test("rest timer: type your own time, change it mid-rest, and ring without pausi
 
   await test.step("type your own rest; the last set has one too", async () => {
     await tap(page, "Start empty workout");
-    await expect(page).toHaveURL(/\/workout\//);
+    await expectWorkoutOpen(page);
     await tap(page, "Add exercise");
     await onScreen(page.getByPlaceholder(/^Search/)).fill("pull up");
     await expect(text(page, "BEST MATCHES")).toBeVisible();
@@ -301,5 +321,36 @@ test("rest timer: type your own time, change it mid-rest, and ring without pausi
     await expect(text(page, "Rest's up")).toBeVisible({ timeout: 20_000 });
     await expect.poll(async () => (await sound()).webAudio).toBe(2);
     expect((await sound()).media).toBe(0);
+  });
+
+  await test.step("pull the workout down mid-rest: Home behind it, and the rest still rings", async () => {
+    await labelled(page, "Pull-Up set 1 reps").fill("8");
+    await onScreen(page.getByLabel("Mark set done", { exact: true })).first().click(); // another 0:10 rest
+    await pullWorkoutDown(page);
+    await expect(labelled(page, "Minimize workout")).toBeHidden();
+    const bar = onScreen(page.getByLabel(/^Open workout/));
+    await expect(bar).toBeVisible();
+    await expect(bar.getByText(/^Rest \d:\d\d$/)).toBeVisible();
+    await tapOnTop(onScreen(page.getByRole("tab", { name: "History" }))); // the app is usable behind it
+    await expect(page).toHaveURL(/\/history$/);
+
+    await expect(bar.getByText("Rest's up", { exact: true })).toBeVisible({ timeout: 20_000 });
+    await expect.poll(async () => (await sound()).webAudio).toBe(3);
+  });
+
+  await test.step("swipe the bar up to bring it back; the arrow tucks it away again", async () => {
+    const bar = onScreen(page.getByLabel(/^Open workout/));
+    const box = (await bar.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2, box.y - 80, { steps: 6 });
+    await page.mouse.up();
+    await expectWorkoutOpen(page);
+    await expect(labelled(page, "Pull-Up set 1 reps")).toHaveValue("8"); // as it was left
+
+    await labelled(page, "Minimize workout").click();
+    await expect(labelled(page, "Minimize workout")).toBeHidden();
+    await tapOnTop(onScreen(page.getByLabel(/^Open workout/)));
+    await expectWorkoutOpen(page);
   });
 });

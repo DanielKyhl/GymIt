@@ -15,7 +15,9 @@ rings over your music rather than pausing it: a boxing bell, a gym bell, a gong
 or a whistle, picked in Settings. There's a plate calculator,
 a warm-up generator, supersets, per-exercise notes, and a PR badge the moment
 you beat an estimated 1RM. Close the app mid-workout and it picks up where you
-left off.
+left off. Pull a workout down by its top and it tucks into a bar above the
+tabs, clock and rest timer still running, while you use the rest of the app;
+tap the bar or swipe it up to bring the workout back.
 
 **Progress.** History with editable past workouts, per-exercise charts and PR
 history, a consistency heatmap, weekly sets per muscle, a body-weight log, and
@@ -106,7 +108,7 @@ achievements, stats, recovery, unit conversion and the sync merge.
 | `components/` | Shared UI: rank badge, charts, set rows, pickers, share card |
 | `lib/` | All the logic, kept pure and tested: storage, sync, stats, gamification |
 | `constants/theme.ts` | Colours, spacing, radii and type scale — every screen reads from here |
-| `context/` | Auth state |
+| `context/` | Auth state, and the sheet that holds the workout in progress |
 | `firestore.rules` | Access rules: an account can only touch its own data |
 
 ## Exercise data
