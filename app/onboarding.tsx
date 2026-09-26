@@ -5,13 +5,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { PrimaryButton, SecondaryButton } from "../components/AuthUI";
+import { NumberInput } from "../components/NumberInput";
+import { NumberPadArea, NumberPadScrollView } from "../components/NumberPad";
 import { C, HIT, T } from "../constants/theme";
 import {
   EXPERIENCE,
@@ -24,7 +24,7 @@ import {
   WEEKLY_OPTIONS,
 } from "../lib/onboarding";
 import { completeOnboarding, getDefaultUnit, getTemplates, skipOnboarding } from "../lib/storage";
-import { parseWeight, Unit } from "../lib/units";
+import { Unit } from "../lib/units";
 import { Template } from "../types/workout";
 
 const QUESTIONS = 5; // then the plan
@@ -65,7 +65,7 @@ export default function Onboarding() {
   const [experience, setExperience] = useState<Experience | null>(null);
   const [gender, setGender] = useState<"male" | "female" | null>(null);
   const [unit, setUnit] = useState<Unit>("kg");
-  const [weightText, setWeightText] = useState("");
+  const [weight, setWeight] = useState(0);
   const [weekly, setWeekly] = useState<number | null>(null);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [busy, setBusy] = useState(false);
@@ -104,7 +104,7 @@ export default function Onboarding() {
       gender,
       unit,
       weeklyGoal,
-      bodyWeight: parseWeight(weightText),
+      bodyWeight: weight || null,
       planTemplates: plan.rotation,
     });
     router.replace("/(tabs)");
@@ -172,13 +172,15 @@ export default function Onboarding() {
 
             <Text style={styles.fieldLabel}>Your body weight (optional)</Text>
             <View style={styles.weightRow}>
-              <TextInput
+              <NumberInput
                 style={styles.weightInput}
-                keyboardType="decimal-pad"
                 placeholder="0"
                 placeholderTextColor={C.textFaint}
-                value={weightText}
-                onChangeText={setWeightText}
+                value={weight}
+                onChangeValue={setWeight}
+                step={unit === "kg" ? 0.5 : 1}
+                label="Body weight"
+                accessibilityLabel="Body weight"
               />
               <Text style={styles.weightUnit}>{unit}</Text>
             </View>
@@ -255,45 +257,47 @@ export default function Onboarding() {
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <View style={styles.top}>
-        <Pressable
-          onPress={() => setStep(step - 1)}
-          hitSlop={HIT}
-          disabled={step === 0}
-          style={[styles.topSide, step === 0 && styles.hidden]}
-          accessibilityLabel="Back"
-        >
-          <ChevronLeft size={26} color={C.text} />
-        </Pressable>
-        <View style={styles.progress}>
-          {Array.from({ length: QUESTIONS }, (_, i) => (
-            <View key={i} style={[styles.progressSeg, i <= step && styles.progressDone]} />
-          ))}
+      <NumberPadArea>
+        <View style={styles.top}>
+          <Pressable
+            onPress={() => setStep(step - 1)}
+            hitSlop={HIT}
+            disabled={step === 0}
+            style={[styles.topSide, step === 0 && styles.hidden]}
+            accessibilityLabel="Back"
+          >
+            <ChevronLeft size={26} color={C.text} />
+          </Pressable>
+          <View style={styles.progress}>
+            {Array.from({ length: QUESTIONS }, (_, i) => (
+              <View key={i} style={[styles.progressSeg, i <= step && styles.progressDone]} />
+            ))}
+          </View>
+          <Pressable
+            onPress={skip}
+            hitSlop={HIT}
+            disabled={step >= QUESTIONS}
+            style={[styles.topSide, styles.skip, step >= QUESTIONS && styles.hidden]}
+          >
+            <Text style={styles.skipText}>Skip</Text>
+          </Pressable>
         </View>
-        <Pressable
-          onPress={skip}
-          hitSlop={HIT}
-          disabled={step >= QUESTIONS}
-          style={[styles.topSide, styles.skip, step >= QUESTIONS && styles.hidden]}
-        >
-          <Text style={styles.skipText}>Skip</Text>
-        </Pressable>
-      </View>
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {content()}
-      </ScrollView>
+        <NumberPadScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          {content()}
+        </NumberPadScrollView>
 
-      <View style={styles.footer}>
-        {step < QUESTIONS ? (
-          <PrimaryButton label="Continue" onPress={() => setStep(step + 1)} disabled={!canContinue} />
-        ) : (
-          <>
-            {template && <PrimaryButton label="Start first workout" onPress={() => finish(true)} busy={busy} />}
-            <SecondaryButton label="Go to Home" onPress={() => finish(false)} />
-          </>
-        )}
-      </View>
+        <View style={styles.footer}>
+          {step < QUESTIONS ? (
+            <PrimaryButton label="Continue" onPress={() => setStep(step + 1)} disabled={!canContinue} />
+          ) : (
+            <>
+              {template && <PrimaryButton label="Start first workout" onPress={() => finish(true)} busy={busy} />}
+              <SecondaryButton label="Go to Home" onPress={() => finish(false)} />
+            </>
+          )}
+        </View>
+      </NumberPadArea>
     </KeyboardAvoidingView>
   );
 }

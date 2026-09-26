@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-
 import { Anchor, DropdownMenu, MenuItem } from "../../components/DropdownMenu";
 import { ExercisePicker } from "../../components/ExercisePicker";
 import { NumberInput } from "../../components/NumberInput";
+import { NumberPadArea, NumberPadScrollView } from "../../components/NumberPad";
 import { RpeCell, RpeHelpButton, rpeItems } from "../../components/Rpe";
 import { SetBadge, setTypeItems } from "../../components/SetBadge";
 import { C, HIT, R, T } from "../../constants/theme";
@@ -116,112 +117,122 @@ export default function WorkoutLogDetail() {
     };
 
     return (
-      <View style={styles.container}>
-        <TextInput
-          style={styles.nameInput}
-          value={draft.name}
-          onChangeText={(name) => setDraft({ ...draft, name })}
-          placeholder="Workout name"
-          placeholderTextColor={C.textFaint}
-        />
-        <Text style={styles.sub}>{formatDate(draft.date)} · editing</Text>
+      <NumberPadArea>
+        <View style={styles.container}>
+          <TextInput
+            style={styles.nameInput}
+            value={draft.name}
+            onChangeText={(name) => setDraft({ ...draft, name })}
+            placeholder="Workout name"
+            placeholderTextColor={C.textFaint}
+          />
+          <Text style={styles.sub}>{formatDate(draft.date)} · editing</Text>
 
-        <ScrollView contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled">
-          {draft.exercises.map((ex, exIndex) => (
-            <View style={styles.card} key={ex.name + exIndex}>
-              <View style={styles.cardHeader}>
-                <View style={[styles.nameRow, styles.flex]}>
-                  <Text style={[styles.exName, styles.nameShrink]}>{ex.name}</Text>
-                  <ExerciseInfoButton name={ex.name} />
+          <NumberPadScrollView contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled">
+            {draft.exercises.map((ex, exIndex) => (
+              <View style={styles.card} key={ex.name + exIndex}>
+                <View style={styles.cardHeader}>
+                  <View style={[styles.nameRow, styles.flex]}>
+                    <Text style={[styles.exName, styles.nameShrink]}>{ex.name}</Text>
+                    <ExerciseInfoButton name={ex.name} />
+                  </View>
+                  <Pressable onPress={() => removeExercise(exIndex)} hitSlop={HIT}>
+                    <Text style={styles.remove}>Remove</Text>
+                  </Pressable>
                 </View>
-                <Pressable onPress={() => removeExercise(exIndex)} hitSlop={HIT}>
-                  <Text style={styles.remove}>Remove</Text>
+                {ex.sets.map((set, setIndex) => {
+                  const number = setNumber(ex.sets, setIndex);
+                  const setName = set.type === "warmup" ? "Warm-up" : `Set ${number}`;
+                  return (
+                    <View style={styles.editRow} key={setIndex}>
+                      <SetBadge
+                        type={set.type}
+                        number={number}
+                        onOpen={(anchor) =>
+                          setMenu({
+                            anchor,
+                            title: set.type === "warmup" ? "Warm-up set" : `Set ${number}`,
+                            items: setTypeItems(
+                              set.type,
+                              ex.sets.slice(0, setIndex).filter((s) => s.type !== "warmup").length + 1,
+                              (type) => updateSet(exIndex, setIndex, { type }),
+                              () => removeSet(exIndex, setIndex)
+                            ),
+                          })
+                        }
+                      />
+                      <NumberInput
+                        style={styles.input}
+                        value={set.weight}
+                        onChangeValue={(v) => updateSet(exIndex, setIndex, { weight: v })}
+                        step={draft.unit === "kg" ? 2.5 : 5}
+                        label={`${setName} · weight`}
+                        order={exIndex * 1000 + setIndex * 2}
+                        accessibilityLabel={`${ex.name} set ${setIndex + 1} weight`}
+                        placeholder="0"
+                        placeholderTextColor={C.textFaint}
+                      />
+                      <Text style={styles.unit}>{draft.unit} ×</Text>
+                      <NumberInput
+                        style={styles.input}
+                        decimals={false}
+                        value={set.reps}
+                        onChangeValue={(v) => updateSet(exIndex, setIndex, { reps: v })}
+                        label={`${setName} · reps`}
+                        order={exIndex * 1000 + setIndex * 2 + 1}
+                        accessibilityLabel={`${ex.name} set ${setIndex + 1} reps`}
+                        placeholder="0"
+                        placeholderTextColor={C.textFaint}
+                      />
+                      <Text style={[styles.unit, styles.flex]}>reps</Text>
+                      <RpeCell
+                        value={set.rpe}
+                        onOpen={(anchor) =>
+                          setMenu({
+                            anchor,
+                            title: "How hard was that set?",
+                            items: rpeItems(set.rpe, (rpe) => updateSet(exIndex, setIndex, { rpe })),
+                          })
+                        }
+                      />
+                    </View>
+                  );
+                })}
+                <Pressable onPress={() => addSet(exIndex)} hitSlop={HIT}>
+                  <Text style={styles.link}>+ Set</Text>
                 </Pressable>
               </View>
-              {ex.sets.map((set, setIndex) => {
-                const number = setNumber(ex.sets, setIndex);
-                return (
-                  <View style={styles.editRow} key={setIndex}>
-                    <SetBadge
-                      type={set.type}
-                      number={number}
-                      onOpen={(anchor) =>
-                        setMenu({
-                          anchor,
-                          title: set.type === "warmup" ? "Warm-up set" : `Set ${number}`,
-                          items: setTypeItems(
-                            set.type,
-                            ex.sets.slice(0, setIndex).filter((s) => s.type !== "warmup").length + 1,
-                            (type) => updateSet(exIndex, setIndex, { type }),
-                            () => removeSet(exIndex, setIndex)
-                          ),
-                        })
-                      }
-                    />
-                    <NumberInput
-                      style={styles.input}
-                      value={set.weight}
-                      onChangeValue={(v) => updateSet(exIndex, setIndex, { weight: v })}
-                      placeholder="0"
-                      placeholderTextColor={C.textFaint}
-                    />
-                    <Text style={styles.unit}>{draft.unit} ×</Text>
-                    <NumberInput
-                      style={styles.input}
-                      decimals={false}
-                      value={set.reps}
-                      onChangeValue={(v) => updateSet(exIndex, setIndex, { reps: v })}
-                      placeholder="0"
-                      placeholderTextColor={C.textFaint}
-                    />
-                    <Text style={[styles.unit, styles.flex]}>reps</Text>
-                    <RpeCell
-                      value={set.rpe}
-                      onOpen={(anchor) =>
-                        setMenu({
-                          anchor,
-                          title: "How hard was that set?",
-                          items: rpeItems(set.rpe, (rpe) => updateSet(exIndex, setIndex, { rpe })),
-                        })
-                      }
-                    />
-                  </View>
-                );
-              })}
-              <Pressable onPress={() => addSet(exIndex)} hitSlop={HIT}>
-                <Text style={styles.link}>+ Set</Text>
-              </Pressable>
-            </View>
-          ))}
-          <Pressable style={styles.addExercise} onPress={() => setShowAdd(true)}>
-            <Text style={styles.link}>+ Add exercise</Text>
-          </Pressable>
-        </ScrollView>
+            ))}
+            <Pressable style={styles.addExercise} onPress={() => setShowAdd(true)}>
+              <Text style={styles.link}>+ Add exercise</Text>
+            </Pressable>
+          </NumberPadScrollView>
 
-        <ExercisePicker
-          visible={showAdd}
-          onClose={() => setShowAdd(false)}
-          onSelect={(name) => {
-            setDraft({ ...draft, exercises: [...draft.exercises, { name, sets: [] }] });
-            setShowAdd(false);
-          }}
-        />
-        <DropdownMenu
-          anchor={menu?.anchor ?? null}
-          title={menu?.title}
-          items={menu?.items ?? []}
-          onClose={() => setMenu(null)}
-        />
+          <ExercisePicker
+            visible={showAdd}
+            onClose={() => setShowAdd(false)}
+            onSelect={(name) => {
+              setDraft({ ...draft, exercises: [...draft.exercises, { name, sets: [] }] });
+              setShowAdd(false);
+            }}
+          />
+          <DropdownMenu
+            anchor={menu?.anchor ?? null}
+            title={menu?.title}
+            items={menu?.items ?? []}
+            onClose={() => setMenu(null)}
+          />
 
-        <View style={styles.footer}>
-          <Pressable style={[styles.button, styles.secondary]} onPress={() => setDraft(null)}>
-            <Text style={styles.secondaryText}>Cancel</Text>
-          </Pressable>
-          <Pressable style={[styles.button, styles.primary]} onPress={save}>
-            <Text style={styles.primaryText}>Save changes</Text>
-          </Pressable>
+          <View style={styles.footer}>
+            <Pressable style={[styles.button, styles.secondary]} onPress={() => setDraft(null)}>
+              <Text style={styles.secondaryText}>Cancel</Text>
+            </Pressable>
+            <Pressable style={[styles.button, styles.primary]} onPress={save}>
+              <Text style={styles.primaryText}>Save changes</Text>
+            </Pressable>
+          </View>
         </View>
-      </View>
+      </NumberPadArea>
     );
   }
 

@@ -11,6 +11,7 @@ export const C = {
   bg: '#131313', // screen background
   card: '#1C1C1C', // cards, sheets, panels
   raised: '#272727', // inputs, chips, dividers and borders
+  raisedSoft: '#202020', // quieter buttons on a card: the number pad's minus, plus, delete and hide
   selected: '#3A3A3A', // selected toggle / segment
 
   text: '#F2F0EC',

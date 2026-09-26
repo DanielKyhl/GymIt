@@ -48,25 +48,20 @@ describe("set numbers and rest labels", () => {
 
 describe("typing in a rest", () => {
   test("minutes and seconds make the rest length", () => {
-    expect(restFromParts("2", "30")).toBe(150);
-    expect(restFromParts("0", "45")).toBe(45);
-    expect(restFromParts("3", "00")).toBe(180);
-  });
-
-  test("blank is zero, so either box can be left empty", () => {
-    expect(restFromParts("", "")).toBe(0);
-    expect(restFromParts("", "50")).toBe(50);
-    expect(restFromParts("4", "")).toBe(240);
+    expect(restFromParts(2, 30)).toBe(150);
+    expect(restFromParts(0, 45)).toBe(45);
+    expect(restFromParts(3, 0)).toBe(180);
+    expect(restFromParts(0, 0)).toBe(0);
   });
 
   test("seconds past 59 carry into minutes", () => {
-    expect(restFromParts("0", "90")).toBe(90);
-    expect(formatRest(restFromParts("1", "75"))).toBe("2:15");
+    expect(restFromParts(0, 90)).toBe(90);
+    expect(formatRest(restFromParts(1, 75))).toBe("2:15");
   });
 
-  test("anything that isn't a digit is ignored, and it tops out just under an hour", () => {
-    expect(restFromParts("1.", " 5")).toBe(65);
-    expect(restFromParts("99", "99")).toBe(MAX_REST);
+  test("whole seconds only, and it tops out just under an hour", () => {
+    expect(restFromParts(1.5, 5.9)).toBe(65);
+    expect(restFromParts(99, 99)).toBe(MAX_REST);
     expect(formatRest(MAX_REST)).toBe("59:59");
   });
 });

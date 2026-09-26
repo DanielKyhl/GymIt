@@ -2,11 +2,12 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { CircleCheck, Disc, Ellipsis, Flame, Link2, Plus, StickyNote, Timer, Trash2, Unlink2 } from "lucide-react-native";
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { CheckButton } from "./CheckButton";
 import { Anchor, DropdownMenu, measureAnchor, MenuItem } from "./DropdownMenu";
 import { ExercisePicker } from "./ExercisePicker";
 import { NumberInput } from "./NumberInput";
+import { NumberPadScrollView, usePad } from "./NumberPad";
 import { PlateCalculator } from "./PlateCalculator";
 import { RestEditor } from "./RestEditor";
 import { RestRow } from "./RestRow";
@@ -102,6 +103,7 @@ const blankSets = (weight: number, restSeconds: number): WorkoutSet[] =>
 export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => void }) {
   const router = useRouter();
   const { setGlance } = useWorkoutSheet();
+  const pad = usePad();
   // No dimming mid-set: the screen stays on while a workout is under way,
   // tucked away or not.
   useKeepScreenOn();
@@ -292,6 +294,7 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
     );
 
   const toggleDone = (exIndex: number, setIndex: number) => {
+    pad?.close(); // out of the way of the rest that starts under the set
     const next = toggleSet(active, exIndex, setIndex, Date.now());
     const ex = next.exercises[exIndex];
     if (ex.sets[setIndex].done && isLivePR(ex, setIndex, history[ex.name]?.bests.total ?? 0)) {
@@ -521,7 +524,7 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
         </View>
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <NumberPadScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         {active.exercises.length === 0 && (
           <Text style={styles.message}>Add your first exercise to get started.</Text>
         )}
@@ -586,6 +589,9 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
                 const p = prev[setIndex];
                 const rest = restAfterSet(active.exercises, exIndex, setIndex);
                 const running = active.rest?.exIndex === exIndex && active.rest.setIndex === setIndex ? active.rest : null;
+                // For the number pad: which set it is, and last time's numbers.
+                const setName = set.type === "warmup" ? "Warm-up" : `Set ${number}`;
+                const lastTime = p ? `Last time ${!p.weight && bodyweight ? "BW" : p.weight} × ${p.reps}` : undefined;
                 return (
                   <View key={setIndex}>
                     <View style={[styles.row, styles.setRow, set.done && styles.setRowDone]}>
@@ -626,6 +632,10 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
                         placeholderTextColor={C.textFaint}
                         value={set.weight}
                         onChangeValue={(v) => updateSet(exIndex, setIndex, { weight: v })}
+                        step={unit === "kg" ? 2.5 : 5}
+                        label={`${setName} · weight`}
+                        hint={lastTime}
+                        order={exIndex * 1000 + setIndex * 2}
                         accessibilityLabel={`${ex.name} set ${setIndex + 1} weight`}
                       />
                       <NumberInput
@@ -635,6 +645,9 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
                         placeholderTextColor={C.textFaint}
                         value={set.reps}
                         onChangeValue={(v) => updateSet(exIndex, setIndex, { reps: v })}
+                        label={`${setName} · reps`}
+                        hint={lastTime}
+                        order={exIndex * 1000 + setIndex * 2 + 1}
                         accessibilityLabel={`${ex.name} set ${setIndex + 1} reps`}
                       />
                       <RpeCell
@@ -686,7 +699,7 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
         <Pressable style={styles.discardBtn} onPress={handleDiscard} hitSlop={HIT} accessibilityRole="button">
           <Text style={styles.discardText}>Discard workout</Text>
         </Pressable>
-      </ScrollView>
+      </NumberPadScrollView>
 
       <Pressable style={styles.endButton} onPress={handleEnd} accessibilityRole="button">
         <Text style={styles.endText}>Finish workout</Text>

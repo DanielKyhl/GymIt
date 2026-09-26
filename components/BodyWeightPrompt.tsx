@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { parseWeight } from "../lib/units";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { C } from "../constants/theme";
+import { NumberInput } from "./NumberInput";
+import { NumberPadArea, NumberPadScrollView } from "./NumberPad";
 
 type Props = {
   visible: boolean;
@@ -26,69 +27,69 @@ export function BodyWeightPrompt({
   body = FIRST_TIME_BODY,
   dismissLabel = "Later",
 }: Props) {
-  const [text, setText] = useState("");
+  const [value, setValue] = useState(0);
   // Starts on the app's unit, but you can type your weight in either.
   const [chosen, setChosen] = useState(unit);
-  const value = parseWeight(text);
 
   useEffect(() => setChosen(unit), [unit]);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onLater}>
-      <View style={styles.backdrop}>
-        <View style={styles.panel}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.body}>{body}</Text>
+      <NumberPadArea>
+        <NumberPadScrollView style={styles.backdrop} contentContainerStyle={styles.backdropContent}>
+          <View style={styles.panel}>
+            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.body}>{body}</Text>
 
-          <View style={styles.inputRow}>
-            <TextInput
-              style={styles.input}
-              keyboardType="decimal-pad"
-              placeholder="0"
-              placeholderTextColor={C.textFaint}
-              value={text}
-              onChangeText={setText}
-              autoFocus
-            />
-            <View style={styles.segment}>
-              {(["kg", "lb"] as const).map((u) => (
-                <Pressable
-                  key={u}
-                  style={[styles.segBtn, chosen === u && styles.segActive]}
-                  onPress={() => setChosen(u)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: chosen === u }}
-                >
-                  <Text style={[styles.segText, chosen === u && styles.segTextActive]}>{u}</Text>
-                </Pressable>
-              ))}
+            <View style={styles.inputRow}>
+              <NumberInput
+                style={styles.input}
+                placeholder="0"
+                placeholderTextColor={C.textFaint}
+                value={value}
+                onChangeValue={setValue}
+                step={chosen === "kg" ? 0.5 : 1}
+                label="Body weight"
+                autoOpen
+                accessibilityLabel="Body weight"
+              />
+              <View style={styles.segment}>
+                {(["kg", "lb"] as const).map((u) => (
+                  <Pressable
+                    key={u}
+                    style={[styles.segBtn, chosen === u && styles.segActive]}
+                    onPress={() => setChosen(u)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: chosen === u }}
+                  >
+                    <Text style={[styles.segText, chosen === u && styles.segTextActive]}>{u}</Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
-          </View>
 
-          <Pressable
-            style={[styles.save, !value && styles.saveDisabled]}
-            disabled={!value}
-            onPress={() => value && onSave(value, chosen)}
-          >
-            <Text style={styles.saveText}>Save</Text>
-          </Pressable>
-          <Pressable style={styles.later} onPress={onLater} hitSlop={8}>
-            <Text style={styles.laterText}>{dismissLabel}</Text>
-          </Pressable>
-        </View>
-      </View>
+            <Pressable
+              style={[styles.save, !value && styles.saveDisabled]}
+              disabled={!value}
+              onPress={() => value && onSave(value, chosen)}
+            >
+              <Text style={styles.saveText}>Save</Text>
+            </Pressable>
+            <Pressable style={styles.later} onPress={onLater} hitSlop={8}>
+              <Text style={styles.laterText}>{dismissLabel}</Text>
+            </Pressable>
+          </View>
+        </NumberPadScrollView>
+      </NumberPadArea>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
+  // Near the top rather than centred, so the number pad doesn't cover it; on a
+  // short screen it scrolls to bring Save up above the pad.
+  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)" },
+  backdropContent: { alignItems: "center", padding: 20, paddingTop: 96 },
   panel: {
     width: "100%",
     backgroundColor: C.card,

@@ -6,7 +6,10 @@ TypeScript. Log every set, and watch the numbers go up.
 ## What it does
 
 **Logging.** Build templates or start an empty workout. Each set takes weight,
-reps, a type (working, warm-up, drop, failure) and an optional RPE. A rest row
+reps, a type (working, warm-up, drop, failure) and an optional RPE. Numbers are
+typed on the app's own number pad rather than the phone's keyboard, with minus
+and plus keys that step the weight by 2.5 kg (5 lb) or the reps by one, and
+Next to go from kg to reps to the next set. A rest row
 follows every set, the last one included (that's the rest before the next
 exercise), and starts itself when you tick the set off, counting up past the
 target so you can see how long you actually rested. Rest lengths are typed in,

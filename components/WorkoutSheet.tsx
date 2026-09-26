@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 import { C, HIT } from "../constants/theme";
 import { useWorkoutSheet } from "../context/WorkoutSheet";
+import { NumberPadArea } from "./NumberPad";
 import { WorkoutInProgress } from "./WorkoutInProgress";
 
 // The workout in progress, in a sheet over the whole app (see
@@ -119,7 +120,9 @@ export function WorkoutSheet() {
           </Pressable>
           <View style={styles.handle} />
         </View>
-        <WorkoutInProgress key={workout.key} id={workout.id} onClose={close} />
+        <NumberPadArea>
+          <WorkoutInProgress key={workout.key} id={workout.id} onClose={close} />
+        </NumberPadArea>
       </Animated.View>
     </>
   );

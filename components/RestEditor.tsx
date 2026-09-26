@@ -1,8 +1,10 @@
 import { X } from "lucide-react-native";
 import { useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { C, HIT, R, T } from "../constants/theme";
 import { formatRest, restFromParts } from "../lib/activeWorkout";
+import { NumberInput } from "./NumberInput";
+import { NumberPadArea } from "./NumberPad";
 
 type Props = {
   exercise: string | null; // null = closed
@@ -12,8 +14,8 @@ type Props = {
   onClose: () => void;
 };
 
-// Type in any rest length, in minutes and seconds. It sits near the top of the
-// screen, so the keyboard doesn't cover it.
+// Type in any rest length, in minutes and seconds, on the number pad. It sits
+// near the top of the screen, clear of the pad.
 export function RestEditor(props: Props) {
   // Mounted afresh each time it opens, so the boxes start from the rest as it
   // is then.
@@ -22,73 +24,73 @@ export function RestEditor(props: Props) {
 
 function Editor({ exercise, seconds, fallback, onSave, onClose }: Props & { exercise: string }) {
   const start = seconds > 0 ? seconds : fallback;
-  const [minutes, setMinutes] = useState(String(Math.floor(start / 60)));
-  const [secs, setSecs] = useState(String(start % 60).padStart(2, "0"));
+  const [minutes, setMinutes] = useState(Math.floor(start / 60));
+  const [secs, setSecs] = useState(start % 60);
   const total = restFromParts(minutes, secs);
   const save = (value: number) => {
     onClose();
     onSave(value);
   };
-  const digits = (text: string) => text.replace(/\D/g, "").slice(0, 2);
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" />
-      <View style={styles.panel}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Rest timer</Text>
-          <Pressable onPress={onClose} hitSlop={HIT} accessibilityLabel="Close">
-            <X size={22} color={C.textMuted} />
-          </Pressable>
-        </View>
-        <Text style={styles.exercise} numberOfLines={1}>
-          {exercise}
-        </Text>
-
-        <View style={styles.time}>
-          <View style={styles.field}>
-            <TextInput
-              style={styles.input}
-              value={minutes}
-              onChangeText={(t) => setMinutes(digits(t))}
-              keyboardType="number-pad"
-              maxLength={2}
-              selectTextOnFocus
-              autoFocus
-              placeholder="0"
-              placeholderTextColor={C.textFaint}
-              accessibilityLabel="Minutes"
-            />
-            <Text style={styles.unit}>min</Text>
+      <NumberPadArea>
+        <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" />
+        <View style={styles.panel}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Rest timer</Text>
+            <Pressable onPress={onClose} hitSlop={HIT} accessibilityLabel="Close">
+              <X size={22} color={C.textMuted} />
+            </Pressable>
           </View>
-          <Text style={styles.colon}>:</Text>
-          <View style={styles.field}>
-            <TextInput
-              style={styles.input}
-              value={secs}
-              onChangeText={(t) => setSecs(digits(t))}
-              keyboardType="number-pad"
-              maxLength={2}
-              selectTextOnFocus
-              placeholder="00"
-              placeholderTextColor={C.textFaint}
-              returnKeyType="done"
-              onSubmitEditing={() => save(total)}
-              accessibilityLabel="Seconds"
-            />
-            <Text style={styles.unit}>sec</Text>
-          </View>
-        </View>
+          <Text style={styles.exercise} numberOfLines={1}>
+            {exercise}
+          </Text>
 
-        <Pressable style={({ pressed }) => [styles.save, pressed && styles.savePressed]} onPress={() => save(total)} accessibilityRole="button">
-          <Text style={styles.saveText}>{total > 0 ? `Set ${formatRest(total)} rest` : "Turn off rest timer"}</Text>
-        </Pressable>
-        {seconds > 0 && total > 0 && (
-          <Pressable style={styles.off} onPress={() => save(0)} hitSlop={HIT} accessibilityRole="button">
-            <Text style={styles.offText}>No rest timer</Text>
+          <View style={styles.time}>
+            <View style={styles.field}>
+              <NumberInput
+                style={styles.input}
+                value={minutes}
+                onChangeValue={setMinutes}
+                decimals={false}
+                label="Rest · minutes"
+                order={0}
+                autoOpen
+                placeholder="0"
+                placeholderTextColor={C.textFaint}
+                accessibilityLabel="Minutes"
+              />
+              <Text style={styles.unit}>min</Text>
+            </View>
+            <Text style={styles.colon}>:</Text>
+            <View style={styles.field}>
+              <NumberInput
+                style={styles.input}
+                value={secs}
+                onChangeValue={setSecs}
+                decimals={false}
+                step={15}
+                label="Rest · seconds"
+                order={1}
+                placeholder="00"
+                placeholderTextColor={C.textFaint}
+                accessibilityLabel="Seconds"
+              />
+              <Text style={styles.unit}>sec</Text>
+            </View>
+          </View>
+
+          <Pressable style={({ pressed }) => [styles.save, pressed && styles.savePressed]} onPress={() => save(total)} accessibilityRole="button">
+            <Text style={styles.saveText}>{total > 0 ? `Set ${formatRest(total)} rest` : "Turn off rest timer"}</Text>
           </Pressable>
-        )}
-      </View>
+          {seconds > 0 && total > 0 && (
+            <Pressable style={styles.off} onPress={() => save(0)} hitSlop={HIT} accessibilityRole="button">
+              <Text style={styles.offText}>No rest timer</Text>
+            </Pressable>
+          )}
+        </View>
+      </NumberPadArea>
     </Modal>
   );
 }

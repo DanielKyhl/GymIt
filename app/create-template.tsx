@@ -1,9 +1,10 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { X } from "lucide-react-native";
 import { ExercisePicker } from "../components/ExercisePicker";
 import { NumberInput } from "../components/NumberInput";
+import { NumberPadArea, NumberPadScrollView } from "../components/NumberPad";
 import { isBodyweight } from "../lib/exercises";
 import { getDefaultRest, getDefaultUnit, getTemplates, saveTemplate, updateTemplate } from "../lib/storage";
 import { TemplateExercise } from "../types/workout";
@@ -90,99 +91,112 @@ export default function CreateTemplate() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <TextInput
-        style={styles.nameInput}
-        placeholder="Template name"
-        placeholderTextColor={C.textMuted}
-        value={name}
-        onChangeText={setName}
-      />
+    <NumberPadArea>
+      <NumberPadScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <TextInput
+          style={styles.nameInput}
+          placeholder="Template name"
+          placeholderTextColor={C.textMuted}
+          value={name}
+          onChangeText={setName}
+        />
 
-      {exercises.map((ex, exIndex) => (
-        <View style={styles.exerciseCard} key={ex.name + exIndex}>
-          <View style={styles.exHeader}>
-            <View style={[styles.nameRow, styles.nameShrink]}>
-              <Text style={[styles.exerciseName, styles.nameShrink]}>{ex.name}</Text>
-              <ExerciseInfoButton name={ex.name} />
-            </View>
-            <Pressable onPress={() => removeExercise(exIndex)}>
-              <Text style={styles.remove}>Remove</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.setRow}>
-            <Text style={[styles.setNum, styles.colHead]}>Set</Text>
-            <Text style={[styles.colHead, styles.colCell]}>{unit}</Text>
-            <Text style={[styles.colHead, styles.colCell]}>Reps</Text>
-            <Text style={[styles.colHead, styles.colCell]}>Rest s</Text>
-            <Text style={[styles.colHead, { width: 24 }]}></Text>
-          </View>
-
-          {(ex.sets ?? []).map((set, setIndex) => (
-            <View style={styles.setRow} key={setIndex}>
-              <Text style={styles.setNum}>{setIndex + 1}</Text>
-              {isBodyweight(ex.name) ? (
-                // Filled in with your body weight when the workout starts.
-                <View style={styles.bwCell}>
-                  <Text style={styles.bwText}>BW</Text>
-                </View>
-              ) : (
-                <NumberInput
-                  style={styles.cell}
-                  placeholder="0"
-                  placeholderTextColor={C.textFaint}
-                  value={set.weight}
-                  onChangeValue={(v) => updateSet(exIndex, setIndex, "weight", v)}
-                />
-              )}
-              <NumberInput
-                style={styles.cell}
-                decimals={false}
-                placeholder="0"
-                placeholderTextColor={C.textFaint}
-                value={set.reps}
-                onChangeValue={(v) => updateSet(exIndex, setIndex, "reps", v)}
-              />
-              <NumberInput
-                style={styles.cell}
-                decimals={false}
-                placeholder="0"
-                placeholderTextColor={C.textFaint}
-                value={set.restSeconds ?? 0}
-                onChangeValue={(v) => setRestForSet(exIndex, setIndex, v)}
-              />
-              <Pressable
-                style={styles.removeSet}
-                onPress={() => removeSet(exIndex, setIndex)}
-                hitSlop={HIT}
-                accessibilityLabel="Remove set"
-              >
-                <X size={18} color={C.textFaint} />
+        {exercises.map((ex, exIndex) => (
+          <View style={styles.exerciseCard} key={ex.name + exIndex}>
+            <View style={styles.exHeader}>
+              <View style={[styles.nameRow, styles.nameShrink]}>
+                <Text style={[styles.exerciseName, styles.nameShrink]}>{ex.name}</Text>
+                <ExerciseInfoButton name={ex.name} />
+              </View>
+              <Pressable onPress={() => removeExercise(exIndex)}>
+                <Text style={styles.remove}>Remove</Text>
               </Pressable>
             </View>
-          ))}
 
-          <Pressable onPress={() => addSet(exIndex)}>
-            <Text style={styles.addSet}>+ Add set</Text>
-          </Pressable>
-        </View>
-      ))}
+            <View style={styles.setRow}>
+              <Text style={[styles.setNum, styles.colHead]}>Set</Text>
+              <Text style={[styles.colHead, styles.colCell]}>{unit}</Text>
+              <Text style={[styles.colHead, styles.colCell]}>Reps</Text>
+              <Text style={[styles.colHead, styles.colCell]}>Rest s</Text>
+              <Text style={[styles.colHead, { width: 24 }]}></Text>
+            </View>
 
-      <Pressable style={styles.addExerciseBtn} onPress={() => setShowAdd(true)}>
-        <Text style={styles.addExerciseText}>+ Add exercise</Text>
-      </Pressable>
+            {(ex.sets ?? []).map((set, setIndex) => (
+              <View style={styles.setRow} key={setIndex}>
+                <Text style={styles.setNum}>{setIndex + 1}</Text>
+                {isBodyweight(ex.name) ? (
+                  // Filled in with your body weight when the workout starts.
+                  <View style={styles.bwCell}>
+                    <Text style={styles.bwText}>BW</Text>
+                  </View>
+                ) : (
+                  <NumberInput
+                    style={styles.cell}
+                    placeholder="0"
+                    placeholderTextColor={C.textFaint}
+                    value={set.weight}
+                    onChangeValue={(v) => updateSet(exIndex, setIndex, "weight", v)}
+                    step={unit === "kg" ? 2.5 : 5}
+                    label={`Set ${setIndex + 1} · weight`}
+                    order={exIndex * 1000 + setIndex * 3}
+                    accessibilityLabel={`${ex.name} set ${setIndex + 1} weight`}
+                  />
+                )}
+                <NumberInput
+                  style={styles.cell}
+                  decimals={false}
+                  placeholder="0"
+                  placeholderTextColor={C.textFaint}
+                  value={set.reps}
+                  onChangeValue={(v) => updateSet(exIndex, setIndex, "reps", v)}
+                  label={`Set ${setIndex + 1} · reps`}
+                  order={exIndex * 1000 + setIndex * 3 + 1}
+                  accessibilityLabel={`${ex.name} set ${setIndex + 1} reps`}
+                />
+                <NumberInput
+                  style={styles.cell}
+                  decimals={false}
+                  placeholder="0"
+                  placeholderTextColor={C.textFaint}
+                  value={set.restSeconds ?? 0}
+                  onChangeValue={(v) => setRestForSet(exIndex, setIndex, v)}
+                  step={15}
+                  label={`Set ${setIndex + 1} · rest, seconds`}
+                  order={exIndex * 1000 + setIndex * 3 + 2}
+                  accessibilityLabel={`${ex.name} set ${setIndex + 1} rest`}
+                />
+                <Pressable
+                  style={styles.removeSet}
+                  onPress={() => removeSet(exIndex, setIndex)}
+                  hitSlop={HIT}
+                  accessibilityLabel="Remove set"
+                >
+                  <X size={18} color={C.textFaint} />
+                </Pressable>
+              </View>
+            ))}
 
-      <ExercisePicker
-        visible={showAdd}
-        onClose={() => setShowAdd(false)}
-        onSelect={addExercise}
-      />
+            <Pressable onPress={() => addSet(exIndex)}>
+              <Text style={styles.addSet}>+ Add set</Text>
+            </Pressable>
+          </View>
+        ))}
 
-      <Pressable style={styles.saveButton} onPress={handleSave}>
-        <Text style={styles.saveText}>{isEditing ? "Save changes" : "Save template"}</Text>
-      </Pressable>
-    </ScrollView>
+        <Pressable style={styles.addExerciseBtn} onPress={() => setShowAdd(true)}>
+          <Text style={styles.addExerciseText}>+ Add exercise</Text>
+        </Pressable>
+
+        <ExercisePicker
+          visible={showAdd}
+          onClose={() => setShowAdd(false)}
+          onSelect={addExercise}
+        />
+
+        <Pressable style={styles.saveButton} onPress={handleSave}>
+          <Text style={styles.saveText}>{isEditing ? "Save changes" : "Save template"}</Text>
+        </Pressable>
+      </NumberPadScrollView>
+    </NumberPadArea>
   );
 }
 

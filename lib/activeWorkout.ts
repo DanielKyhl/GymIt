@@ -39,9 +39,9 @@ export function formatRest(totalSeconds: number): string {
 export const MAX_REST = 59 * 60 + 59;
 
 // A rest length from the minutes and seconds typed into the rest editor.
-// Blank counts as 0, and seconds past 59 carry over, so "0:90" is 1:30.
-export function restFromParts(minutes: string, seconds: string): number {
-  const whole = (text: string) => Number.parseInt(text.replace(/\D/g, ""), 10) || 0;
+// Seconds past 59 carry over, so 0:90 is 1:30.
+export function restFromParts(minutes: number, seconds: number): number {
+  const whole = (n: number) => Math.max(0, Math.floor(n));
   return Math.min(MAX_REST, whole(minutes) * 60 + whole(seconds));
 }
 

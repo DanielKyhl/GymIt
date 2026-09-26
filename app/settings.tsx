@@ -2,13 +2,15 @@ import * as Clipboard from "expo-clipboard";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Check, Volume2 } from "lucide-react-native";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { NumberInput } from "../components/NumberInput";
+import { NumberPadArea, NumberPadScrollView } from "../components/NumberPad";
 import { useAuth } from "../context/AuthContext";
 import { authErrorMessage } from "../lib/authErrors";
 import { EXERCISE_CREDIT } from "../lib/exercises";
 import { playSound } from "../lib/sound";
 import { DEFAULT_TIMER_SOUND, TIMER_SOUNDS, TimerSoundId } from "../lib/timerSounds";
-import { convertWeight, parseWeight } from "../lib/units";
+import { convertWeight } from "../lib/units";
 import {
   exportAll,
   getBodyGender,
@@ -34,42 +36,40 @@ export default function Settings() {
   const [deleteError, setDeleteError] = useState("");
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [unit, setUnitState] = useState<"kg" | "lb">("kg");
-  const [rest, setRestState] = useState("90");
+  const [rest, setRestState] = useState(90);
   const [sound, setSoundState] = useState<TimerSoundId>(DEFAULT_TIMER_SOUND);
   const [goal, setGoalState] = useState(3);
   const [gender, setGenderState] = useState<"male" | "female">("male");
-  const [weight, setWeightState] = useState("");
+  const [weight, setWeightState] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
       getDefaultUnit().then(setUnitState);
-      getDefaultRest().then((r) => setRestState(String(r)));
+      getDefaultRest().then(setRestState);
       getTimerSound().then(setSoundState);
       getWeeklyGoal().then(setGoalState);
       getBodyGender().then(setGenderState);
       // Shown in the current unit, even if it was entered in the other one.
       Promise.all([getBodyWeight(), getDefaultUnit()]).then(([bw, u]) => {
-        setWeightState(bw ? String(convertWeight(bw.value, bw.unit, u)) : "");
+        setWeightState(bw ? convertWeight(bw.value, bw.unit, u) : 0);
       });
     }, [])
   );
 
   const chooseUnit = (u: "kg" | "lb") => {
     // Keep showing the same body weight, just expressed in the new unit.
-    const current = parseWeight(weight);
-    if (current && u !== unit) setWeightState(String(convertWeight(current, unit, u)));
+    if (weight && u !== unit) setWeightState(convertWeight(weight, unit, u));
     setUnitState(u);
     setDefaultUnit(u);
   };
   const chooseGoal = (g: number) => { setGoalState(g); setWeeklyGoal(g); };
   const chooseGender = (g: "male" | "female") => { setGenderState(g); setBodyGender(g); };
-  const saveRest = (v: string) => { setRestState(v); setDefaultRest(Number(v) || 90); };
+  const saveRest = (v: number) => { setRestState(v); setDefaultRest(v || 90); };
   // Plays it too, so you hear what you picked.
   const chooseSound = (id: TimerSoundId) => { setSoundState(id); setTimerSound(id); playSound(id); };
-  const saveWeight = (v: string) => {
+  const saveWeight = (v: number) => {
     setWeightState(v);
-    const value = parseWeight(v);
-    if (value) setBodyWeight(value, unit);
+    if (v) setBodyWeight(v, unit);
   };
 
   const handleDelete = async () => {
@@ -107,154 +107,163 @@ export default function Settings() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.section}>Account</Text>
-      <View style={styles.card}>
-        <Text style={styles.email}>{user?.email ?? "—"}</Text>
-        <Pressable onPress={handleLogout}>
-          <Text style={styles.logout}>Log out</Text>
-        </Pressable>
-      </View>
-
-      <Text style={styles.section}>Default weight unit</Text>
-      <View style={styles.segment}>
-        {(["kg", "lb"] as const).map((u) => (
-          <Pressable
-            key={u}
-            style={[styles.segBtn, unit === u && styles.segActive]}
-            onPress={() => chooseUnit(u)}
-          >
-            <Text style={styles.segText}>{u}</Text>
+    <NumberPadArea>
+      <NumberPadScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <Text style={styles.section}>Account</Text>
+        <View style={styles.card}>
+          <Text style={styles.email}>{user?.email ?? "—"}</Text>
+          <Pressable onPress={handleLogout}>
+            <Text style={styles.logout}>Log out</Text>
           </Pressable>
-        ))}
-      </View>
-
-      <Text style={styles.section}>Body weight</Text>
-      <View style={styles.restRow}>
-        <TextInput
-          style={styles.restInput}
-          keyboardType="decimal-pad"
-          placeholder="—"
-          placeholderTextColor={C.textFaint}
-          value={weight}
-          onChangeText={saveWeight}
-        />
-        <Text style={styles.restUnit}>{unit}</Text>
-      </View>
-      <Text style={[styles.hint, styles.fieldHint]}>Used as the weight for bodyweight exercises like pull-ups.</Text>
-
-      <Text style={styles.section}>Default rest between sets</Text>
-      <View style={styles.restRow}>
-        <TextInput
-          style={styles.restInput}
-          keyboardType="numeric"
-          value={rest}
-          onChangeText={saveRest}
-        />
-        <Text style={styles.restUnit}>seconds</Text>
-      </View>
-
-      <Text style={styles.section}>Rest timer sound</Text>
-      <View style={styles.list}>
-        {TIMER_SOUNDS.map((s, i) => (
-          <Pressable
-            key={s.id}
-            style={({ pressed }) => [styles.soundRow, i > 0 && styles.soundDivider, pressed && styles.soundPressed]}
-            onPress={() => chooseSound(s.id)}
-            accessibilityRole="radio"
-            aria-checked={sound === s.id}
-          >
-            <View style={styles.soundText}>
-              <Text style={styles.soundName}>{s.name}</Text>
-              <Text style={styles.hint}>{s.detail}</Text>
-            </View>
-            {sound === s.id ? <Check size={18} color={C.accent} /> : <Volume2 size={16} color={C.textFaint} />}
-          </Pressable>
-        ))}
-      </View>
-      <Text style={[styles.hint, styles.fieldHint]}>
-        {Platform.OS === "web"
-          ? "Tap one to hear it. It plays over your music without pausing it, but an iPhone on silent mutes it."
-          : "Tap one to hear it. It plays over your music without pausing it."}
-      </Text>
-
-      <Text style={styles.section}>Weekly workout goal</Text>
-      <View style={styles.grid}>
-        {Array.from({ length: 7 }, (_, i) => i + 1).map((n) => (
-          <Pressable
-            key={n}
-            style={[styles.goalBtn, goal === n && styles.segActive]}
-            onPress={() => chooseGoal(n)}
-          >
-            <Text style={styles.segText}>{n}</Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <Text style={styles.section}>Gender</Text>
-      <View style={styles.segment}>
-        {(["male", "female"] as const).map((g) => (
-          <Pressable
-            key={g}
-            style={[styles.segBtn, gender === g && styles.segActive]}
-            onPress={() => chooseGender(g)}
-          >
-            <Text style={styles.segText}>{g === "male" ? "Male" : "Female"}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <Text style={[styles.hint, styles.fieldHint]}>Picks the body on the Recovery tab's muscle map.</Text>
-
-      <Text style={styles.section}>Data</Text>
-      <Pressable style={styles.card} onPress={exportData}>
-        <Text style={styles.action}>Copy backup to clipboard</Text>
-        <Text style={styles.hint}>Saves all your templates, workouts, and settings as text.</Text>
-      </Pressable>
-
-      <Text style={styles.section}>Danger zone</Text>
-      <Pressable
-        style={[styles.card, styles.dangerCard]}
-        onPress={() => {
-          setDeletePassword("");
-          setDeleteError("");
-          setDeleting(true);
-        }}
-      >
-        <Text style={styles.dangerAction}>Delete account</Text>
-        <Text style={styles.hint}>Permanently deletes your account and every workout, template and setting.</Text>
-      </Pressable>
-
-      <Text style={styles.credit}>{EXERCISE_CREDIT}</Text>
-
-      <Modal visible={deleting} transparent animationType="fade" onRequestClose={() => setDeleting(false)}>
-        <View style={styles.backdrop}>
-          <View style={styles.dialog}>
-            <Text style={styles.dialogTitle}>Delete your account?</Text>
-            <Text style={styles.dialogBody}>
-              This permanently deletes {user?.email ?? "your account"} and all your workouts, templates and
-              settings, on this phone and in the cloud. It can't be undone. Copy a backup first if you might want
-              your data later.
-            </Text>
-            <TextInput
-              style={styles.dialogInput}
-              placeholder="Your password"
-              placeholderTextColor={C.textFaint}
-              secureTextEntry
-              value={deletePassword}
-              onChangeText={setDeletePassword}
-              autoFocus
-            />
-            {deleteError ? <Text style={styles.dialogError}>{deleteError}</Text> : null}
-            <Pressable style={styles.deleteBtn} onPress={handleDelete} disabled={deleteBusy}>
-              {deleteBusy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.deleteBtnText}>Delete account</Text>}
-            </Pressable>
-            <Pressable style={styles.cancelBtn} onPress={() => setDeleting(false)} disabled={deleteBusy}>
-              <Text style={styles.cancelText}>Keep my account</Text>
-            </Pressable>
-          </View>
         </View>
-      </Modal>
-    </ScrollView>
+
+        <Text style={styles.section}>Default weight unit</Text>
+        <View style={styles.segment}>
+          {(["kg", "lb"] as const).map((u) => (
+            <Pressable
+              key={u}
+              style={[styles.segBtn, unit === u && styles.segActive]}
+              onPress={() => chooseUnit(u)}
+            >
+              <Text style={styles.segText}>{u}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <Text style={styles.section}>Body weight</Text>
+        <View style={styles.restRow}>
+          <NumberInput
+            style={styles.restInput}
+            placeholder="—"
+            placeholderTextColor={C.textFaint}
+            value={weight}
+            onChangeValue={saveWeight}
+            step={unit === "kg" ? 0.5 : 1}
+            label="Body weight"
+            order={0}
+            accessibilityLabel="Body weight"
+          />
+          <Text style={styles.restUnit}>{unit}</Text>
+        </View>
+        <Text style={[styles.hint, styles.fieldHint]}>Used as the weight for bodyweight exercises like pull-ups.</Text>
+
+        <Text style={styles.section}>Default rest between sets</Text>
+        <View style={styles.restRow}>
+          <NumberInput
+            style={styles.restInput}
+            value={rest}
+            onChangeValue={saveRest}
+            decimals={false}
+            step={15}
+            label="Default rest · seconds"
+            order={1}
+            accessibilityLabel="Default rest in seconds"
+          />
+          <Text style={styles.restUnit}>seconds</Text>
+        </View>
+
+        <Text style={styles.section}>Rest timer sound</Text>
+        <View style={styles.list}>
+          {TIMER_SOUNDS.map((s, i) => (
+            <Pressable
+              key={s.id}
+              style={({ pressed }) => [styles.soundRow, i > 0 && styles.soundDivider, pressed && styles.soundPressed]}
+              onPress={() => chooseSound(s.id)}
+              accessibilityRole="radio"
+              aria-checked={sound === s.id}
+            >
+              <View style={styles.soundText}>
+                <Text style={styles.soundName}>{s.name}</Text>
+                <Text style={styles.hint}>{s.detail}</Text>
+              </View>
+              {sound === s.id ? <Check size={18} color={C.accent} /> : <Volume2 size={16} color={C.textFaint} />}
+            </Pressable>
+          ))}
+        </View>
+        <Text style={[styles.hint, styles.fieldHint]}>
+          {Platform.OS === "web"
+            ? "Tap one to hear it. It plays over your music without pausing it, but an iPhone on silent mutes it."
+            : "Tap one to hear it. It plays over your music without pausing it."}
+        </Text>
+
+        <Text style={styles.section}>Weekly workout goal</Text>
+        <View style={styles.grid}>
+          {Array.from({ length: 7 }, (_, i) => i + 1).map((n) => (
+            <Pressable
+              key={n}
+              style={[styles.goalBtn, goal === n && styles.segActive]}
+              onPress={() => chooseGoal(n)}
+            >
+              <Text style={styles.segText}>{n}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <Text style={styles.section}>Gender</Text>
+        <View style={styles.segment}>
+          {(["male", "female"] as const).map((g) => (
+            <Pressable
+              key={g}
+              style={[styles.segBtn, gender === g && styles.segActive]}
+              onPress={() => chooseGender(g)}
+            >
+              <Text style={styles.segText}>{g === "male" ? "Male" : "Female"}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <Text style={[styles.hint, styles.fieldHint]}>Picks the body on the Recovery tab's muscle map.</Text>
+
+        <Text style={styles.section}>Data</Text>
+        <Pressable style={styles.card} onPress={exportData}>
+          <Text style={styles.action}>Copy backup to clipboard</Text>
+          <Text style={styles.hint}>Saves all your templates, workouts, and settings as text.</Text>
+        </Pressable>
+
+        <Text style={styles.section}>Danger zone</Text>
+        <Pressable
+          style={[styles.card, styles.dangerCard]}
+          onPress={() => {
+            setDeletePassword("");
+            setDeleteError("");
+            setDeleting(true);
+          }}
+        >
+          <Text style={styles.dangerAction}>Delete account</Text>
+          <Text style={styles.hint}>Permanently deletes your account and every workout, template and setting.</Text>
+        </Pressable>
+
+        <Text style={styles.credit}>{EXERCISE_CREDIT}</Text>
+
+        <Modal visible={deleting} transparent animationType="fade" onRequestClose={() => setDeleting(false)}>
+          <View style={styles.backdrop}>
+            <View style={styles.dialog}>
+              <Text style={styles.dialogTitle}>Delete your account?</Text>
+              <Text style={styles.dialogBody}>
+                This permanently deletes {user?.email ?? "your account"} and all your workouts, templates and
+                settings, on this phone and in the cloud. It can't be undone. Copy a backup first if you might want
+                your data later.
+              </Text>
+              <TextInput
+                style={styles.dialogInput}
+                placeholder="Your password"
+                placeholderTextColor={C.textFaint}
+                secureTextEntry
+                value={deletePassword}
+                onChangeText={setDeletePassword}
+                autoFocus
+              />
+              {deleteError ? <Text style={styles.dialogError}>{deleteError}</Text> : null}
+              <Pressable style={styles.deleteBtn} onPress={handleDelete} disabled={deleteBusy}>
+                {deleteBusy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.deleteBtnText}>Delete account</Text>}
+              </Pressable>
+              <Pressable style={styles.cancelBtn} onPress={() => setDeleting(false)} disabled={deleteBusy}>
+                <Text style={styles.cancelText}>Keep my account</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+      </NumberPadScrollView>
+    </NumberPadArea>
   );
 }
 

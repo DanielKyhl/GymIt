@@ -6,6 +6,7 @@ import { platesPerSide } from "../lib/activeWorkout";
 import { barWeight } from "../lib/exercises";
 import { Unit } from "../lib/units";
 import { NumberInput } from "./NumberInput";
+import { NumberPadArea } from "./NumberPad";
 
 type Props = {
   exercise: string | null; // null = closed
@@ -30,63 +31,68 @@ export function PlateCalculator({ exercise, unit, initialWeight, onClose }: Prop
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <View style={styles.panel}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Plates per side</Text>
-            <Pressable onPress={onClose} hitSlop={HIT} accessibilityLabel="Close">
-              <X size={22} color={C.textMuted} />
-            </Pressable>
-          </View>
-          <Text style={styles.exercise} numberOfLines={1}>
-            {exercise}
-          </Text>
-
-          <View style={styles.inputRow}>
-            <NumberInput
-              style={styles.input}
-              value={weight}
-              onChangeValue={setWeight}
-              placeholder="0"
-              placeholderTextColor={C.textFaint}
-            />
-            <Text style={styles.unit}>{unit} total</Text>
-          </View>
-
-          <View style={styles.bar}>
-            <View style={styles.sleeve} />
-            {load.perSide.map((plate, i) => (
-              <View key={i} style={[styles.plate, { height: plateHeight(plate, unit) }]}>
-                <Text style={styles.plateText}>{plate}</Text>
-              </View>
-            ))}
-          </View>
-
-          <Text style={styles.summary}>
-            {load.belowBar
-              ? `Less than the empty bar (${bar} ${unit}).`
-              : load.perSide.length === 0
-                ? `Just the bar (${bar} ${unit}).`
-                : `${bar} ${unit} bar + ${load.perSide.join(" + ")} each side`}
-          </Text>
-          {load.leftover > 0 && (
-            <Text style={styles.warning}>
-              {load.leftover} {unit} can't be made with standard plates.
+      <NumberPadArea>
+        <View style={styles.backdrop}>
+          <View style={styles.panel}>
+            <View style={styles.header}>
+              <Text style={styles.title}>Plates per side</Text>
+              <Pressable onPress={onClose} hitSlop={HIT} accessibilityLabel="Close">
+                <X size={22} color={C.textMuted} />
+              </Pressable>
+            </View>
+            <Text style={styles.exercise} numberOfLines={1}>
+              {exercise}
             </Text>
-          )}
+
+            <View style={styles.inputRow}>
+              <NumberInput
+                style={styles.input}
+                value={weight}
+                onChangeValue={setWeight}
+                step={unit === "kg" ? 2.5 : 5}
+                label="Total weight"
+                placeholder="0"
+                placeholderTextColor={C.textFaint}
+              />
+              <Text style={styles.unit}>{unit} total</Text>
+            </View>
+
+            <View style={styles.bar}>
+              <View style={styles.sleeve} />
+              {load.perSide.map((plate, i) => (
+                <View key={i} style={[styles.plate, { height: plateHeight(plate, unit) }]}>
+                  <Text style={styles.plateText}>{plate}</Text>
+                </View>
+              ))}
+            </View>
+
+            <Text style={styles.summary}>
+              {load.belowBar
+                ? `Less than the empty bar (${bar} ${unit}).`
+                : load.perSide.length === 0
+                  ? `Just the bar (${bar} ${unit}).`
+                  : `${bar} ${unit} bar + ${load.perSide.join(" + ")} each side`}
+            </Text>
+            {load.leftover > 0 && (
+              <Text style={styles.warning}>
+                {load.leftover} {unit} can't be made with standard plates.
+              </Text>
+            )}
+          </View>
         </View>
-      </View>
+      </NumberPadArea>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  // Near the top rather than centred, so the number pad doesn't cover it.
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.7)",
-    justifyContent: "center",
     alignItems: "center",
     padding: 20,
+    paddingTop: 96,
   },
   panel: {
     width: "100%",

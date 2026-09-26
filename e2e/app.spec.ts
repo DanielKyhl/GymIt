@@ -28,12 +28,29 @@ async function tapOnTop(l: Locator) {
 }
 const tap = (page: Page, t: string) => tapOnTop(text(page, t));
 
+// Numbers are typed on the app's own number pad, never the phone's keyboard:
+// tap the keys, the way a thumb does. `keys` like "62.5", or ">" for Next.
+async function pressKeys(page: Page, keys: string) {
+  const pad = onScreen(page.getByTestId("number-pad")).last();
+  await expect(pad).toBeVisible();
+  for (const key of keys) {
+    const name = key === "." ? "Decimal point" : key === ">" ? /^(Next|Done)$/ : key;
+    await pad.getByRole("button", { name, exact: true }).click();
+  }
+}
+
+// Taps a number field, then types into it (replacing what's there).
+async function enter(page: Page, label: string, keys: string) {
+  await labelled(page, label).click();
+  await pressKeys(page, keys);
+}
+
 // New accounts get asked their body weight on Home; answer if it's showing.
 async function answerBodyWeight(page: Page) {
   await page.waitForTimeout(800);
   const dialog = page.getByRole("dialog").filter({ hasText: "What do you weigh?" });
   if (await dialog.isVisible()) {
-    await dialog.locator("input").fill("80");
+    await pressKeys(page, "80"); // the pad opens with the question
     await dialog.getByText("Save", { exact: true }).click();
     await expect(dialog).toBeHidden();
   }
@@ -164,10 +181,10 @@ test("sign up, build a template, train from it, come back to it", async ({ page 
     await expect.poll(() => page.evaluate(() => (window as unknown as { __wakeLocks: number }).__wakeLocks)).toBeGreaterThan(0);
 
     await expect(labelled(page, "About Pull-Up")).toBeVisible();
-    await labelled(page, "Pull-Up set 1 weight").fill("80");
-    await labelled(page, "Pull-Up set 1 reps").fill("8");
-    await labelled(page, "Barbell Bent Over Row set 1 weight").fill("60");
-    await labelled(page, "Barbell Bent Over Row set 1 reps").fill("8");
+    await enter(page, "Pull-Up set 1 weight", "80>8"); // Next goes from kg to reps
+    await expect(labelled(page, "Pull-Up set 1 reps")).toHaveText("8");
+    await enter(page, "Barbell Bent Over Row set 1 weight", "60>8");
+    await expect(labelled(page, "Barbell Bent Over Row set 1 weight")).toHaveText("60");
     const markDone = onScreen(page.getByLabel("Mark set done", { exact: true }));
     await markDone.first().click();
     await markDone.first().click();
@@ -188,8 +205,8 @@ test("sign up, build a template, train from it, come back to it", async ({ page 
 
     await tap(page, "Edit");
     await expect(page).toHaveURL(/create-template/);
-    const values = await onScreen(page.locator("input")).evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
-    expect(values).toEqual(expect.arrayContaining(["60", "8"]));
+    await expect(labelled(page, "Barbell Bent Over Row set 1 weight")).toHaveText("60");
+    await expect(labelled(page, "Barbell Bent Over Row set 1 reps")).toHaveText("8");
     await expectWorkingBackArrow(page, /\/template\//);
     await expectWorkingBackArrow(page, /\/$/);
   });
@@ -214,7 +231,7 @@ test("sign up, build a template, train from it, come back to it", async ({ page 
     await tap(page, "Start workout");
     await expectWorkoutOpen(page);
     // Last time's numbers are filled in: BW × 8 and 60 × 8. Go heavier on the row.
-    await labelled(page, "Barbell Bent Over Row set 1 weight").fill("65");
+    await enter(page, "Barbell Bent Over Row set 1 weight", "65");
     const markDone = onScreen(page.getByLabel("Mark set done", { exact: true }));
     await markDone.first().click();
     await markDone.first().click();
@@ -312,8 +329,7 @@ test("rest timer: type your own time, change it mid-rest, and ring without pausi
     await expect(labelled(page, "Rest 2:00. Change rest time")).toHaveCount(3);
 
     await labelled(page, "Rest 2:00. Change rest time").last().click();
-    await labelled(page, "Minutes").fill("1");
-    await labelled(page, "Seconds").fill("45");
+    await pressKeys(page, "1>45"); // it opens on the minutes; Next to the seconds
     await tap(page, "Set 1:45 rest");
     await expect(labelled(page, "Rest 1:45. Change rest time")).toHaveCount(3);
   });
@@ -325,8 +341,7 @@ test("rest timer: type your own time, change it mid-rest, and ring without pausi
     await running.getByLabel("Rest 1:45. Change rest time").click();
     // Shorter, but still ahead of the clock (a rest cut to less than you've
     // already rested is over at once, and doesn't ring).
-    await labelled(page, "Minutes").fill("0");
-    await labelled(page, "Seconds").fill("10");
+    await pressKeys(page, "0>10");
     await tap(page, "Set 0:10 rest");
     await expect(running).toHaveCount(1); // still resting
     await expect(running.getByLabel("Rest 0:10. Change rest time")).toBeVisible();
@@ -337,7 +352,7 @@ test("rest timer: type your own time, change it mid-rest, and ring without pausi
   });
 
   await test.step("pull the workout down mid-rest: Home behind it, and the rest still rings", async () => {
-    await labelled(page, "Pull-Up set 1 reps").fill("8");
+    await enter(page, "Pull-Up set 1 reps", "8");
     await onScreen(page.getByLabel("Mark set done", { exact: true })).first().click(); // another 0:10 rest
     await pullWorkoutDown(page);
     await expect(labelled(page, "Minimize workout")).toBeHidden();
@@ -359,7 +374,7 @@ test("rest timer: type your own time, change it mid-rest, and ring without pausi
     await page.mouse.move(box.x + box.width / 2, box.y - 80, { steps: 6 });
     await page.mouse.up();
     await expectWorkoutOpen(page);
-    await expect(labelled(page, "Pull-Up set 1 reps")).toHaveValue("8"); // as it was left
+    await expect(labelled(page, "Pull-Up set 1 reps")).toHaveText("8"); // as it was left
 
     await labelled(page, "Minimize workout").click();
     await expect(labelled(page, "Minimize workout")).toBeHidden();
