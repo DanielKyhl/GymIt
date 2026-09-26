@@ -73,6 +73,7 @@ export default function RootLayout() {
             {/* Only an old address now: it opens the workout sheet. */}
             <Stack.Screen name="workout/[id]" options={{ headerShown: false, animation: 'none' }} />
             <Stack.Screen name="workout-log/[id]" options={{ title: 'Workout' }} />
+            <Stack.Screen name="exercises" options={{ title: 'Exercises' }} />
             <Stack.Screen name="exercise-progress/[name]" options={{ title: 'Progress' }} />
             <Stack.Screen name="create-template" options={{ title: 'New template' }} />
             <Stack.Screen name="workout-summary" options={{ headerShown: false }} />

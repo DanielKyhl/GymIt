@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { BodyWeightPrompt } from "../../components/BodyWeightPrompt";
 import { ConsistencyHeatmap } from "../../components/ConsistencyHeatmap";
 import { LifetimeCard } from "../../components/LifetimeCard";
@@ -166,46 +166,35 @@ export default function Progress() {
         )}
       </View>
 
-      <Pressable style={styles.volumeLink} onPress={() => setShowVolume(true)}>
+      {/* Every exercise gets its own screen: listed here, they'd crowd out the rest. */}
+      <Pressable style={styles.volumeLink} onPress={() => router.push("/exercises")} accessibilityRole="button">
+        <View>
+          <Text style={styles.volumeLinkText}>Exercises</Text>
+          <Text style={styles.linkDetail}>
+            {exercises.length === 0 ? "None logged yet" : plural(exercises.length, "exercise")}
+          </Text>
+        </View>
+        <ChevronRight size={20} color={C.textMuted} />
+      </Pressable>
+      <Pressable style={[styles.volumeLink, styles.linkNext]} onPress={() => setShowVolume(true)}>
         <Text style={styles.volumeLinkText}>Volume per template</Text>
         <ChevronRight size={20} color={C.textMuted} />
       </Pressable>
-      <Text style={styles.section}>Exercises</Text>
+      {exercises.length === 0 && (
+        <Text style={styles.empty}>Log some sets in a workout and your progress shows up here.</Text>
+      )}
     </View>
   );
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={exercises}
-        keyExtractor={(item) => item.name}
-        contentContainerStyle={styles.list}
-        ListHeaderComponent={
-          <View>
-            <Text style={styles.title}>Progress</Text>
-            <View style={styles.lifetime}>
-              <LifetimeCard totalKg={lifetime} unit={unit} />
-            </View>
-            {header}
-          </View>
-        }
-        ListEmptyComponent={
-          <Text style={styles.empty}>
-            Log some sets in a workout and your progress shows up here.
-          </Text>
-        }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => router.push({ pathname: "/exercise-progress/[name]", params: { name: item.name } })}
-          >
-            <Text style={styles.cardTitle}>{item.name}</Text>
-            <Text style={styles.cardSub}>
-              Best {item.bestWeight} · est. 1RM {item.best1RM} · {plural(item.sessionCount, "session")}
-            </Text>
-          </TouchableOpacity>
-        )}
-      />
+      <ScrollView contentContainerStyle={styles.page}>
+        <Text style={styles.title}>Progress</Text>
+        <View style={styles.lifetime}>
+          <LifetimeCard totalKg={lifetime} unit={unit} />
+        </View>
+        {header}
+      </ScrollView>
 
       <BodyWeightPrompt
         visible={logging}
@@ -294,11 +283,10 @@ const styles = StyleSheet.create({
     backgroundColor: C.card, borderRadius: 12, padding: 16, marginTop: 20,
   },
   volumeLinkText: { color: C.text, fontSize: 15, fontWeight: "500" },
-  list: { gap: 10, padding: 20, paddingTop: 60, paddingBottom: 40 },
+  linkDetail: { color: C.textMuted, fontSize: 13, marginTop: 2 },
+  linkNext: { marginTop: 10 },
+  page: { padding: 20, paddingTop: 60, paddingBottom: 40 },
   empty: { color: C.textMuted, fontSize: 15, textAlign: "center", marginTop: 20 },
-  card: { backgroundColor: C.card, borderRadius: 12, padding: 16 },
-  cardTitle: { color: C.text, fontSize: 16, fontWeight: "500", marginBottom: 4 },
-  cardSub: { color: C.textMuted, fontSize: 13 },
 
   backdrop: {
     flex: 1, backgroundColor: "rgba(0,0,0,0.7)",

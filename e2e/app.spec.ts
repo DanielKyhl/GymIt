@@ -249,6 +249,19 @@ test("sign up, build a template, train from it, come back to it", async ({ page 
     await expectWorkingBackArrow(page, /\/calendar$/);
     await expectWorkingBackArrow(page, /\/history$/);
   });
+
+  await test.step("Progress keeps the exercises on a screen of their own", async () => {
+    await page.getByRole("tab", { name: "Progress" }).click();
+    await expect(page).toHaveURL(/\/progress$/);
+    await expect(text(page, "2 exercises")).toBeVisible();
+    await tap(page, "Exercises");
+    await expect(page).toHaveURL(/\/exercises$/);
+    await expect(text(page, "Pull-Up")).toBeVisible();
+    await tap(page, "Barbell Bent Over Row");
+    await expect(page).toHaveURL(/\/exercise-progress\//);
+    await expectWorkingBackArrow(page, /\/exercises$/);
+    await expectWorkingBackArrow(page, /\/progress$/);
+  });
 });
 
 test("rest timer: type your own time, change it mid-rest, and ring without pausing music", async ({ page }) => {

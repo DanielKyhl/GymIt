@@ -5,16 +5,19 @@ import { type PropsWithChildren } from "react";
 // what a browser needs to install GymIt as an app: the manifest, the icons and
 // the service worker.
 //
-// Note the viewport has no `viewport-fit=cover`. No screen reads safe-area
-// insets, so letting iOS inset the viewport itself is what keeps the header
-// clear of the status bar and the tab bar clear of the home indicator.
+// `viewport-fit=cover` is what tells the page where the iPhone's home
+// indicator is. The installed app runs down under it either way, but without
+// this iOS reports no inset, so the tab bar's labels sat behind the indicator;
+// with it, the tab bar (and every header) makes room using the safe-area
+// insets. The status bar is opaque ("black" below), so the page still starts
+// beneath it, and the screens without a header leave room at the top anyway.
 export default function Root({ children }: PropsWithChildren) {
   return (
     <html lang="en">
       <head>
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 
         <title>GymIt</title>
         <meta name="description" content="Log every set. Watch yourself get stronger." />
