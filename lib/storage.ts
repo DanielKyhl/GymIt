@@ -6,6 +6,7 @@ import { currentName, withCurrentNames } from './exerciseNames';
 import { Experience, Goal, needsOnboarding, restForGoal } from './onboarding';
 import { hasSyncedBefore, isNewAccount, putRecords, readLocal, readyUid, SETTINGS_ID, updateRecord } from './sync';
 import { live, SyncRecord } from './syncMerge';
+import { timerSoundOrDefault, TimerSoundId } from './timerSounds';
 import { normalizeUnits } from './units';
 
 // The app's only doorway to saved data. Everything here reads and writes the
@@ -19,6 +20,7 @@ type Settings = SyncRecord & {
     bodyGender?: 'male' | 'female';
     defaultUnit?: 'kg' | 'lb';
     defaultRest?: number;
+    timerSound?: TimerSoundId; // what the rest timer plays when a rest is up
     premadeSeeded?: boolean;
     bodyWeight?: number;
     bodyWeightUnit?: 'kg' | 'lb';
@@ -245,6 +247,14 @@ export async function getDefaultRest(): Promise<number> {
 
 export async function setDefaultRest(seconds: number): Promise<void> {
     await setSetting({ defaultRest: seconds });
+}
+
+export async function getTimerSound(): Promise<TimerSoundId> {
+    return timerSoundOrDefault((await getSettings()).timerSound);
+}
+
+export async function setTimerSound(id: TimerSoundId): Promise<void> {
+    await setSetting({ timerSound: id });
 }
 
 // Used as the weight for bodyweight exercises. Kept with the unit it was

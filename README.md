@@ -7,8 +7,12 @@ TypeScript. Log every set, and watch the numbers go up.
 
 **Logging.** Build templates or start an empty workout. Each set takes weight,
 reps, a type (working, warm-up, drop, failure) and an optional RPE. A rest row
-sits between sets and starts itself when you tick one off, counting up past the
-target so you can see how long you actually rested. There's a plate calculator,
+follows every set, the last one included (that's the rest before the next
+exercise), and starts itself when you tick the set off, counting up past the
+target so you can see how long you actually rested. Rest lengths are typed in,
+minutes and seconds, and can be changed while the rest runs. When it's up it
+rings over your music rather than pausing it: a boxing bell, a gym bell, a gong
+or a whistle, picked in Settings. There's a plate calculator,
 a warm-up generator, supersets, per-exercise notes, and a PR badge the moment
 you beat an estimated 1RM. Close the app mid-workout and it picks up where you
 left off.
@@ -66,8 +70,11 @@ URL and choose **Add to Home Screen** — Share menu on iOS, the ⋮ menu on
 Android. It launches full-screen with its own icon, keeps you signed in, and
 the service worker in `public/sw.js` keeps it working with no signal.
 
-Two things don't survive the web build: haptics do nothing, and the summary's
-share card is hidden, because the screenshot library it uses is native-only.
+Three things don't survive the web build: haptics do nothing; the summary's
+share card is hidden, because the screenshot library it uses is native-only;
+and on an iPhone the rest timer's sound is muted while the phone is on silent.
+That last one is the price of not pausing your music: iOS only lets a web page
+play over other audio in the "ambient" mode, which the silent switch mutes.
 
 ## Developing against the emulators
 
@@ -119,6 +126,12 @@ also records how names from the previous exercise list map onto the new ones
 (`assets/legacyNames.json`), which the app applies to saved workouts and
 templates, and what the unmatched old names trained
 (`assets/legacyExercises.json`), so history under them still counts.
+
+## Timer sounds
+
+The rest timer's sounds are synthesised rather than recorded, so there's no
+licence to worry about: `scripts/make-sounds.cjs` writes `assets/sounds/`, all
+at the same loudness. Change a number there and run it again to retune one.
 
 ## Built with
 

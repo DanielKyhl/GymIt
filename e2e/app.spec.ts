@@ -39,6 +39,22 @@ async function answerBodyWeight(page: Page) {
   }
 }
 
+// A fresh account, past the first-run setup, on Home.
+async function signUp(page: Page) {
+  await page.goto("/");
+  await tap(page, "Create account");
+  await onScreen(page.getByPlaceholder("you@example.com")).fill(`e2e-${Date.now()}@gymit.test`);
+  await onScreen(page.getByPlaceholder("Choose a password")).fill("testpass123");
+  await tap(page, "Create account");
+  await expect(page).toHaveURL(/onboarding/);
+  while (/onboarding/.test(page.url())) {
+    await tap(page, "Skip");
+    await page.waitForTimeout(800);
+  }
+  await expect(labelled(page, "Settings")).toBeVisible();
+  await answerBodyWeight(page);
+}
+
 // The back arrow has to be drawn, not a tinted image: iPhone Safari drops the
 // tint and the arrow disappears into the header.
 async function expectWorkingBackArrow(page: Page, returnsTo: RegExp) {
@@ -72,20 +88,7 @@ test("sign up, build a template, train from it, come back to it", async ({ page 
     });
   });
 
-  await test.step("sign up and skip the setup", async () => {
-    await page.goto("/");
-    await tap(page, "Create account");
-    await onScreen(page.getByPlaceholder("you@example.com")).fill(`e2e-${Date.now()}@gymit.test`);
-    await onScreen(page.getByPlaceholder("Choose a password")).fill("testpass123");
-    await tap(page, "Create account");
-    await expect(page).toHaveURL(/onboarding/);
-    while (/onboarding/.test(page.url())) {
-      await tap(page, "Skip");
-      await page.waitForTimeout(800);
-    }
-    await expect(labelled(page, "Settings")).toBeVisible();
-    await answerBodyWeight(page);
-  });
+  await test.step("sign up and skip the setup", () => signUp(page));
 
   await test.step("back arrows are drawn and work", async () => {
     await labelled(page, "Settings").click();
@@ -225,5 +228,78 @@ test("sign up, build a template, train from it, come back to it", async ({ page 
     await expect(page).toHaveURL(/\/workout-log\//);
     await expectWorkingBackArrow(page, /\/calendar$/);
     await expectWorkingBackArrow(page, /\/history$/);
+  });
+});
+
+test("rest timer: type your own time, change it mid-rest, and ring without pausing music", async ({ page }) => {
+  page.on("dialog", (d) => d.accept());
+
+  // Count how sound gets played. On an iPhone, an <audio> element takes over
+  // the phone's audio and pauses Spotify; Web Audio in an "ambient" audio
+  // session plays over it. The test browser may lack the Audio Session API,
+  // so stand one in.
+  await page.addInitScript(() => {
+    const w = window as unknown as { __sound: { webAudio: number; media: number } };
+    w.__sound = { webAudio: 0, media: 0 };
+    const start = AudioBufferSourceNode.prototype.start;
+    AudioBufferSourceNode.prototype.start = function (this: AudioBufferSourceNode, ...args: [number?, number?, number?]) {
+      w.__sound.webAudio++;
+      return start.apply(this, args);
+    };
+    const play = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function (this: HTMLMediaElement) {
+      w.__sound.media++;
+      return play.call(this);
+    };
+    Object.defineProperty(navigator, "audioSession", { configurable: true, value: { type: "auto" } });
+  });
+  const sound = () => page.evaluate(() => (window as unknown as { __sound: { webAudio: number; media: number } }).__sound);
+  const audioSession = () => page.evaluate(() => (navigator as unknown as { audioSession: { type: string } }).audioSession.type);
+
+  await test.step("sign up", () => signUp(page));
+
+  await test.step("pick the rest timer's sound in Settings, and hear it", async () => {
+    await labelled(page, "Settings").click();
+    await expect(onScreen(page.getByRole("radio", { name: /Boxing bell/ }))).toHaveAttribute("aria-checked", "true");
+    await tap(page, "Whistle");
+    await expect(onScreen(page.getByRole("radio", { name: /Whistle/ }))).toHaveAttribute("aria-checked", "true");
+    await expect.poll(async () => (await sound()).webAudio).toBe(1);
+    expect(await audioSession()).toBe("ambient");
+    await expectWorkingBackArrow(page, /\/$/);
+  });
+
+  await test.step("type your own rest; the last set has one too", async () => {
+    await tap(page, "Start empty workout");
+    await expect(page).toHaveURL(/\/workout\//);
+    await tap(page, "Add exercise");
+    await onScreen(page.getByPlaceholder(/^Search/)).fill("pull up");
+    await expect(text(page, "BEST MATCHES")).toBeVisible();
+    await tap(page, "Pull-Up");
+    // Three sets, and a rest after each, the last included.
+    await expect(labelled(page, "Rest 2:00. Change rest time")).toHaveCount(3);
+
+    await labelled(page, "Rest 2:00. Change rest time").last().click();
+    await labelled(page, "Minutes").fill("1");
+    await labelled(page, "Seconds").fill("45");
+    await tap(page, "Set 1:45 rest");
+    await expect(labelled(page, "Rest 1:45. Change rest time")).toHaveCount(3);
+  });
+
+  await test.step("change a running rest without ending it; it rings through Web Audio", async () => {
+    await onScreen(page.getByLabel("Mark set done", { exact: true })).last().click();
+    const running = onScreen(page.getByLabel(/^Resting /));
+    await expect(running).toHaveCount(1);
+    await running.getByLabel("Rest 1:45. Change rest time").click();
+    // Shorter, but still ahead of the clock (a rest cut to less than you've
+    // already rested is over at once, and doesn't ring).
+    await labelled(page, "Minutes").fill("0");
+    await labelled(page, "Seconds").fill("10");
+    await tap(page, "Set 0:10 rest");
+    await expect(running).toHaveCount(1); // still resting
+    await expect(running.getByLabel("Rest 0:10. Change rest time")).toBeVisible();
+
+    await expect(text(page, "Rest's up")).toBeVisible({ timeout: 20_000 });
+    await expect.poll(async () => (await sound()).webAudio).toBe(2);
+    expect((await sound()).media).toBe(0);
   });
 });

@@ -8,6 +8,7 @@ import { Anchor, DropdownMenu, measureAnchor, MenuItem } from "../../components/
 import { ExercisePicker } from "../../components/ExercisePicker";
 import { NumberInput } from "../../components/NumberInput";
 import { PlateCalculator } from "../../components/PlateCalculator";
+import { RestEditor } from "../../components/RestEditor";
 import { RestRow } from "../../components/RestRow";
 import { RpeCell, RpeHelpButton, rpeItems } from "../../components/Rpe";
 import { SetBadge, setTypeItems } from "../../components/SetBadge";
@@ -22,7 +23,6 @@ import {
   isLivePR,
   linkWithNext,
   loggedExercises,
-  REST_OPTIONS,
   restAfterSet,
   setNumber,
   toggleSet,
@@ -40,6 +40,7 @@ import {
   getDefaultRest,
   getDefaultUnit,
   getTemplates,
+  getTimerSound,
   getWeeklyGoal,
   getWorkouts,
   saveActiveWorkout,
@@ -48,7 +49,9 @@ import {
   updateTemplate,
 } from "../../lib/storage";
 import { confirm } from "../../lib/confirm";
+import { prepareSound } from "../../lib/sound";
 import { summarizeWorkout } from "../../lib/summary";
+import { DEFAULT_TIMER_SOUND, TimerSoundId } from "../../lib/timerSounds";
 import { convertWeight, normalizeUnits } from "../../lib/units";
 import { Workout, WorkoutExercise, WorkoutSet } from "../../types/workout";
 import { ExerciseInfoButton } from "../../components/ExerciseInfo";
@@ -105,6 +108,8 @@ export default function ActiveWorkoutScreen() {
   const [plateFor, setPlateFor] = useState<{ name: string; weight: number } | null>(null);
   const [openNotes, setOpenNotes] = useState<string[]>([]);
   const [menu, setMenu] = useState<OpenMenu | null>(null);
+  const [restEdit, setRestEdit] = useState<{ exIndex: number; seconds: number } | null>(null);
+  const [timerSound, setTimerSound] = useState<TimerSoundId | null>(null);
   // Set once the workout is ended or discarded, so a pending autosave can't
   // bring it back.
   const finished = useRef(false);
@@ -113,16 +118,18 @@ export default function ActiveWorkoutScreen() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [existing, templates, bw, unit, def, past] = await Promise.all([
+      const [existing, templates, bw, unit, def, past, sound] = await Promise.all([
         getActiveWorkout(),
         getTemplates(),
         getBodyWeight(),
         getDefaultUnit(),
         getDefaultRest(),
         getWorkouts(),
+        getTimerSound(),
       ]);
       if (cancelled) return;
       setBodyWeightValue(bw);
+      setTimerSound(sound);
       // In the current unit, so "Prev" hints and PRs compare like with like.
       setPastWorkouts(normalizeUnits(past, unit));
       const template = id === "new" || id === "resume" ? null : (templates.find((t) => t.id === id) ?? null);
@@ -188,6 +195,10 @@ export default function ActiveWorkoutScreen() {
     }, 250);
     return () => clearTimeout(save);
   }, [active]);
+
+  // The rest-up sound, loaded now so it's ready the moment a rest ends. (In
+  // the browser this also keeps the audio awake while the workout is open.)
+  useEffect(() => (timerSound ? prepareSound(timerSound) : undefined), [timerSound]);
 
   const exerciseNames = active?.exercises.map((e) => e.name).join("\n") ?? "";
   // Per-exercise history lookups, only redone when the exercise list changes.
@@ -314,18 +325,7 @@ export default function ActiveWorkoutScreen() {
     }));
   };
 
-  const openRestMenu = (exIndex: number, anchor: Anchor, current: number, align: "left" | "right" = "left") =>
-    setMenu({
-      anchor,
-      align,
-      title: "Rest between sets",
-      items: REST_OPTIONS.map((seconds) => ({
-        key: String(seconds),
-        label: seconds === 0 ? "No rest timer" : formatRest(seconds),
-        selected: seconds === current,
-        onPress: () => setExerciseRest(exIndex, seconds),
-      })),
-    });
+  const editRest = (exIndex: number, seconds: number) => setRestEdit({ exIndex, seconds });
 
   const openExerciseMenu = (exIndex: number, anchor: Anchor) => {
     const ex = active.exercises[exIndex];
@@ -372,7 +372,7 @@ export default function ActiveWorkoutScreen() {
       label: "Rest timer",
       detail: rest > 0 ? `${formatRest(rest)} between sets` : "Off",
       icon: icon(Timer),
-      onPress: () => openRestMenu(exIndex, anchor, rest, "right"),
+      onPress: () => editRest(exIndex, rest),
     });
     if (next) {
       items.push({
@@ -563,7 +563,6 @@ export default function ActiveWorkoutScreen() {
                 const p = prev[setIndex];
                 const rest = restAfterSet(active.exercises, exIndex, setIndex);
                 const running = active.rest?.exIndex === exIndex && active.rest.setIndex === setIndex ? active.rest : null;
-                const isLast = setIndex === ex.sets.length - 1;
                 return (
                   <View key={setIndex}>
                     <View style={[styles.row, styles.setRow, set.done && styles.setRowDone]}>
@@ -629,13 +628,14 @@ export default function ActiveWorkoutScreen() {
                       <CheckButton done={set.done} onToggle={() => toggleDone(exIndex, setIndex)} />
                     </View>
 
-                    {/* The rest between this set and the next. After the last set it
-                        only shows while it's running (the rest before the next exercise). */}
-                    {(running || (rest > 0 && !isLast)) && (
+                    {/* The rest after this set: before the next set, or after the
+                        last one, before the next exercise. */}
+                    {(running || rest > 0) && (
                       <RestRow
                         seconds={rest}
                         running={running}
-                        onEdit={(anchor) => openRestMenu(exIndex, anchor, set.restSeconds ?? 0)}
+                        sound={timerSound ?? DEFAULT_TIMER_SOUND}
+                        onEdit={() => editRest(exIndex, running ? running.target : rest)}
                         onStop={() => update((a) => ({ ...a, rest: null }))}
                       />
                     )}
@@ -675,6 +675,13 @@ export default function ActiveWorkoutScreen() {
         items={menu?.items ?? []}
         align={menu?.align}
         onClose={() => setMenu(null)}
+      />
+      <RestEditor
+        exercise={restEdit ? (active.exercises[restEdit.exIndex]?.name ?? null) : null}
+        seconds={restEdit?.seconds ?? 0}
+        fallback={defaultRest}
+        onSave={(seconds) => restEdit && setExerciseRest(restEdit.exIndex, seconds)}
+        onClose={() => setRestEdit(null)}
       />
       <ExercisePicker visible={showAdd} onClose={() => setShowAdd(false)} onSelect={addExercise} />
       <PlateCalculator

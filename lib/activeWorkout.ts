@@ -35,8 +35,15 @@ export function formatRest(totalSeconds: number): string {
   return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
 }
 
-// The rest lengths offered in the rest menu (0 = no rest timer).
-export const REST_OPTIONS = [0, 30, 60, 90, 120, 150, 180, 240, 300];
+// The longest rest you can type in: an hour, less a second.
+export const MAX_REST = 59 * 60 + 59;
+
+// A rest length from the minutes and seconds typed into the rest editor.
+// Blank counts as 0, and seconds past 59 carry over, so "0:90" is 1:30.
+export function restFromParts(minutes: string, seconds: string): number {
+  const whole = (text: string) => Number.parseInt(text.replace(/\D/g, ""), 10) || 0;
+  return Math.min(MAX_REST, whole(minutes) * 60 + whole(seconds));
+}
 
 // ---------------------------------------------------------------------------
 // Set types, in the order the set menu lists them. The letter replaces the

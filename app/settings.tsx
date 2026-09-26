@@ -1,10 +1,13 @@
 import * as Clipboard from "expo-clipboard";
 import { useFocusEffect, useRouter } from "expo-router";
+import { Check, Volume2 } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import { authErrorMessage } from "../lib/authErrors";
 import { EXERCISE_CREDIT } from "../lib/exercises";
+import { playSound } from "../lib/sound";
+import { DEFAULT_TIMER_SOUND, TIMER_SOUNDS, TimerSoundId } from "../lib/timerSounds";
 import { convertWeight, parseWeight } from "../lib/units";
 import {
   exportAll,
@@ -12,11 +15,13 @@ import {
   getBodyWeight,
   getDefaultRest,
   getDefaultUnit,
+  getTimerSound,
   getWeeklyGoal,
   setBodyGender,
   setBodyWeight,
   setDefaultRest,
   setDefaultUnit,
+  setTimerSound,
   setWeeklyGoal,
 } from "../lib/storage";
 import { C } from "../constants/theme";
@@ -30,6 +35,7 @@ export default function Settings() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [unit, setUnitState] = useState<"kg" | "lb">("kg");
   const [rest, setRestState] = useState("90");
+  const [sound, setSoundState] = useState<TimerSoundId>(DEFAULT_TIMER_SOUND);
   const [goal, setGoalState] = useState(3);
   const [gender, setGenderState] = useState<"male" | "female">("male");
   const [weight, setWeightState] = useState("");
@@ -38,6 +44,7 @@ export default function Settings() {
     useCallback(() => {
       getDefaultUnit().then(setUnitState);
       getDefaultRest().then((r) => setRestState(String(r)));
+      getTimerSound().then(setSoundState);
       getWeeklyGoal().then(setGoalState);
       getBodyGender().then(setGenderState);
       // Shown in the current unit, even if it was entered in the other one.
@@ -57,6 +64,8 @@ export default function Settings() {
   const chooseGoal = (g: number) => { setGoalState(g); setWeeklyGoal(g); };
   const chooseGender = (g: "male" | "female") => { setGenderState(g); setBodyGender(g); };
   const saveRest = (v: string) => { setRestState(v); setDefaultRest(Number(v) || 90); };
+  // Plays it too, so you hear what you picked.
+  const chooseSound = (id: TimerSoundId) => { setSoundState(id); setTimerSound(id); playSound(id); };
   const saveWeight = (v: string) => {
     setWeightState(v);
     const value = parseWeight(v);
@@ -144,6 +153,30 @@ export default function Settings() {
         />
         <Text style={styles.restUnit}>seconds</Text>
       </View>
+
+      <Text style={styles.section}>Rest timer sound</Text>
+      <View style={styles.list}>
+        {TIMER_SOUNDS.map((s, i) => (
+          <Pressable
+            key={s.id}
+            style={({ pressed }) => [styles.soundRow, i > 0 && styles.soundDivider, pressed && styles.soundPressed]}
+            onPress={() => chooseSound(s.id)}
+            accessibilityRole="radio"
+            aria-checked={sound === s.id}
+          >
+            <View style={styles.soundText}>
+              <Text style={styles.soundName}>{s.name}</Text>
+              <Text style={styles.hint}>{s.detail}</Text>
+            </View>
+            {sound === s.id ? <Check size={18} color={C.accent} /> : <Volume2 size={16} color={C.textFaint} />}
+          </Pressable>
+        ))}
+      </View>
+      <Text style={[styles.hint, styles.fieldHint]}>
+        {Platform.OS === "web"
+          ? "Tap one to hear it. It plays over your music without pausing it, but an iPhone on silent mutes it."
+          : "Tap one to hear it. It plays over your music without pausing it."}
+      </Text>
 
       <Text style={styles.section}>Weekly workout goal</Text>
       <View style={styles.grid}>
@@ -242,6 +275,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12, width: 80, borderRadius: 10,
   },
   restUnit: { color: C.textMuted, fontSize: 15 },
+  list: { backgroundColor: C.card, borderRadius: 12, overflow: "hidden" },
+  soundRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 12 },
+  soundDivider: { borderTopWidth: 1, borderTopColor: C.raised },
+  soundPressed: { backgroundColor: C.raised },
+  soundText: { flex: 1, gap: 2 },
+  soundName: { color: C.text, fontSize: 15, fontWeight: "500" },
   grid: { flexDirection: "row", gap: 6 },
   goalBtn: { flex: 1, height: 44, backgroundColor: C.card, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   action: { color: C.accent, fontSize: 15, marginBottom: 4 },
