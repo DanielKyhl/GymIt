@@ -112,6 +112,10 @@ async function pullWorkoutDown(page: Page, from: Locator = labelled(page, "Minim
 // Holds an exercise's name until the exercise lifts, then drags it `by` px
 // (up is negative) and lets go.
 async function holdAndDrag(page: Page, name: Locator, by: number) {
+  // The list may have scrolled the name just out of sight (under the title
+  // row), where it still counts as visible but a press lands on the title.
+  await name.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(300);
   const box = await name.boundingBox();
   if (!box) throw new Error("the exercise isn't showing");
   const x = box.x + 20;

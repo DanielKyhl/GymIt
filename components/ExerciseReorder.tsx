@@ -35,7 +35,15 @@ export type ReorderHandle = { openList: () => void }; // the list, nothing lifte
 
 type Drag = { from: number; to: number; startY: number }; // startY: the finger on screen when it started
 type Place = { top: number; pitch: number }; // where the first row sits, and the room each row takes
-type Hold = { pickUp: (index: number, pageY: number) => void; letGo: () => void };
+type Hold = {
+  pickUp: (index: number, pageY: number) => void;
+  follow: (e: GestureResponderEvent) => void;
+  letGo: (moved: boolean) => void; // moved: dragged, so it goes where it's let go
+  cancel: () => void;
+};
+
+const HOLD_MS = 350; // how long a name is held before the exercise lifts
+const SLOP = 10; // a finger that moves this far first is scrolling, not holding
 
 const HoldContext = createContext<Hold | null>(null);
 
@@ -50,20 +58,41 @@ function buzz(pickUp = false) {
 function stopScroll(e: TouchEvent) {
   if (e.cancelable) e.preventDefault();
 }
+// And with a mouse, moving a held name drags a text selection across the page,
+// and a selection ends the hold (react-native-web ends a touch once text is
+// selected). So clear it the moment it starts: the window hears of it before
+// react-native-web's listener on the document does.
+function unselect() {
+  window.getSelection?.()?.removeAllRanges();
+}
 function holdStill(on: boolean) {
   if (native) return;
-  if (on) document.addEventListener("touchmove", stopScroll, { passive: false });
-  else document.removeEventListener("touchmove", stopScroll);
+  if (on) {
+    document.addEventListener("touchmove", stopScroll, { passive: false });
+    window.addEventListener("selectionchange", unselect, true);
+  } else {
+    document.removeEventListener("touchmove", stopScroll);
+    window.removeEventListener("selectionchange", unselect, true);
+  }
 }
 
 // A row in the browser: no text selection or page panning under a drag.
 const draggable = (native ? {} : { userSelect: "none", touchAction: "none", cursor: "grab" }) as ViewStyle;
+// A name to hold: never selectable text, or holding it starts selecting it
+// (the magnifier and Copy on an iPhone; with a mouse, a selection that ends
+// the hold). It still scrolls like the rest.
+const holdable = (native ? {} : { userSelect: "none", WebkitTouchCallout: "none" }) as ViewStyle;
 
 function clearSelection() {
   if (!native) window.getSelection?.()?.removeAllRanges();
 }
 
-// An exercise's name: hold it to pick the exercise up.
+// An exercise's name: hold it to pick the exercise up. It keeps the touch from
+// the moment it's pressed until it's let go, lifted or not: react-native-web
+// can't hand a touch from one view to another that isn't as deep in the page
+// (its common-ancestor search skips a step), so the drag can't be passed on
+// to the list once it has folded down over the name. A finger that moves
+// before the exercise lifts is scrolling: the page scrolls, and the hold is off.
 export function HoldToMove({
   index,
   onPickUp,
@@ -76,20 +105,54 @@ export function HoldToMove({
   children: ReactNode;
 }) {
   const hold = useContext(HoldContext);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const touch = useRef({ startY: 0, lifted: false, moved: false });
+  useEffect(() => () => clearTimeout(timer.current), []);
   if (!hold) return <View style={style}>{children}</View>;
+
+  const end = () => {
+    clearTimeout(timer.current);
+    const t = touch.current;
+    touch.current = { startY: 0, lifted: false, moved: false };
+    return t;
+  };
   return (
-    <Pressable
-      style={style}
-      delayLongPress={350}
-      onLongPress={(e) => {
-        onPickUp?.();
-        hold.pickUp(index, e.nativeEvent.pageY);
-      }}
-      onPressOut={hold.letGo}
+    <View
+      style={[style, holdable]}
       accessibilityHint="Hold to move this exercise"
+      onStartShouldSetResponder={() => true}
+      onResponderGrant={(e) => {
+        const pageY = e.nativeEvent.pageY;
+        touch.current = { startY: pageY, lifted: false, moved: false };
+        clearTimeout(timer.current);
+        timer.current = setTimeout(() => {
+          touch.current.lifted = true;
+          onPickUp?.();
+          hold.pickUp(index, pageY);
+        }, HOLD_MS);
+      }}
+      onResponderMove={(e) => {
+        const t = touch.current;
+        const moved = Math.abs(e.nativeEvent.pageY - t.startY);
+        if (!t.lifted) {
+          if (moved > SLOP) clearTimeout(timer.current);
+          return;
+        }
+        if (moved > 4) t.moved = true;
+        hold.follow(e);
+      }}
+      // Scrolling may have it until the exercise lifts; after that it's the drag's.
+      onResponderTerminationRequest={() => !touch.current.lifted}
+      onResponderRelease={() => {
+        const t = end();
+        if (t.lifted) hold.letGo(t.moved);
+      }}
+      onResponderTerminate={() => {
+        if (end().lifted) hold.cancel();
+      }}
     >
       {children}
-    </Pressable>
+    </View>
   );
 }
 
@@ -117,9 +180,6 @@ export function ReorderArea({
     live.current.count = rows.length;
     live.current.onMove = onMove;
   });
-  // A name is being held, and hasn't been dragged or let go of yet.
-  const holding = useRef(false);
-
   useEffect(() => () => holdStill(false), []);
 
   const act = useMemo(() => {
@@ -165,7 +225,6 @@ export function ReorderArea({
       if (commit && d && d.to !== d.from) live.current.onMove(d.from, d.to);
     };
     const close = () => {
-      holding.current = false;
       holdStill(false);
       setDrag(null);
       setPlace(null);
@@ -175,21 +234,25 @@ export function ReorderArea({
       hold: {
         // An exercise's name has been held: fold down to the list, that one lifted.
         pickUp: (index: number, pageY: number) => {
-          holding.current = true;
           holdStill(true);
           buzz(true);
           lift(index, pageY);
           setOpen(true);
           measure(index, pageY);
         },
-        // Let go of without being dragged: the list stays up. (Once the drag
-        // below has taken over, it's no longer holding by the next frame.)
-        letGo: () =>
-          requestAnimationFrame(() => {
-            if (!holding.current) return;
-            holding.current = false;
-            setDrag(null);
-          }),
+        follow,
+        // Dragged: it goes where it was let go, and the sets come back. Let go
+        // of without being dragged: the list stays up, to drag any of them.
+        letGo: (moved: boolean) => {
+          if (moved) {
+            drop(true);
+            close();
+          } else setDrag(null);
+        },
+        cancel: () => {
+          drop(false);
+          close();
+        },
       } satisfies Hold,
       openList: () => {
         holdStill(true);
@@ -206,17 +269,6 @@ export function ReorderArea({
         lift(index, e.nativeEvent.pageY);
         return true; // on a phone, the scrolling underneath stays put
       },
-      // The finger holding a name has moved: the drag takes over from it.
-      takeOver: () => holding.current,
-      takenOver: () => {
-        holding.current = false;
-        clearSelection();
-        return true;
-      },
-      dropped: (commit: boolean) => {
-        drop(commit);
-        close();
-      },
     };
   }, [liftY]);
 
@@ -232,16 +284,7 @@ export function ReorderArea({
 
   return (
     <HoldContext.Provider value={act.hold}>
-      <View
-        ref={box}
-        style={style}
-        onMoveShouldSetResponderCapture={act.takeOver}
-        onResponderGrant={act.takenOver}
-        onResponderMove={act.follow}
-        onResponderTerminationRequest={() => false}
-        onResponderRelease={() => act.dropped(true)}
-        onResponderTerminate={() => act.dropped(false)}
-      >
+      <View ref={box} style={style}>
         {children}
         {open && (
           <View style={styles.cover}>
