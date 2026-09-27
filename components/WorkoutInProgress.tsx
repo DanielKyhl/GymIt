@@ -58,6 +58,7 @@ import { convertWeight, normalizeUnits } from "../lib/units";
 import { Workout, WorkoutExercise, WorkoutSet } from "../types/workout";
 import { ExerciseInfoButton } from "./ExerciseInfo";
 import { useKeepScreenOn } from "../hooks/useKeepScreenOn";
+import { SheetGrip } from "./SheetGrip";
 
 // The workout in progress, as it shows in the workout sheet
 // (components/WorkoutSheet.tsx). `id` is a template's id to start (or resume)
@@ -499,7 +500,7 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <SheetGrip style={styles.header}>
         <View style={styles.headerText}>
           {active.templateId === null ? (
             <TextInput
@@ -522,7 +523,7 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
           <Timer size={16} color={C.accent} />
           <ElapsedClock startedAt={active.startedAt} />
         </View>
-      </View>
+      </SheetGrip>
 
       <NumberPadScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         {active.exercises.length === 0 && (

@@ -14,7 +14,7 @@ const vm = require("vm") as { createContext: (o: object) => void; runInContext: 
 const SRC = fs.readFileSync(path.join(__dirname, "../../public/sw.js"), "utf8");
 const ORIGIN = "https://gymit.web.app";
 
-type FakeResponse = { body: string; ok: boolean; clone: () => FakeResponse };
+type FakeResponse = { body: string; ok: boolean; headers: { get: (name: string) => string | null }; clone: () => FakeResponse };
 type Listener = (event: FakeEvent) => void;
 type FakeEvent = {
   request?: { url: string; mode: string; method: string };
@@ -23,7 +23,12 @@ type FakeEvent = {
   responded?: Promise<FakeResponse>;
 };
 
-const res = (body: string, ok = true): FakeResponse => ({ body, ok, clone: () => res(body, ok) });
+const res = (body: string, ok = true, type = "application/octet-stream"): FakeResponse => ({
+  body,
+  ok,
+  headers: { get: (name: string) => (name.toLowerCase() === "content-type" ? type : null) },
+  clone: () => res(body, ok, type),
+});
 
 const waits: Promise<unknown>[] = [];
 // Lets the worker's own then-chains (its cache writes) finish before we look.
@@ -32,7 +37,13 @@ const settle = async () => {
   await new Promise((r) => setTimeout(r, 10));
 };
 
-function makeEnv({ offline = false, preCached = {} }: { offline?: boolean; preCached?: Record<string, Record<string, string>> } = {}) {
+// pages: addresses the host answers with the app's page, as it does for a file it
+// doesn't have.
+function makeEnv({
+  offline = false,
+  preCached = {},
+  pages = [],
+}: { offline?: boolean; preCached?: Record<string, Record<string, string>>; pages?: string[] } = {}) {
   const stores = new Map<string, Map<string, FakeResponse>>();
   const store = (name: string) => {
     if (!stores.has(name)) stores.set(name, new Map());
@@ -71,6 +82,7 @@ function makeEnv({ offline = false, preCached = {} }: { offline?: boolean; preCa
       const url = typeof req === "string" ? req : req.url;
       fetched.push(url);
       if (offline) throw new Error("offline");
+      if (pages.includes(url)) return res("<html>app</html>", true, "text/html; charset=utf-8");
       return res("network:" + url);
     },
     URL,
@@ -101,10 +113,10 @@ describe("service worker", () => {
   });
 
   test("activate clears out older versions and keeps this one", async () => {
-    const env = makeEnv({ preCached: { "gymit-old": { "/stale.js": "x" }, "gymit-v1": {} } });
+    const env = makeEnv({ preCached: { "gymit-old": { "/stale.js": "x" }, "gymit-v2": {} } });
     env.listeners.activate(evt());
     await settle();
-    expect([...env.stores.keys()]).toEqual(["gymit-v1"]);
+    expect([...env.stores.keys()]).toEqual(["gymit-v2"]);
   });
 
   test("a page load goes to the network and refreshes the cached shell", async () => {
@@ -117,7 +129,7 @@ describe("service worker", () => {
   });
 
   test("with no network, a page load falls back to the cached shell", async () => {
-    const env = makeEnv({ offline: true, preCached: { "gymit-v1": { "/index.html": "shell" } } });
+    const env = makeEnv({ offline: true, preCached: { "gymit-v2": { "/index.html": "shell" } } });
     const e = evt(req(`${ORIGIN}/workout/abc`, { mode: "navigate" }));
     env.listeners.fetch(e);
     expect((await e.responded!).body).toBe("shell");
@@ -125,7 +137,7 @@ describe("service worker", () => {
 
   test("a hashed asset is served from the cache without touching the network", async () => {
     const url = `${ORIGIN}/_expo/static/js/web/entry-abc.js`;
-    const env = makeEnv({ preCached: { "gymit-v1": { [url]: "bundle" } } });
+    const env = makeEnv({ preCached: { "gymit-v2": { [url]: "bundle" } } });
     const e = evt(req(url));
     env.listeners.fetch(e);
     expect((await e.responded!).body).toBe("bundle");
@@ -140,6 +152,18 @@ describe("service worker", () => {
     expect((await e.responded!).body).toContain("network:");
     await settle();
     expect(await env.caches.match(url)).toBeDefined();
+  });
+
+  test("the app's page standing in for a missing file is passed on, never kept", async () => {
+    // What happened to the number font: the host didn't have it, sent the app's
+    // page instead, and v1 kept that for good under the font's hashed name.
+    const url = `${ORIGIN}/assets/node_modules/@expo-google-fonts/barlow-condensed/Barlow.abc.ttf`;
+    const env = makeEnv({ pages: [url] });
+    const e = evt(req(url));
+    env.listeners.fetch(e);
+    expect((await e.responded!).body).toContain("<html>");
+    await settle();
+    expect(await env.caches.match(url)).toBeUndefined();
   });
 
   test("leaves everything it has no business caching alone", async () => {

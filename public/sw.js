@@ -9,8 +9,9 @@
 //    what's missing.
 //
 // Bump CACHE when the caching rules themselves change; hashed filenames handle
-// ordinary deploys.
-const CACHE = "gymit-v1";
+// ordinary deploys. (v2: v1 could keep the app's page in place of a font the
+// host didn't have, and a hashed name meant it never looked again.)
+const CACHE = "gymit-v2";
 const SHELL = "/index.html";
 
 self.addEventListener("install", (event) => {
@@ -61,8 +62,10 @@ self.addEventListener("fetch", (event) => {
         (hit) =>
           hit ||
           fetch(request).then((res) => {
-            // Only a real response is worth keeping; an error page is not.
-            if (res.ok) {
+            // Only the real file is worth keeping: not an error, and not the
+            // app's page, which the host sends for a file it doesn't have.
+            const page = (res.headers.get("content-type") || "").includes("text/html");
+            if (res.ok && !page) {
               const copy = res.clone();
               caches.open(CACHE).then((c) => c.put(request, copy));
             }

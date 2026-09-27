@@ -1,6 +1,7 @@
 import { Redirect, Tabs } from 'expo-router';
 import { ChartLine, History, House, PersonStanding } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HapticTab } from '@/components/haptic-tab';
 import { WorkoutBar } from '@/components/WorkoutBar';
 // The stock tab bar, to put the workout bar on top of it. expo-router doesn't
@@ -10,8 +11,13 @@ import { useAuth } from '../../context/AuthContext';
 import { shouldOnboard } from '../../lib/storage';
 import { C } from '../../constants/theme';
 
+// A tab's padding, icon and label (5 + 28 + 14 + 5), its top border, and a
+// little room to spare. The home indicator's inset goes on top of it.
+const TAB_BAR = 55;
+
 export default function TabLayout() {
   const { user, isLoading } = useAuth();
+  const insets = useSafeAreaInsets();
   // null while checking whether this is a brand-new account.
   const [onboard, setOnboard] = useState<boolean | null>(null);
 
@@ -41,7 +47,9 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: C.accent,
         tabBarInactiveTintColor: C.textMuted,
-        tabBarStyle: { backgroundColor: C.bg, borderTopColor: C.raised },
+        // The stock 49 is too short for the icon and a label under it: the label
+        // got squashed to its font size and lost the tails of its g's and y's.
+        tabBarStyle: { backgroundColor: C.bg, borderTopColor: C.raised, height: TAB_BAR + insets.bottom },
         headerShown: false,
         tabBarButton: HapticTab,
       }}>

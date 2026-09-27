@@ -1,4 +1,6 @@
-import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, ReactNode, RefObject, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Dimensions } from "react-native";
+import { SharedValue, useSharedValue } from "react-native-reanimated";
 import { RestTimer } from "../lib/activeWorkout";
 import { getActiveWorkout } from "../lib/storage";
 import { useAuth } from "./AuthContext";
@@ -7,7 +9,7 @@ import { useAuth } from "./AuthContext";
 // (components/WorkoutSheet.tsx) rather than on a screen of its own. Pull it
 // down and it tucks away into a bar above the tabs (components/WorkoutBar.tsx),
 // still running, clock, rest timer and its sound included, while you look at
-// something else; tap the bar or swipe it up to bring the workout back.
+// something else; tap the bar or pull it up to bring the workout back.
 // Everything that starts or reopens a workout goes through here.
 
 // What the bar shows while the workout is tucked away.
@@ -24,6 +26,12 @@ type WorkoutSheetValue = {
   hide: () => void;
   close: () => void; // finished or discarded
   setGlance: (glance: WorkoutGlance | null) => void;
+  // Where the sheet's top edge is on screen. The sheet and the bar both move
+  // it, so pulling the bar up brings the sheet up under your finger.
+  y: SharedValue<number>;
+  dock: RefObject<number | null>; // where the bar's top edge is, once it has shown
+  peeking: boolean; // the bar is being pulled up: the sheet shows while it's tucked away
+  setPeeking: (peeking: boolean) => void;
 };
 
 const WorkoutSheetContext = createContext<WorkoutSheetValue | undefined>(undefined);
@@ -33,6 +41,9 @@ export function WorkoutSheetProvider({ children }: { children: ReactNode }) {
   const [workout, setWorkout] = useState<WorkoutSheetValue["workout"]>(null);
   const [open, setOpen] = useState(false);
   const [glance, setGlance] = useState<WorkoutGlance | null>(null);
+  const y = useSharedValue(Dimensions.get("window").height);
+  const dock = useRef<number | null>(null);
+  const [peeking, setPeeking] = useState(false);
 
   // Signed in with a workout still going (the app was closed mid-workout):
   // load it into the sheet, tucked away, so the bar shows and its rest timer
@@ -73,8 +84,8 @@ export function WorkoutSheetProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ workout, open, glance, start, show, hide, close, setGlance }),
-    [workout, open, glance, start, show, hide, close]
+    () => ({ workout, open, glance, start, show, hide, close, setGlance, y, dock, peeking, setPeeking }),
+    [workout, open, glance, start, show, hide, close, y, peeking]
   );
   return <WorkoutSheetContext.Provider value={value}>{children}</WorkoutSheetContext.Provider>;
 }

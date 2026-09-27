@@ -87,16 +87,17 @@ async function expectWorkingBackArrow(page: Page, returnsTo: RegExp) {
   await expect(page).toHaveURL(returnsTo);
 }
 
-// The workout sheet covers the screen, with its minimize arrow at the top.
+// The workout sheet covers the screen, with its handle (tap it to tuck the
+// workout away) at the top.
 async function expectWorkoutOpen(page: Page) {
   await expect(labelled(page, "Minimize workout")).toBeVisible();
 }
 
-// Pulls the workout sheet down by the handle at its top, in big jumps, the
-// way a quick thumb (or a mouse) does: the pointer gets ahead of the sheet,
-// over its text, and the pull has to hold on regardless.
-async function pullWorkoutDown(page: Page) {
-  const box = await labelled(page, "Minimize workout").boundingBox();
+// Pulls the workout sheet down, by its handle unless told where, in big jumps,
+// the way a quick thumb (or a mouse) does: the pointer gets ahead of the
+// sheet, over its text, and the pull has to hold on regardless.
+async function pullWorkoutDown(page: Page, from: Locator = labelled(page, "Minimize workout")) {
+  const box = await from.boundingBox();
   if (!box) throw new Error("the workout sheet isn't open");
   const x = page.viewportSize()!.width / 2;
   const y = box.y + box.height / 2;
@@ -104,6 +105,22 @@ async function pullWorkoutDown(page: Page) {
   await page.mouse.down();
   await page.mouse.move(x, y + 20);
   await page.mouse.move(x, y + 320, { steps: 2 });
+  await page.mouse.up();
+}
+
+// Pulls the tucked-away workout's bar up, slowly: 5 px every 40 ms, well
+// under a flick, so only the distance decides whether it opens.
+async function pullBarUp(page: Page, by: number) {
+  const box = await onScreen(page.getByLabel(/^Open workout/)).boundingBox();
+  if (!box) throw new Error("the workout bar isn't showing");
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  for (let moved = 5; moved <= by; moved += 5) {
+    await page.mouse.move(x, y - moved);
+    await page.waitForTimeout(40);
+  }
   await page.mouse.up();
 }
 
@@ -394,19 +411,25 @@ test("rest timer: type your own time, change it mid-rest, and ring without pausi
     await expect.poll(async () => (await sound()).webAudio).toBe(3);
   });
 
-  await test.step("swipe the bar up to bring it back; the arrow tucks it away again", async () => {
+  await test.step("pull the bar up to bring it back; a short pull drops back into the bar", async () => {
     const bar = onScreen(page.getByLabel(/^Open workout/));
-    const box = (await bar.boundingBox())!;
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(box.x + box.width / 2, box.y - 80, { steps: 6 });
-    await page.mouse.up();
+    await pullBarUp(page, 30);
+    await expect(labelled(page, "Minimize workout")).toBeHidden();
+    await expect(bar).toBeVisible();
+
+    await pullBarUp(page, 120);
     await expectWorkoutOpen(page);
     await expect(labelled(page, "Pull-Up set 1 reps")).toHaveText("8"); // as it was left
+  });
 
+  await test.step("tapping the handle tucks it away; the title row pulls it down too", async () => {
     await labelled(page, "Minimize workout").click();
     await expect(labelled(page, "Minimize workout")).toBeHidden();
     await tapOnTop(onScreen(page.getByLabel(/^Open workout/)));
     await expectWorkoutOpen(page);
+
+    await pullWorkoutDown(page, onScreen(page.getByText(/sets done$/)));
+    await expect(labelled(page, "Minimize workout")).toBeHidden();
+    await expect(onScreen(page.getByLabel(/^Open workout/))).toBeVisible();
   });
 });
