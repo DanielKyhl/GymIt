@@ -129,11 +129,19 @@ describe("weekly sets per muscle", () => {
     expect(count(rows, "abs")).toBe(0); // bracing
   });
 
-  test("hamstrings help a deadlift; the lower back only holds still", () => {
+  test("hamstrings and the lower back help a deadlift; the lower back only holds still in a squat", () => {
     const rows = week(sets("Barbell Deadlift", 3));
     expect(count(rows, "gluteal")).toBe(3);
     expect(count(rows, "hamstring")).toBe(1.5);
-    expect(count(rows, "lower-back")).toBe(0);
+    expect(count(rows, "lower-back")).toBe(1.5);
+    expect(count(week(sets("Barbell Squat", 3)), "lower-back")).toBe(0);
+  });
+
+  test("a pulldown's middle back is more Back, not Traps", () => {
+    const rows = week(sets("Cable Bar Lateral Pulldown", 3));
+    expect(count(rows, "upper-back")).toBe(3);
+    expect(count(rows, "trapezius")).toBe(0);
+    expect(count(rows, "biceps")).toBe(1.5);
   });
 
   test("triceps help presses and dips, not flys or raises", () => {
@@ -169,7 +177,8 @@ describe("weekly sets per muscle", () => {
     expect(count(rows, "gluteal")).toBe(3);
   });
 
-  test("traps helping a lateral raise get a row of their own", () => {
-    expect(count(week(sets("Dumbbell Lateral Raise", 4)), "trapezius")).toBe(2);
+  test("traps helping an upright row get a row of their own; a lateral raise hardly works them", () => {
+    expect(count(week(sets("Barbell Upright Row", 4)), "trapezius")).toBe(2);
+    expect(count(week(sets("Dumbbell Lateral Raise", 4)), "trapezius")).toBe(0);
   });
 });

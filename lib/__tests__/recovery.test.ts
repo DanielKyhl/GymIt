@@ -103,6 +103,38 @@ describe("computeRecovery", () => {
   });
 });
 
+describe("what an exercise's helpers count for", () => {
+  const trained = (...names: string[]) =>
+    workout("W", hoursAgo(1), names.map((name) => ({ name, sets: [set(50, 10)] })));
+
+  test("a chest day doesn't mark the back as trained", () => {
+    // The exercise data says a seated shoulder press works the middle back,
+    // and a lateral raise the traps.
+    const chestDay = trained(
+      "Smith Incline Bench Press",
+      "Cable One Arm Lateral Raise",
+      "Cable Overhead Triceps Extension (Rope Attachment)",
+      "Dumbbell Seated Shoulder Press"
+    );
+    expect(muscle([chestDay], "chest").color).toBe(COLOR_TRAINED);
+    expect(muscle([chestDay], "deltoids").color).toBe(COLOR_TRAINED);
+    expect(muscle([chestDay], "triceps").color).toBe(COLOR_TRAINED);
+    expect(muscle([chestDay], "upper-back").color).toBe(COLOR_RECOVERED);
+    expect(muscle([chestDay], "trapezius").color).toBe(COLOR_RECOVERED);
+  });
+
+  test("a leg extension doesn't work the hamstrings", () => {
+    expect(muscle([trained("Lever Leg Extension")], "hamstring").color).toBe(COLOR_RECOVERED);
+  });
+
+  test("grip counts as holding, not as trained; so does a straight back, except in a deadlift", () => {
+    expect(muscle([trained("Pull-Up")], "biceps").color).toBe(COLOR_TRAINED);
+    expect(muscle([trained("Pull-Up")], "forearm").color).toBe(COLOR_PARTIAL);
+    expect(muscle([trained("Barbell Squat")], "lower-back").color).toBe(COLOR_PARTIAL);
+    expect(muscle([trained("Barbell Deadlift")], "lower-back").color).toBe(COLOR_TRAINED);
+  });
+});
+
 describe("slugLabel", () => {
   test("turns a slug into a readable name", () => {
     expect(slugLabel("abs")).toBe("Abs");

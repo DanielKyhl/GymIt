@@ -156,6 +156,51 @@ export function unlinkFromNext(exercises: WorkoutExercise[], exIndex: number, ne
   });
 }
 
+// Where the exercise that was at `index` ends up when the one at `from` moves
+// to `to`.
+export function movedIndex(index: number, from: number, to: number): number {
+  if (index === from) return to;
+  if (from < to && index > from && index <= to) return index - 1;
+  if (to < from && index >= to && index < from) return index + 1;
+  return index;
+}
+
+// Move an exercise to another place in the workout. A running rest stays
+// under the set it follows. A superset is exercises done back to back, so one
+// that isn't back to back any more stops being one: moving an exercise away
+// from its partners takes it out, and dropping one between two partners
+// splits them.
+export function moveExercise(a: ActiveWorkout, from: number, to: number): ActiveWorkout {
+  const count = a.exercises.length;
+  if (from === to || from < 0 || to < 0 || from >= count || to >= count) return a;
+  const exercises = [...a.exercises];
+  exercises.splice(to, 0, ...exercises.splice(from, 1));
+  return {
+    ...a,
+    exercises: backToBack(exercises),
+    rest: a.rest && { ...a.rest, exIndex: movedIndex(a.rest.exIndex, from, to) },
+  };
+}
+
+// Each superset as one unbroken run. An exercise left on its own isn't in a
+// superset; a run split off from the rest of its superset becomes one of its own.
+function backToBack(exercises: WorkoutExercise[]): WorkoutExercise[] {
+  const seen = new Set<string>();
+  let runId: string | undefined;
+  return exercises.map((e, i) => {
+    const id = e.supersetId;
+    if (!id) return e;
+    const withPrev = exercises[i - 1]?.supersetId === id;
+    const withNext = exercises[i + 1]?.supersetId === id;
+    if (!withPrev && !withNext) return { ...e, supersetId: undefined };
+    if (!withPrev) {
+      runId = seen.has(id) ? `${id}-${i}` : id;
+      seen.add(id);
+    }
+    return runId === id ? e : { ...e, supersetId: runId };
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Plate and warm-up calculators.
 

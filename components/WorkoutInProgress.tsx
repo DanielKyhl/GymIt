@@ -1,11 +1,12 @@
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { CircleCheck, Disc, Ellipsis, Flame, Link2, Plus, StickyNote, Timer, Trash2, Unlink2 } from "lucide-react-native";
+import { ArrowUpDown, CircleCheck, Disc, Ellipsis, Flame, Link2, Plus, StickyNote, Timer, Trash2, Unlink2 } from "lucide-react-native";
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { CheckButton } from "./CheckButton";
 import { Anchor, DropdownMenu, measureAnchor, MenuItem } from "./DropdownMenu";
 import { ExercisePicker } from "./ExercisePicker";
+import { HoldToMove, ReorderArea, ReorderHandle, ReorderRow } from "./ExerciseReorder";
 import { NumberInput } from "./NumberInput";
 import { NumberPadScrollView, usePad } from "./NumberPad";
 import { PlateCalculator } from "./PlateCalculator";
@@ -24,6 +25,8 @@ import {
   isLivePR,
   linkWithNext,
   loggedExercises,
+  movedIndex,
+  moveExercise,
   restAfterSet,
   setNumber,
   toggleSet,
@@ -58,7 +61,6 @@ import { convertWeight, normalizeUnits } from "../lib/units";
 import { Workout, WorkoutExercise, WorkoutSet } from "../types/workout";
 import { ExerciseInfoButton } from "./ExerciseInfo";
 import { useKeepScreenOn } from "../hooks/useKeepScreenOn";
-import { SheetGrip } from "./SheetGrip";
 
 // The workout in progress, as it shows in the workout sheet
 // (components/WorkoutSheet.tsx). `id` is a template's id to start (or resume)
@@ -119,6 +121,8 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
   const [menu, setMenu] = useState<OpenMenu | null>(null);
   const [restEdit, setRestEdit] = useState<{ exIndex: number; seconds: number } | null>(null);
   const [timerSound, setTimerSound] = useState<TimerSoundId | null>(null);
+  // Hold an exercise's name to move it (components/ExerciseReorder.tsx).
+  const reorder = useRef<ReorderHandle>(null);
   // Set once the workout is ended or discarded, so a pending autosave can't
   // bring it back.
   const finished = useRef(false);
@@ -351,6 +355,17 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
     }));
   };
 
+  // A note that's been opened but not written in yet moves with its exercise.
+  const moveTo = (from: number, to: number) => {
+    update((a) => moveExercise(a, from, to));
+    setOpenNotes((keys) =>
+      keys.map((key) => {
+        const at = key.indexOf(":");
+        return `${movedIndex(Number(key.slice(0, at)), from, to)}${key.slice(at)}`;
+      })
+    );
+  };
+
   const editRest = (exIndex: number, seconds: number) => setRestEdit({ exIndex, seconds });
 
   const openExerciseMenu = (exIndex: number, anchor: Anchor) => {
@@ -412,6 +427,15 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
               ? unlinkFromNext(list, exIndex, `ss${Date.now()}`)
               : linkWithNext(list, exIndex, `ss${Date.now()}`)
           ),
+      });
+    }
+    if (active.exercises.length > 1) {
+      items.push({
+        key: "reorder",
+        label: "Reorder exercises",
+        detail: "Or hold an exercise's name and drag it",
+        icon: icon(ArrowUpDown),
+        onPress: () => reorder.current?.openList(),
       });
     }
     items.push({
@@ -497,10 +521,16 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
 
   const totalSets = active.exercises.reduce((n, ex) => n + ex.sets.length, 0);
   const doneSets = active.exercises.reduce((n, ex) => n + ex.sets.filter((s) => s.done).length, 0);
+  const reorderRows: ReorderRow[] = active.exercises.map((ex, i) => ({
+    // The same exercise twice is told apart by which time it is.
+    key: `${ex.name}#${active.exercises.slice(0, i).filter((e) => e.name === ex.name).length}`,
+    name: ex.name,
+    detail: `${ex.sets.length} ${ex.sets.length === 1 ? "set" : "sets"}${ex.supersetId ? " · superset" : ""}`,
+  }));
 
   return (
     <View style={styles.container}>
-      <SheetGrip style={styles.header}>
+      <View style={styles.header}>
         <View style={styles.headerText}>
           {active.templateId === null ? (
             <TextInput
@@ -523,184 +553,188 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
           <Timer size={16} color={C.accent} />
           <ElapsedClock startedAt={active.startedAt} />
         </View>
-      </SheetGrip>
+      </View>
 
-      <NumberPadScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        {active.exercises.length === 0 && (
-          <Text style={styles.message}>Add your first exercise to get started.</Text>
-        )}
+      <ReorderArea ref={reorder} rows={reorderRows} onMove={moveTo} style={styles.scroll}>
+        <NumberPadScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          {active.exercises.length === 0 && (
+            <Text style={styles.message}>Add your first exercise to get started.</Text>
+          )}
 
-        {active.exercises.map((ex, exIndex) => {
-          const prev = history[ex.name]?.prev ?? [];
-          const bests = history[ex.name]?.bests ?? { total: 0, heaviest: 0 };
-          const bodyweight = isBodyweight(ex.name);
-          const noteOpen = ex.notes !== undefined || openNotes.includes(`${exIndex}:${ex.name}`);
-          const allDone = ex.sets.length > 0 && ex.sets.every((s) => s.done);
+          {active.exercises.map((ex, exIndex) => {
+            const prev = history[ex.name]?.prev ?? [];
+            const bests = history[ex.name]?.bests ?? { total: 0, heaviest: 0 };
+            const bodyweight = isBodyweight(ex.name);
+            const noteOpen = ex.notes !== undefined || openNotes.includes(`${exIndex}:${ex.name}`);
+            const allDone = ex.sets.length > 0 && ex.sets.every((s) => s.done);
 
-          return (
-            <View style={[styles.card, ex.supersetId ? styles.supersetCard : null]} key={ex.name + exIndex}>
-              <View style={styles.cardHeader}>
-                <View style={styles.cardTitle}>
-                  {ex.supersetId ? <Text style={styles.supersetLabel}>Superset</Text> : null}
-                  <View style={styles.nameRow}>
-                    <Text style={[styles.exerciseName, styles.nameShrink]} numberOfLines={2}>
-                      {ex.name}
-                    </Text>
-                    <ExerciseInfoButton name={ex.name} />
-                  </View>
-                  {bodyweight && (
-                    <Text style={styles.bwNote}>
-                      {bodyWeight
-                        ? `Bodyweight · uses your ${convertWeight(bodyWeight.value, bodyWeight.unit, unit)} ${unit}`
-                        : "Bodyweight · add your weight in Settings"}
-                    </Text>
-                  )}
-                </View>
-                {allDone && <CircleCheck size={20} color={C.success} />}
-                <MenuButton label={`${ex.name} options`} onOpen={(anchor) => openExerciseMenu(exIndex, anchor)} />
-              </View>
-
-              {noteOpen && (
-                <TextInput
-                  style={styles.noteInput}
-                  value={ex.notes ?? ""}
-                  onChangeText={(notes) => updateExercise(exIndex, { notes })}
-                  placeholder="Note (seat height, grip, cues…)"
-                  placeholderTextColor={C.textFaint}
-                  multiline
-                />
-              )}
-
-              {ex.sets.length > 0 && (
-                <View style={styles.row}>
-                  <Text style={[styles.colHead, styles.colSet]}>Set</Text>
-                  <Text style={[styles.colHead, styles.colPrev]}>Previous</Text>
-                  <Text style={[styles.colHead, styles.colWeight, styles.center]}>{unit}</Text>
-                  <Text style={[styles.colHead, styles.colReps, styles.center]}>Reps</Text>
-                  <View style={[styles.colRpe, styles.rpeHead]}>
-                    <Text style={[styles.colHead, styles.colHeadInline]}>RPE</Text>
-                    <RpeHelpButton size={12} />
-                  </View>
-                  <View style={styles.colCheck} />
-                </View>
-              )}
-
-              {ex.sets.map((set, setIndex) => {
-                const number = setNumber(ex.sets, setIndex);
-                const p = prev[setIndex];
-                const rest = restAfterSet(active.exercises, exIndex, setIndex);
-                const running = active.rest?.exIndex === exIndex && active.rest.setIndex === setIndex ? active.rest : null;
-                // For the number pad: which set it is, and last time's numbers.
-                const setName = set.type === "warmup" ? "Warm-up" : `Set ${number}`;
-                const lastTime = p ? `Last time ${!p.weight && bodyweight ? "BW" : p.weight} × ${p.reps}` : undefined;
-                return (
-                  <View key={setIndex}>
-                    <View style={[styles.row, styles.setRow, set.done && styles.setRowDone]}>
-                      <SetBadge
-                        type={set.type}
-                        number={number}
-                        onOpen={(anchor) =>
-                          setMenu({
-                            anchor,
-                            title: set.type === "warmup" ? "Warm-up set" : `Set ${number}`,
-                            items: setTypeItems(
-                              set.type,
-                              ex.sets.slice(0, setIndex).filter((s) => s.type !== "warmup").length + 1,
-                              (type) => updateSet(exIndex, setIndex, { type }),
-                              () => removeSet(exIndex, setIndex)
-                            ),
-                          })
-                        }
-                      />
-                      <View style={[styles.colPrev, styles.prevCell]}>
-                        <Text style={styles.prev} numberOfLines={1}>
-                          {p ? `${!p.weight && bodyweight ? "BW" : p.weight} × ${p.reps}` : "–"}
+            return (
+              <View style={[styles.card, ex.supersetId ? styles.supersetCard : null]} key={ex.name + exIndex}>
+                <View style={styles.cardHeader}>
+                  <View style={styles.cardTitle}>
+                    {ex.supersetId ? <Text style={styles.supersetLabel}>Superset</Text> : null}
+                    <View style={styles.nameRow}>
+                      <HoldToMove index={exIndex} onPickUp={() => pad?.close()} style={styles.nameShrink}>
+                        <Text style={styles.exerciseName} numberOfLines={2} selectable={false}>
+                          {ex.name}
                         </Text>
-                        {isLivePR(ex, setIndex, bests.total) && (
-                          <View style={styles.prPill}>
-                            <Text style={styles.prText}>PR</Text>
-                          </View>
-                        )}
-                        {isLiveMilestone(ex, setIndex, bests.heaviest) && (
-                          <View style={styles.firstPill} accessibilityLabel="First time at this weight">
-                            <Text style={styles.firstText}>↑ 1st</Text>
-                          </View>
-                        )}
-                      </View>
-                      <NumberInput
-                        style={[styles.input, styles.colWeight]}
-                        placeholder={p?.weight ? String(p.weight) : "0"}
-                        placeholderTextColor={C.textFaint}
-                        value={set.weight}
-                        onChangeValue={(v) => updateSet(exIndex, setIndex, { weight: v })}
-                        step={unit === "kg" ? 2.5 : 5}
-                        label={`${setName} · weight`}
-                        hint={lastTime}
-                        order={exIndex * 1000 + setIndex * 2}
-                        accessibilityLabel={`${ex.name} set ${setIndex + 1} weight`}
-                      />
-                      <NumberInput
-                        style={[styles.input, styles.colReps]}
-                        decimals={false}
-                        placeholder={p ? String(p.reps) : "0"}
-                        placeholderTextColor={C.textFaint}
-                        value={set.reps}
-                        onChangeValue={(v) => updateSet(exIndex, setIndex, { reps: v })}
-                        label={`${setName} · reps`}
-                        hint={lastTime}
-                        order={exIndex * 1000 + setIndex * 2 + 1}
-                        accessibilityLabel={`${ex.name} set ${setIndex + 1} reps`}
-                      />
-                      <RpeCell
-                        value={set.rpe}
-                        onOpen={(anchor) =>
-                          setMenu({
-                            anchor,
-                            align: "right",
-                            title: "How hard was that set?",
-                            items: rpeItems(set.rpe, (rpe) => updateSet(exIndex, setIndex, { rpe })),
-                          })
-                        }
-                      />
-                      <CheckButton done={set.done} onToggle={() => toggleDone(exIndex, setIndex)} />
+                      </HoldToMove>
+                      <ExerciseInfoButton name={ex.name} />
                     </View>
-
-                    {/* The rest after this set: before the next set, or after the
-                        last one, before the next exercise. */}
-                    {(running || rest > 0) && (
-                      <RestRow
-                        seconds={rest}
-                        running={running}
-                        sound={timerSound ?? DEFAULT_TIMER_SOUND}
-                        onEdit={() => editRest(exIndex, running ? running.target : rest)}
-                        onStop={() => update((a) => ({ ...a, rest: null }))}
-                      />
+                    {bodyweight && (
+                      <Text style={styles.bwNote}>
+                        {bodyWeight
+                          ? `Bodyweight · uses your ${convertWeight(bodyWeight.value, bodyWeight.unit, unit)} ${unit}`
+                          : "Bodyweight · add your weight in Settings"}
+                      </Text>
                     )}
                   </View>
-                );
-              })}
+                  {allDone && <CircleCheck size={20} color={C.success} />}
+                  <MenuButton label={`${ex.name} options`} onOpen={(anchor) => openExerciseMenu(exIndex, anchor)} />
+                </View>
 
-              <Pressable
-                style={({ pressed }) => [styles.addSet, pressed && styles.addSetPressed]}
-                onPress={() => addSet(exIndex)}
-                accessibilityRole="button"
-              >
-                <Plus size={16} color={C.accent} />
-                <Text style={styles.addSetText}>Add set</Text>
-              </Pressable>
-            </View>
-          );
-        })}
+                {noteOpen && (
+                  <TextInput
+                    style={styles.noteInput}
+                    value={ex.notes ?? ""}
+                    onChangeText={(notes) => updateExercise(exIndex, { notes })}
+                    placeholder="Note (seat height, grip, cues…)"
+                    placeholderTextColor={C.textFaint}
+                    multiline
+                  />
+                )}
 
-        <Pressable style={styles.addExerciseBtn} onPress={() => setShowAdd(true)} accessibilityRole="button">
-          <Plus size={18} color={C.accent} />
-          <Text style={styles.addExerciseText}>Add exercise</Text>
-        </Pressable>
+                {ex.sets.length > 0 && (
+                  <View style={styles.row}>
+                    <Text style={[styles.colHead, styles.colSet]}>Set</Text>
+                    <Text style={[styles.colHead, styles.colPrev]}>Previous</Text>
+                    <Text style={[styles.colHead, styles.colWeight, styles.center]}>{unit}</Text>
+                    <Text style={[styles.colHead, styles.colReps, styles.center]}>Reps</Text>
+                    <View style={[styles.colRpe, styles.rpeHead]}>
+                      <Text style={[styles.colHead, styles.colHeadInline]}>RPE</Text>
+                      <RpeHelpButton size={12} />
+                    </View>
+                    <View style={styles.colCheck} />
+                  </View>
+                )}
 
-        <Pressable style={styles.discardBtn} onPress={handleDiscard} hitSlop={HIT} accessibilityRole="button">
-          <Text style={styles.discardText}>Discard workout</Text>
-        </Pressable>
-      </NumberPadScrollView>
+                {ex.sets.map((set, setIndex) => {
+                  const number = setNumber(ex.sets, setIndex);
+                  const p = prev[setIndex];
+                  const rest = restAfterSet(active.exercises, exIndex, setIndex);
+                  const running = active.rest?.exIndex === exIndex && active.rest.setIndex === setIndex ? active.rest : null;
+                  // For the number pad: which set it is, and last time's numbers.
+                  const setName = set.type === "warmup" ? "Warm-up" : `Set ${number}`;
+                  const lastTime = p ? `Last time ${!p.weight && bodyweight ? "BW" : p.weight} × ${p.reps}` : undefined;
+                  return (
+                    <View key={setIndex}>
+                      <View style={[styles.row, styles.setRow, set.done && styles.setRowDone]}>
+                        <SetBadge
+                          type={set.type}
+                          number={number}
+                          onOpen={(anchor) =>
+                            setMenu({
+                              anchor,
+                              title: set.type === "warmup" ? "Warm-up set" : `Set ${number}`,
+                              items: setTypeItems(
+                                set.type,
+                                ex.sets.slice(0, setIndex).filter((s) => s.type !== "warmup").length + 1,
+                                (type) => updateSet(exIndex, setIndex, { type }),
+                                () => removeSet(exIndex, setIndex)
+                              ),
+                            })
+                          }
+                        />
+                        <View style={[styles.colPrev, styles.prevCell]}>
+                          <Text style={styles.prev} numberOfLines={1}>
+                            {p ? `${!p.weight && bodyweight ? "BW" : p.weight} × ${p.reps}` : "–"}
+                          </Text>
+                          {isLivePR(ex, setIndex, bests.total) && (
+                            <View style={styles.prPill}>
+                              <Text style={styles.prText}>PR</Text>
+                            </View>
+                          )}
+                          {isLiveMilestone(ex, setIndex, bests.heaviest) && (
+                            <View style={styles.firstPill} accessibilityLabel="First time at this weight">
+                              <Text style={styles.firstText}>↑ 1st</Text>
+                            </View>
+                          )}
+                        </View>
+                        <NumberInput
+                          style={[styles.input, styles.colWeight]}
+                          placeholder={p?.weight ? String(p.weight) : "0"}
+                          placeholderTextColor={C.textFaint}
+                          value={set.weight}
+                          onChangeValue={(v) => updateSet(exIndex, setIndex, { weight: v })}
+                          step={unit === "kg" ? 2.5 : 5}
+                          label={`${setName} · weight`}
+                          hint={lastTime}
+                          order={exIndex * 1000 + setIndex * 2}
+                          accessibilityLabel={`${ex.name} set ${setIndex + 1} weight`}
+                        />
+                        <NumberInput
+                          style={[styles.input, styles.colReps]}
+                          decimals={false}
+                          placeholder={p ? String(p.reps) : "0"}
+                          placeholderTextColor={C.textFaint}
+                          value={set.reps}
+                          onChangeValue={(v) => updateSet(exIndex, setIndex, { reps: v })}
+                          label={`${setName} · reps`}
+                          hint={lastTime}
+                          order={exIndex * 1000 + setIndex * 2 + 1}
+                          accessibilityLabel={`${ex.name} set ${setIndex + 1} reps`}
+                        />
+                        <RpeCell
+                          value={set.rpe}
+                          onOpen={(anchor) =>
+                            setMenu({
+                              anchor,
+                              align: "right",
+                              title: "How hard was that set?",
+                              items: rpeItems(set.rpe, (rpe) => updateSet(exIndex, setIndex, { rpe })),
+                            })
+                          }
+                        />
+                        <CheckButton done={set.done} onToggle={() => toggleDone(exIndex, setIndex)} />
+                      </View>
+
+                      {/* The rest after this set: before the next set, or after the
+                          last one, before the next exercise. */}
+                      {(running || rest > 0) && (
+                        <RestRow
+                          seconds={rest}
+                          running={running}
+                          sound={timerSound ?? DEFAULT_TIMER_SOUND}
+                          onEdit={() => editRest(exIndex, running ? running.target : rest)}
+                          onStop={() => update((a) => ({ ...a, rest: null }))}
+                        />
+                      )}
+                    </View>
+                  );
+                })}
+
+                <Pressable
+                  style={({ pressed }) => [styles.addSet, pressed && styles.addSetPressed]}
+                  onPress={() => addSet(exIndex)}
+                  accessibilityRole="button"
+                >
+                  <Plus size={16} color={C.accent} />
+                  <Text style={styles.addSetText}>Add set</Text>
+                </Pressable>
+              </View>
+            );
+          })}
+
+          <Pressable style={styles.addExerciseBtn} onPress={() => setShowAdd(true)} accessibilityRole="button">
+            <Plus size={18} color={C.accent} />
+            <Text style={styles.addExerciseText}>Add exercise</Text>
+          </Pressable>
+
+          <Pressable style={styles.discardBtn} onPress={handleDiscard} hitSlop={HIT} accessibilityRole="button">
+            <Text style={styles.discardText}>Discard workout</Text>
+          </Pressable>
+        </NumberPadScrollView>
+      </ReorderArea>
 
       <Pressable style={styles.endButton} onPress={handleEnd} accessibilityRole="button">
         <Text style={styles.endText}>Finish workout</Text>

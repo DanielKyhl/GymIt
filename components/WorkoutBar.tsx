@@ -6,8 +6,7 @@ import { scheduleOnRN } from "react-native-worklets";
 import { C, R, T } from "../constants/theme";
 import { useWorkoutSheet, WorkoutGlance } from "../context/WorkoutSheet";
 import { elapsedSeconds, formatClock, formatRest } from "../lib/activeWorkout";
-import { grabbable } from "./SheetGrip";
-import { SLIDE } from "./WorkoutSheet";
+import { grabbable, SLIDE } from "./WorkoutSheet";
 
 const OPEN = 70; // how far up to pull before letting go opens it...
 const FLICK = 0.5; // ...or how fast (px/ms) a shorter pull has to be

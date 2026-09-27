@@ -62,63 +62,65 @@ const toSlugs = (names: string[] | undefined): Slug[] => [
 ];
 
 // primary: what the exercise is for. secondary: muscles that help move the
-// weight. braced: muscles holding the body still while it moves, like the core
-// in a bent-over row. Bracing is real work but light, so it counts for less
-// and clears sooner (see computeRecovery). helpers: the secondary muscles the
-// weekly sets chart counts, half a set each (see HELPERS).
+// weight. braced: muscles holding the body, or the weight, still while it
+// moves: the core in a bent-over row, the grip on a pull-up, the lower back in
+// a squat. Bracing is real work but light, so it counts for less and
+// clears sooner (see computeRecovery), and the weekly sets chart leaves it out.
+// helpers: the secondary muscles as that chart counts them, each under its
+// first slug only: a pulldown's middle back is more Back, not Traps too.
 type Trained = { primary: Slug[]; secondary: Slug[]; braced: Slug[]; helpers: Slug[] };
 
-const CORE: Slug[] = ["abs", "obliques"];
-
 // The helpers that really do help move the weight, by the exercise's main
-// muscle. The rest of what the exercise data lists as helpers is bracing (abs,
-// lower back), grip (forearms), or wrong: hamstrings on a squat or a leg
-// extension, calves on nearly every leg exercise, glutes on a calf raise.
+// muscle. The exercise data lists more than these, and gets some wrong:
+// hamstrings on a squat or a leg extension, calves on nearly every leg
+// exercise, glutes on a calf raise, the middle back on a shoulder press.
 const HELPERS: Record<string, string[]> = {
   chest: ["shoulders", "triceps"],
-  shoulders: ["triceps", "traps"], // presses; raises and upright rows
+  shoulders: ["triceps", "traps"], // presses; upright rows and rear-delt work
   triceps: ["chest", "shoulders"], // dips and close-grip presses
-  lats: ["biceps", "shoulders"], // pull-ups and pulldowns
+  lats: ["biceps", "shoulders", "middle back"], // pull-ups and pulldowns
   "middle back": ["biceps", "shoulders"], // rows
   quadriceps: ["glutes"], // squats, lunges, leg press
-  hamstrings: ["glutes"], // Romanian deadlifts
-  glutes: ["hamstrings", "quadriceps"], // deadlifts, hip thrusts
+  hamstrings: ["glutes", "lower back"], // Romanian deadlifts, good mornings
+  glutes: ["hamstrings", "quadriceps", "lower back"], // deadlifts, hip thrusts
   "lower back": ["glutes", "hamstrings"], // back extensions
+  abdominals: ["obliques"], // twisting crunches
 };
 
-// The triceps only help in a press, a dip or a push-up, and so do the chest and
-// shoulders on a triceps exercise. The data lists them on flys, raises and
-// extensions too, where they just hold the arm still.
+// And some only help in some kinds of exercise. The triceps (and the chest and
+// shoulders on a triceps exercise) push in a press, a dip or a push-up, but
+// only hold the arm still in a fly, a raise or an extension. The traps lift
+// the shoulders in an upright row and pull the shoulder blades back in
+// rear-delt work, but hardly work in a lateral raise.
 const PRESS = /press|dip|push[-\s]?up/i;
+const TRAPS_WORK = /upright|high pull|rear|revers/i; // "revers": one's spelled "Revers Fly"
 
-function helpersOf(e: MuscleSource): Slug[] {
-  const main = e.primaryMuscles[0]?.toLowerCase() ?? "";
-  const pressing = PRESS.test(e.name);
-  const names = e.secondaryMuscles
-    .map((m) => m.toLowerCase())
-    .filter((m) => HELPERS[main]?.includes(m) && (pressing || (m !== "triceps" && main !== "triceps")));
-  // Like the main muscle, each counts under its first slug only.
-  return [...new Set(names.map((m) => MUSCLE_TO_SLUG[m][0]))];
+function helps(main: string, helper: string, name: string): boolean {
+  if (!HELPERS[main]?.includes(helper)) return false;
+  if (helper === "triceps" || main === "triceps") return PRESS.test(name);
+  if (helper === "traps") return TRAPS_WORK.test(name);
+  return true;
 }
+
+// Listed as helpers anywhere else, these hold rather than move: the grip, the
+// lower back keeping the spine straight, and the core.
+const HOLDING = ["forearms", "lower back", "abdominals", "obliques"];
 
 function trainedBy(e: MuscleSource): Trained {
   const primary = toSlugs(e.primaryMuscles);
-  const secondary = new Set(toSlugs(e.secondaryMuscles));
-  // Bracing the source data leaves out (core in squats, rows, carries).
-  const braced = new Set(stabiliserMuscles(e));
-  // Core listed as a helper on something that isn't an ab exercise is the
-  // same thing: holding the trunk still, not moving it.
-  if (!primary.some((s) => CORE.includes(s))) {
-    CORE.forEach((s) => {
-      if (secondary.delete(s)) braced.add(s);
-    });
-  }
+  const main = e.primaryMuscles[0]?.toLowerCase() ?? "";
+  const listed = e.secondaryMuscles.map((m) => m.toLowerCase());
+  const helping = listed.filter((m) => helps(main, m, e.name));
+  const secondary = new Set(toSlugs(helping));
+  // Bracing the source data leaves out (core in squats, rows, carries), and
+  // the helpers it lists that hold.
+  const braced = new Set([...stabiliserMuscles(e), ...toSlugs(listed.filter((m) => HOLDING.includes(m)))]);
   primary.forEach((s) => {
     secondary.delete(s);
     braced.delete(s);
   });
   secondary.forEach((s) => braced.delete(s));
-  const helpers = helpersOf(e).filter((s) => !primary.includes(s));
+  const helpers = [...new Set(helping.map((m) => MUSCLE_TO_SLUG[m][0]))].filter((s) => !primary.includes(s));
   return { primary, secondary: [...secondary], braced: [...braced], helpers };
 }
 

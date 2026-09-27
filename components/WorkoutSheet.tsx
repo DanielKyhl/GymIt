@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BackHandler, PanResponder, Platform, Pressable, StyleSheet, useWindowDimensions, View, ViewStyle } from "react-native";
 import Animated, {
   Easing,
   Extrapolation,
   interpolate,
   useAnimatedStyle,
+  useSharedValue,
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -12,22 +13,26 @@ import { scheduleOnRN } from "react-native-worklets";
 import { C } from "../constants/theme";
 import { useWorkoutSheet } from "../context/WorkoutSheet";
 import { NumberPadArea } from "./NumberPad";
-import { grabbable, SheetGripContext } from "./SheetGrip";
 import { WorkoutInProgress } from "./WorkoutInProgress";
 
 // The workout in progress, in a sheet over the whole app (see
 // context/WorkoutSheet.tsx): a card just below the status bar, with the app
-// dimmed behind it. Pull it down by its top (the handle and the workout's
-// title row) and it follows your finger; let go far enough down, or flick it,
-// and it drops into the bar above the tabs. Tapping the handle does the same.
-// Tucked away it's only out of sight: it stays mounted, so the clock and the
-// rest timer keep going, and its rest-up sound still plays.
+// dimmed behind it. Pull it down by the strip with the handle along its top
+// and it follows your finger; let go far enough down, or flick it, and it
+// drops into the bar above the tabs. Tapping the handle does the same. Only
+// that strip pulls it: dragging anywhere else scrolls the sets, or does
+// nothing. Tucked away it's only out of sight: it stays mounted, so the clock
+// and the rest timer keep going, and its rest-up sound still plays.
 
 const native = Platform.OS !== "web";
 export const SLIDE = { duration: 280, easing: Easing.out(Easing.cubic) };
 const GAP = 10; // a strip of the app, dimmed, above the open sheet
 const PULL = 110; // how far to pull before letting go tucks it away...
 const FLICK = 0.6; // ...or how fast (px/ms) a shorter pull has to be
+
+// In the browser, a drag that starts on a grip is the app's alone: iPhone
+// Safari would otherwise take it for scrolling the page and cancel it halfway.
+export const grabbable = (Platform.OS === "web" ? { touchAction: "none", userSelect: "none" } : {}) as ViewStyle;
 
 // A mouse pull that outruns the sheet drags across its text; don't leave that
 // selected.
@@ -44,12 +49,8 @@ export function WorkoutSheet() {
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const top = insets.top + GAP; // where its top edge sits when it's open
-  // How far down from its top edge a pull can start: the handle's strip, and
-  // the title row under it (which reports where it ends).
-  const strip = useRef(0);
-  const gripBottom = useRef(60);
   // A pull that ends back on the handle is still a pull, not a tap.
-  const pulled = useRef(false);
+  const pulled = useSharedValue(false);
 
   // Out of sight once it has finished sliding away (not while it slides), and
   // in sight while the bar is being pulled up.
@@ -85,32 +86,37 @@ export function WorkoutSheet() {
     return () => sub.remove();
   }, [open, hide]);
 
+  // The grip: a drag that starts on it moves the sheet, from wherever the
+  // sheet is (so one that's been left part-way down can always be put right),
+  // and where it's let go decides where it ends up; a tap tucks it away. It
+  // takes the touch as it starts, so the drag stays its own when the finger
+  // (or a mouse) runs off it onto the title. (The handle's button underneath
+  // is for keyboards and screen readers.)
+  const from = useSharedValue(0); // where the sheet was when the pull started
   const pull = useMemo(
     () =>
       PanResponder.create({
-        // Only a mostly-downward pull that starts at the top: taps (the handle,
-        // the workout's name) stay what they are, and so does scrolling the
-        // sets below. It's the whole sheet that asks, because a pull that starts
-        // on the handle and runs onto the title row is only offered to what
-        // holds them both.
-        onMoveShouldSetPanResponderCapture: (_, g) =>
-          g.y0 - top < strip.current + gripBottom.current + 6 && g.dy > 6 && g.dy > Math.abs(g.dx) * 1.2,
+        onStartShouldSetPanResponderCapture: () => true,
         onPanResponderGrant: () => {
-          pulled.current = true;
+          pulled.set(false);
+          from.set(y.get());
           clearSelection();
         },
-        onPanResponderMove: (_, g) => y.set(top + Math.max(0, g.dy)),
-        // In the browser, text getting selected (or anything scrolling)
-        // under the pull would otherwise cut it short.
+        onPanResponderMove: (_, g) => {
+          if (Math.abs(g.dy) > 4) pulled.set(true);
+          y.set(Math.max(top, from.get() + g.dy));
+        },
+        // In the browser, text getting selected under the pull would otherwise
+        // cut it short.
         onPanResponderTerminationRequest: () => false,
         onPanResponderRelease: (_, g) => {
           clearSelection();
-          if (g.dy > PULL || g.vy > FLICK) hide();
+          if (!pulled.get() || y.get() - top > PULL || g.vy > FLICK) hide();
           else y.set(withTiming(top, SLIDE));
         },
         onPanResponderTerminate: () => y.set(withTiming(top, SLIDE)),
       }),
-    [top, hide, y]
+    [top, hide, y, from, pulled]
   );
 
   if (!workout) return null;
@@ -118,27 +124,23 @@ export function WorkoutSheet() {
     <>
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.shade, dim, hidden && gone]} />
       <Animated.View
-        {...pull.panHandlers}
         pointerEvents={open ? "auto" : "none"}
         aria-hidden={!open}
         style={[styles.sheet, { height: height - top }, slide, hidden && gone]}
       >
-        <View onLayout={(e) => (strip.current = e.nativeEvent.layout.height)} style={[styles.grip, grabbable]}>
+        <View {...pull.panHandlers} style={grabbable}>
           <Pressable
-            style={styles.handleHit}
-            onPressIn={() => (pulled.current = false)}
-            onPress={() => !pulled.current && hide()}
+            style={styles.grip}
+            onPress={() => !pulled.get() && hide()}
             accessibilityRole="button"
             accessibilityLabel="Minimize workout"
           >
             <View style={styles.handle} />
           </Pressable>
         </View>
-        <SheetGripContext.Provider value={(bottom) => (gripBottom.current = bottom)}>
-          <NumberPadArea>
-            <WorkoutInProgress key={workout.key} id={workout.id} onClose={close} />
-          </NumberPadArea>
-        </SheetGripContext.Provider>
+        <NumberPadArea>
+          <WorkoutInProgress key={workout.key} id={workout.id} onClose={close} />
+        </NumberPadArea>
       </Animated.View>
     </>
   );
@@ -159,7 +161,6 @@ const styles = StyleSheet.create({
     borderColor: C.raised,
     overflow: "hidden",
   },
-  grip: { alignItems: "center" },
-  handleHit: { paddingHorizontal: 40, paddingTop: 8, paddingBottom: 10 },
+  grip: { alignItems: "center", paddingTop: 10, paddingBottom: 14 },
   handle: { width: 40, height: 5, borderRadius: 3, backgroundColor: C.selected },
 });

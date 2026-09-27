@@ -9,6 +9,8 @@ import {
   linkWithNext,
   loggedExercises,
   MAX_REST,
+  movedIndex,
+  moveExercise,
   platesPerSide,
   restAfterSet,
   restFromParts,
@@ -177,6 +179,73 @@ describe("supersets", () => {
     const group = [ex("A", "g"), ex("B", "g"), ex("C", "g")];
     expect(unlinkFromNext(group, 0, "h").map((e) => e.supersetId)).toEqual([undefined, "h", "h"]);
     expect(unlinkFromNext(group, 1, "h").map((e) => e.supersetId)).toEqual(["g", "g", undefined]);
+  });
+});
+
+describe("moving an exercise", () => {
+  const ex = (name: string, supersetId?: string): WorkoutExercise => ({
+    name,
+    supersetId,
+    sets: [set(20, 10, { restSeconds: 90 })],
+  });
+  const workoutOf = (exercises: WorkoutExercise[], rest: ActiveWorkout["rest"] = null): ActiveWorkout => ({
+    templateId: null, name: "W", startedAt: 0, unit: "kg", rest, exercises,
+  });
+  const names = (a: ActiveWorkout) => a.exercises.map((e) => e.name);
+  const ids = (a: ActiveWorkout) => a.exercises.map((e) => e.supersetId);
+
+  test("moves it down or up, keeping the others in order", () => {
+    const a = workoutOf([ex("A"), ex("B"), ex("C"), ex("D")]);
+    expect(names(moveExercise(a, 0, 2))).toEqual(["B", "C", "A", "D"]);
+    expect(names(moveExercise(a, 3, 1))).toEqual(["A", "D", "B", "C"]);
+    expect(moveExercise(a, 1, 1)).toBe(a);
+    expect(moveExercise(a, 1, 9)).toBe(a);
+  });
+
+  test("tells where every other exercise ends up", () => {
+    // A B C D with A moved to 2: B C A D
+    expect([0, 1, 2, 3].map((i) => movedIndex(i, 0, 2))).toEqual([2, 0, 1, 3]);
+    // A B C D with D moved to 1: A D B C
+    expect([0, 1, 2, 3].map((i) => movedIndex(i, 3, 1))).toEqual([0, 2, 3, 1]);
+  });
+
+  test("a running rest stays under the set it follows", () => {
+    const rest = { startedAt: 1, target: 90, exIndex: 1, setIndex: 0 };
+    const a = moveExercise(workoutOf([ex("A"), ex("B"), ex("C")], rest), 1, 2);
+    expect(a.rest).toEqual({ ...rest, exIndex: 2 });
+    expect(a.exercises[a.rest!.exIndex].name).toBe("B");
+    expect(moveExercise(workoutOf([ex("A"), ex("B")]), 0, 1).rest).toBeNull();
+  });
+
+  test("moving one away from its superset partner ends the superset", () => {
+    const a = moveExercise(workoutOf([ex("A", "s"), ex("B", "s"), ex("C")]), 0, 2);
+    expect(names(a)).toEqual(["B", "C", "A"]);
+    expect(ids(a)).toEqual([undefined, undefined, undefined]);
+  });
+
+  test("a superset stays one when its partners stay together", () => {
+    // Swapped within the superset.
+    expect(ids(moveExercise(workoutOf([ex("A", "s"), ex("B", "s"), ex("C")]), 1, 0))).toEqual(["s", "s", undefined]);
+    // Something else moved past it.
+    expect(ids(moveExercise(workoutOf([ex("A", "s"), ex("B", "s"), ex("C")]), 2, 0))).toEqual([undefined, "s", "s"]);
+    // One of three taken out: the other two are still back to back.
+    expect(ids(moveExercise(workoutOf([ex("A", "s"), ex("B", "s"), ex("C", "s"), ex("D")]), 1, 3))).toEqual([
+      "s", "s", undefined, undefined,
+    ]);
+  });
+
+  test("dropping one between two partners splits them", () => {
+    const a = moveExercise(workoutOf([ex("A", "s"), ex("B", "s"), ex("C")]), 2, 1);
+    expect(names(a)).toEqual(["A", "C", "B"]);
+    expect(ids(a)).toEqual([undefined, undefined, undefined]);
+  });
+
+  test("a superset split into two runs becomes two supersets", () => {
+    const a = moveExercise(workoutOf([ex("A", "s"), ex("B", "s"), ex("C", "s"), ex("D", "s"), ex("E")]), 4, 2);
+    expect(names(a)).toEqual(["A", "B", "E", "C", "D"]);
+    const [first, second] = [ids(a)[0], ids(a)[3]];
+    expect(ids(a)).toEqual([first, first, undefined, second, second]);
+    expect(first).not.toBe(second);
   });
 });
 

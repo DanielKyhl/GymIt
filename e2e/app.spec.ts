@@ -95,7 +95,8 @@ async function expectWorkoutOpen(page: Page) {
 
 // Pulls the workout sheet down, by its handle unless told where, in big jumps,
 // the way a quick thumb (or a mouse) does: the pointer gets ahead of the
-// sheet, over its text, and the pull has to hold on regardless.
+// sheet, over its text, and the pull has to hold on regardless. Only a pull
+// on the handle's strip moves it; from anywhere else, this checks it doesn't.
 async function pullWorkoutDown(page: Page, from: Locator = labelled(page, "Minimize workout")) {
   const box = await from.boundingBox();
   if (!box) throw new Error("the workout sheet isn't open");
@@ -105,6 +106,24 @@ async function pullWorkoutDown(page: Page, from: Locator = labelled(page, "Minim
   await page.mouse.down();
   await page.mouse.move(x, y + 20);
   await page.mouse.move(x, y + 320, { steps: 2 });
+  await page.mouse.up();
+}
+
+// Holds an exercise's name until the exercise lifts, then drags it `by` px
+// (up is negative) and lets go.
+async function holdAndDrag(page: Page, name: Locator, by: number) {
+  const box = await name.boundingBox();
+  if (!box) throw new Error("the exercise isn't showing");
+  const x = box.x + 20;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.waitForTimeout(700); // held long enough to lift it
+  for (let moved = 0; Math.abs(moved) < Math.abs(by); moved += Math.sign(by) * 10) {
+    await page.mouse.move(x, y + moved);
+    await page.waitForTimeout(20);
+  }
+  await page.mouse.move(x, y + by);
   await page.mouse.up();
 }
 
@@ -422,14 +441,39 @@ test("rest timer: type your own time, change it mid-rest, and ring without pausi
     await expect(labelled(page, "Pull-Up set 1 reps")).toHaveText("8"); // as it was left
   });
 
-  await test.step("tapping the handle tucks it away; the title row pulls it down too", async () => {
+  await test.step("tapping the handle tucks it away; only the handle's strip pulls it down", async () => {
     await labelled(page, "Minimize workout").click();
     await expect(labelled(page, "Minimize workout")).toBeHidden();
     await tapOnTop(onScreen(page.getByLabel(/^Open workout/)));
     await expectWorkoutOpen(page);
 
+    // Pulling on the title row, or on the sets, leaves it where it is.
+    const handle = labelled(page, "Minimize workout");
+    await page.waitForTimeout(600); // done sliding up
+    const before = await handle.boundingBox();
     await pullWorkoutDown(page, onScreen(page.getByText(/sets done$/)));
+    await pullWorkoutDown(page, labelled(page, "Pull-Up set 2 reps"));
+    await page.waitForTimeout(500);
+    expect(await handle.boundingBox()).toEqual(before);
+
+    await pullWorkoutDown(page);
     await expect(labelled(page, "Minimize workout")).toBeHidden();
     await expect(onScreen(page.getByLabel(/^Open workout/))).toBeVisible();
+  });
+
+  await test.step("hold an exercise's name and drag it to move the exercise", async () => {
+    await tapOnTop(onScreen(page.getByLabel(/^Open workout/)));
+    await expectWorkoutOpen(page);
+    await tap(page, "Add exercise");
+    await onScreen(page.getByPlaceholder(/^Search/)).fill("barbell curl");
+    await tap(page, "Barbell Curl");
+    const order = () => onScreen(page.getByLabel(/ options$/)).evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
+    await expect.poll(order).toEqual(["Pull-Up options", "Barbell Curl options"]);
+
+    await expect(onScreen(page.getByPlaceholder(/^Search/))).toHaveCount(0); // the picker's gone
+    await holdAndDrag(page, onScreen(page.locator("#root").getByText("Barbell Curl", { exact: true })), -120);
+    await expect.poll(order).toEqual(["Barbell Curl options", "Pull-Up options"]);
+    await expect(text(page, "Drag an exercise to move it")).toHaveCount(0); // back to the sets
+    await expect(labelled(page, "Pull-Up set 1 reps")).toHaveText("8"); // its sets went with it
   });
 });
