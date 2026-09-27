@@ -140,7 +140,7 @@ describe("only things you log as weight and reps", () => {
   });
 
   test("a stretch in history trains nothing, old list or new", () => {
-    expect(musclesFor("All Fours Squad Stretch")).toEqual({ primary: [], secondary: [], braced: [] }); // was in the list briefly
+    expect(musclesFor("All Fours Squad Stretch")).toEqual({ primary: [], secondary: [], braced: [], helpers: [] }); // was in the list briefly
     const oldStretch = Object.keys(legacyExercises).find((n) => /stretch/i.test(n))!;
     expect(musclesFor(oldStretch).primary).toEqual([]);
     const now = new Date("2026-09-10T12:00:00.000Z").getTime();

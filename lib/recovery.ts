@@ -64,10 +64,42 @@ const toSlugs = (names: string[] | undefined): Slug[] => [
 // primary: what the exercise is for. secondary: muscles that help move the
 // weight. braced: muscles holding the body still while it moves, like the core
 // in a bent-over row. Bracing is real work but light, so it counts for less
-// and clears sooner (see computeRecovery).
-type Trained = { primary: Slug[]; secondary: Slug[]; braced: Slug[] };
+// and clears sooner (see computeRecovery). helpers: the secondary muscles the
+// weekly sets chart counts, half a set each (see HELPERS).
+type Trained = { primary: Slug[]; secondary: Slug[]; braced: Slug[]; helpers: Slug[] };
 
 const CORE: Slug[] = ["abs", "obliques"];
+
+// The helpers that really do help move the weight, by the exercise's main
+// muscle. The rest of what the exercise data lists as helpers is bracing (abs,
+// lower back), grip (forearms), or wrong: hamstrings on a squat or a leg
+// extension, calves on nearly every leg exercise, glutes on a calf raise.
+const HELPERS: Record<string, string[]> = {
+  chest: ["shoulders", "triceps"],
+  shoulders: ["triceps", "traps"], // presses; raises and upright rows
+  triceps: ["chest", "shoulders"], // dips and close-grip presses
+  lats: ["biceps", "shoulders"], // pull-ups and pulldowns
+  "middle back": ["biceps", "shoulders"], // rows
+  quadriceps: ["glutes"], // squats, lunges, leg press
+  hamstrings: ["glutes"], // Romanian deadlifts
+  glutes: ["hamstrings", "quadriceps"], // deadlifts, hip thrusts
+  "lower back": ["glutes", "hamstrings"], // back extensions
+};
+
+// The triceps only help in a press, a dip or a push-up, and so do the chest and
+// shoulders on a triceps exercise. The data lists them on flys, raises and
+// extensions too, where they just hold the arm still.
+const PRESS = /press|dip|push[-\s]?up/i;
+
+function helpersOf(e: MuscleSource): Slug[] {
+  const main = e.primaryMuscles[0]?.toLowerCase() ?? "";
+  const pressing = PRESS.test(e.name);
+  const names = e.secondaryMuscles
+    .map((m) => m.toLowerCase())
+    .filter((m) => HELPERS[main]?.includes(m) && (pressing || (m !== "triceps" && main !== "triceps")));
+  // Like the main muscle, each counts under its first slug only.
+  return [...new Set(names.map((m) => MUSCLE_TO_SLUG[m][0]))];
+}
 
 function trainedBy(e: MuscleSource): Trained {
   const primary = toSlugs(e.primaryMuscles);
@@ -86,7 +118,8 @@ function trainedBy(e: MuscleSource): Trained {
     braced.delete(s);
   });
   secondary.forEach((s) => braced.delete(s));
-  return { primary, secondary: [...secondary], braced: [...braced] };
+  const helpers = helpersOf(e).filter((s) => !primary.includes(s));
+  return { primary, secondary: [...secondary], braced: [...braced], helpers };
 }
 
 const muscleMap = new Map<string, Trained>(exercises.map((e) => [e.name, trainedBy(e)]));
@@ -97,7 +130,7 @@ export function musclesFor(name: string): Trained {
   let found = muscleMap.get(name);
   if (!found) {
     const legacy = legacyExercise(name);
-    if (!legacy) return { primary: [], secondary: [], braced: [] };
+    if (!legacy) return { primary: [], secondary: [], braced: [], helpers: [] };
     found = trainedBy(legacy);
     muscleMap.set(name, found);
   }

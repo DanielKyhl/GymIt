@@ -83,7 +83,7 @@ describe("weeklyMuscleSets", () => {
   const sets = (w: Parameters<typeof weeklyMuscleSets>[0]) =>
     Object.fromEntries(weeklyMuscleSets(w, NOW).map((m) => [m.slug, m.sets]));
 
-  test("counts finished working sets for primary muscles in the last 7 days", () => {
+  test("counts finished working sets in the last 7 days", () => {
     const w = [
       workout("Push", at(1), [
         { name: BENCH, sets: [set(60, 10, { type: "warmup" }), set(100, 5), set(100, 5), set(100, 5, { done: false })] },
@@ -95,12 +95,14 @@ describe("weeklyMuscleSets", () => {
     const s = sets(w);
     expect(s.chest).toBe(3);
     expect(s.quadriceps).toBe(2);
-    expect(s.triceps).toBe(0); // secondary for bench: not counted
+    expect(s.triceps).toBe(1.5); // helps on bench: half a set each
+    expect(s.gluteal).toBe(1); // helps on squats
   });
 
   test("always lists the main muscles, most trained first", () => {
     const list = weeklyMuscleSets([workout("Pull", at(1), [{ name: PULLUP, sets: [set(0, 8)] }])], NOW);
-    expect(list[0]).toEqual({ slug: "upper-back", sets: 1 });
+    expect(list[0]).toEqual({ slug: "upper-back", sets: 1, direct: 1 });
+    expect(list[1]).toEqual({ slug: "biceps", sets: 0.5, direct: 0 });
     expect(list.map((m) => m.slug)).toEqual(expect.arrayContaining(["chest", "quadriceps", "abs"]));
   });
 });

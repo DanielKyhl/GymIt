@@ -95,7 +95,8 @@ export default function Progress() {
       <View style={styles.panelCard}>
         <MuscleSetBars data={muscles} />
         <Text style={styles.caption}>
-          Finished working sets. The green band is 10–20 sets a week, a common target for building muscle.
+          Finished working sets. Muscles that help count half a set, like triceps on bench press: the lighter end of
+          a bar. The green band is 10–20 sets a week, a common target for building muscle.
         </Text>
       </View>
 

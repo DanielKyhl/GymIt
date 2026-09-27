@@ -91,7 +91,7 @@ describe("lookups", () => {
     expect(lastUsedDate(history, "Never Done")).toBeNull();
   });
 });
-describe("weekly sets count each exercise once", () => {
+describe("weekly sets per muscle", () => {
   const NOW = new Date("2026-09-20T12:00:00.000Z").getTime();
   const sets = (name: string, n: number) => ({ name, sets: Array.from({ length: n }, () => set(50, 10)) });
   const week = (...exercises: { name: string; sets: ReturnType<typeof set>[] }[]) =>
@@ -106,5 +106,70 @@ describe("weekly sets count each exercise once", () => {
 
   test("shrugs count as Traps", () => {
     expect(count(week(sets("Barbell Shrug", 4)), "trapezius")).toBe(4);
+  });
+
+  test("muscles that help count half a set", () => {
+    const rows = week(sets("Barbell Bench Press", 4));
+    expect(rows.find((r) => r.slug === "chest")).toEqual({ slug: "chest", sets: 4, direct: 4 });
+    expect(rows.find((r) => r.slug === "triceps")).toEqual({ slug: "triceps", sets: 2, direct: 0 });
+    expect(count(rows, "deltoids")).toBe(2);
+  });
+
+  test("direct sets and half sets add up", () => {
+    const rows = week(sets("Barbell Bench Press", 4), sets("Cable Pushdown", 3));
+    expect(rows.find((r) => r.slug === "triceps")).toEqual({ slug: "triceps", sets: 5, direct: 3 });
+  });
+
+  test("leg day: glutes help a squat, hamstrings help neither it nor a leg extension", () => {
+    const rows = week(sets("Barbell Full Squat", 2), sets("Lever Leg Extension", 2), sets("Lever Lying Leg Curl", 2));
+    expect(count(rows, "quadriceps")).toBe(4);
+    expect(count(rows, "hamstring")).toBe(2);
+    expect(count(rows, "gluteal")).toBe(1);
+    expect(count(rows, "calves")).toBe(0);
+    expect(count(rows, "abs")).toBe(0); // bracing
+  });
+
+  test("hamstrings help a deadlift; the lower back only holds still", () => {
+    const rows = week(sets("Barbell Deadlift", 3));
+    expect(count(rows, "gluteal")).toBe(3);
+    expect(count(rows, "hamstring")).toBe(1.5);
+    expect(count(rows, "lower-back")).toBe(0);
+  });
+
+  test("triceps help presses and dips, not flys or raises", () => {
+    expect(count(week(sets("Dumbbell Seated Shoulder Press", 2)), "triceps")).toBe(1);
+    expect(count(week(sets("Triceps Dip", 2)), "chest")).toBe(1);
+    const fly = week(sets("Cable Incline Fly", 2));
+    expect(count(fly, "triceps")).toBe(0);
+    expect(count(fly, "deltoids")).toBe(1);
+    expect(count(week(sets("Cable Lateral Raise", 2)), "triceps")).toBe(0);
+  });
+
+  test("shoulders don't get sets from triceps extensions or shrugs", () => {
+    expect(count(week(sets("Dumbbell Kickback", 3)), "deltoids")).toBe(0);
+    expect(count(week(sets("Barbell Lying Triceps Extension", 3)), "deltoids")).toBe(0);
+    expect(count(week(sets("Barbell Shrug", 3)), "deltoids")).toBe(0);
+  });
+
+  test("a shoulder press isn't back work", () => {
+    const rows = week(sets("Dumbbell Seated Shoulder Press", 2));
+    expect(count(rows, "upper-back")).toBe(0);
+    expect(count(rows, "trapezius")).toBe(0);
+  });
+
+  test("grip isn't counted", () => {
+    const rows = week(sets("Pull-Up", 2));
+    expect(count(rows, "biceps")).toBe(1);
+    expect(count(rows, "forearm")).toBe(0);
+  });
+
+  test("a calf raise or a hip abduction has no helpers", () => {
+    const rows = week(sets("Lever Seated Calf Raise", 3), sets("Lever Seated Hip Abduction", 3));
+    expect(rows.filter((r) => r.sets > 0).map((r) => r.slug).sort()).toEqual(["calves", "gluteal"]);
+    expect(count(rows, "gluteal")).toBe(3);
+  });
+
+  test("traps helping a lateral raise get a row of their own", () => {
+    expect(count(week(sets("Dumbbell Lateral Raise", 4)), "trapezius")).toBe(2);
   });
 });

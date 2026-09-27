@@ -32,6 +32,11 @@ function barColor(sets: number): string {
   return sets <= BAND_HIGH ? C.success : C.signal;
 }
 
+// Half sets, from helping other exercises, show as ½: 7½.
+const formatSets = (n: number) => (n % 1 ? `${Math.floor(n) || ""}½` : String(n));
+
+// Each bar is solid for the sets aimed at the muscle, and lighter on to its
+// total for the half sets it got helping.
 export function MuscleSetBars({ data }: { data: MuscleSets[] }) {
   const scale = Math.max(24, ...data.map((m) => m.sets));
   const pct = (n: number) => `${(n / scale) * 100}%` as const;
@@ -45,9 +50,12 @@ export function MuscleSetBars({ data }: { data: MuscleSets[] }) {
           </Text>
           <View style={styles.track}>
             <View style={[styles.band, { left: pct(BAND_LOW), width: pct(BAND_HIGH - BAND_LOW) }]} />
-            {m.sets > 0 && <View style={[styles.fill, { width: pct(m.sets), backgroundColor: barColor(m.sets) }]} />}
+            {m.sets > m.direct && (
+              <View style={[styles.fill, styles.helped, { width: pct(m.sets), backgroundColor: barColor(m.sets) }]} />
+            )}
+            {m.direct > 0 && <View style={[styles.fill, { width: pct(m.direct), backgroundColor: barColor(m.sets) }]} />}
           </View>
-          <Text style={[styles.value, m.sets === 0 && styles.valueZero]}>{m.sets}</Text>
+          <Text style={[styles.value, m.sets === 0 && styles.valueZero]}>{formatSets(m.sets)}</Text>
         </View>
       ))}
     </View>
@@ -61,6 +69,7 @@ const styles = StyleSheet.create({
   track: { flex: 1, height: 10, borderRadius: 5, backgroundColor: C.raised, overflow: "hidden" },
   band: { position: "absolute", top: 0, bottom: 0, backgroundColor: "rgba(29, 158, 117, 0.22)" },
   fill: { position: "absolute", left: 0, top: 0, bottom: 0, borderRadius: 5 },
-  value: { ...T.num, width: 24, textAlign: "right", fontSize: 16 },
+  helped: { opacity: 0.5 },
+  value: { ...T.num, width: 30, textAlign: "right", fontSize: 16 },
   valueZero: { color: C.textFaint },
 });

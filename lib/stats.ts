@@ -299,25 +299,38 @@ const MAIN_MUSCLES: Slug[] = [
   "quadriceps", "hamstring", "gluteal", "calves", "abs",
 ];
 
-export type MuscleSets = { slug: Slug; sets: number };
+export type MuscleSets = {
+  slug: Slug;
+  sets: number; // all of them, half sets included
+  direct: number; // just the whole sets, from exercises aimed at the muscle
+};
 
 // Finished working sets per muscle over the last 7 days, most trained first.
-// A set counts once, under the exercise's main muscle: a row is Back, even
-// though it lights up the middle of the back too on the recovery map.
+// A set counts in full for the exercise's main muscle, and as half a set for
+// each muscle that helps move the weight, the way volume research counts
+// them: a set of bench press is 1 for Chest and ½ each for Shoulders and
+// Triceps. Which helpers count is HELPERS in lib/recovery.ts. The main muscle
+// counts in one place: a row is Back, even though it lights up the middle of
+// the back too on the recovery map.
 export function weeklyMuscleSets(workouts: Workout[], now: number = Date.now()): MuscleSets[] {
-  const counts: Partial<Record<Slug, number>> = {};
+  const direct: Partial<Record<Slug, number>> = {};
+  const helped: Partial<Record<Slug, number>> = {};
   workouts.forEach((w) => {
     const t = new Date(w.date).getTime();
     if (t > now || now - t > 7 * DAY_MS) return;
     w.exercises.forEach((ex) => {
       const sets = ex.sets.filter((s) => s.done && s.type !== "warmup").length;
       if (sets === 0) return;
-      const main = musclesFor(ex.name).primary[0];
-      if (main) counts[main] = (counts[main] ?? 0) + sets;
+      const { primary, helpers } = musclesFor(ex.name);
+      const main = primary[0];
+      if (!main) return;
+      direct[main] = (direct[main] ?? 0) + sets;
+      for (const s of helpers) helped[s] = (helped[s] ?? 0) + sets / 2;
     });
   });
-  const extra = (Object.keys(counts) as Slug[]).filter((s) => !MAIN_MUSCLES.includes(s));
+  const trained = new Set([...Object.keys(direct), ...Object.keys(helped)] as Slug[]);
+  const extra = [...trained].filter((s) => !MAIN_MUSCLES.includes(s));
   return [...MAIN_MUSCLES, ...extra]
-    .map((slug) => ({ slug, sets: counts[slug] ?? 0 }))
+    .map((slug) => ({ slug, sets: (direct[slug] ?? 0) + (helped[slug] ?? 0), direct: direct[slug] ?? 0 }))
     .sort((a, b) => b.sets - a.sets);
 }
