@@ -291,6 +291,34 @@ test("rest timer: type your own time, change it mid-rest, and ring without pausi
   await page.addInitScript(() => {
     const w = window as unknown as { __sound: { webAudio: number; media: number } };
     w.__sound = { webAudio: 0, media: 0 };
+    // WebKit on Windows has no Web Audio at all. Stand in the little the app
+    // uses, so the test still checks it plays through Web Audio, not <audio>.
+    if (typeof AudioContext === "undefined") {
+      class Source {
+        buffer: unknown = null;
+        connect() {}
+        start() {}
+      }
+      class Context {
+        state = "suspended";
+        destination = {};
+        resume() {
+          this.state = "running";
+          return Promise.resolve();
+        }
+        suspend() {
+          this.state = "suspended";
+          return Promise.resolve();
+        }
+        decodeAudioData() {
+          return Promise.resolve({ duration: 1 });
+        }
+        createBufferSource() {
+          return new Source();
+        }
+      }
+      Object.assign(window, { AudioContext: Context, AudioBufferSourceNode: Source });
+    }
     const start = AudioBufferSourceNode.prototype.start;
     AudioBufferSourceNode.prototype.start = function (this: AudioBufferSourceNode, ...args: [number?, number?, number?]) {
       w.__sound.webAudio++;
