@@ -1,6 +1,6 @@
 import { addWeighIn, todayKey, weighInsIn } from "../bodyweight";
 import { computeRecovery, readinessScore, templateMuscles } from "../recovery";
-import { consistencyGrid, monthGrid, weeklyMuscleSets, workoutsByDay } from "../stats";
+import { consistencyGrid, monthGrid, startOfWeek, weeklyMuscleSets, workoutsByDay } from "../stats";
 import { suggestTemplate } from "../suggest";
 import { Template } from "../../types/workout";
 import { set, workout } from "./fixtures";
@@ -70,6 +70,19 @@ describe("monthGrid", () => {
   });
 });
 
+describe("startOfWeek", () => {
+  test("is Monday at 00:00, whatever day of the week it is", () => {
+    const monday = new Date(2026, 8, 14).getTime();
+    expect(startOfWeek(NOW)).toBe(monday); // a Wednesday
+    expect(startOfWeek(new Date(2026, 8, 20, 23, 59).getTime())).toBe(monday); // Sunday night
+    expect(startOfWeek(new Date(2026, 8, 21, 0, 0).getTime())).toBe(new Date(2026, 8, 21).getTime()); // the next Monday
+  });
+
+  test("a week with the clocks going back still starts on its Monday", () => {
+    expect(startOfWeek(new Date(2026, 9, 25, 12).getTime())).toBe(new Date(2026, 9, 19).getTime());
+  });
+});
+
 describe("workoutsByDay", () => {
   test("groups by local calendar day", () => {
     const w = [workout("A", at(0, 18), []), workout("B", at(0, 7), []), workout("C", at(1), [])];
@@ -83,20 +96,31 @@ describe("weeklyMuscleSets", () => {
   const sets = (w: Parameters<typeof weeklyMuscleSets>[0]) =>
     Object.fromEntries(weeklyMuscleSets(w, NOW).map((m) => [m.slug, m.sets]));
 
-  test("counts finished working sets in the last 7 days", () => {
+  test("counts this week's finished working sets", () => {
     const w = [
       workout("Push", at(1), [
         { name: BENCH, sets: [set(60, 10, { type: "warmup" }), set(100, 5), set(100, 5), set(100, 5, { done: false })] },
       ]),
-      workout("Push", at(5), [{ name: BENCH, sets: [set(100, 5)] }]),
-      workout("Push", at(9), [{ name: BENCH, sets: [set(100, 5)] }]), // too old
-      workout("Legs", at(2), [{ name: SQUAT, sets: [set(100, 5), set(100, 5)] }]),
+      workout("Push", at(5), [{ name: BENCH, sets: [set(100, 5)] }]), // last Friday: last week
+      workout("Push", at(9), [{ name: BENCH, sets: [set(100, 5)] }]),
+      workout("Legs", at(2), [{ name: SQUAT, sets: [set(100, 5), set(100, 5)] }]), // Monday
     ];
     const s = sets(w);
-    expect(s.chest).toBe(3);
+    expect(s.chest).toBe(2);
     expect(s.quadriceps).toBe(2);
-    expect(s.triceps).toBe(1.5); // helps on bench: half a set each
+    expect(s.triceps).toBe(1); // helps on bench: half a set each
     expect(s.gluteal).toBe(1); // helps on squats
+  });
+
+  test("starts over at midnight going into Monday", () => {
+    const lastSunday = workout("Push", new Date(2026, 8, 13, 23, 59).toISOString(), [
+      { name: BENCH, sets: [set(100, 5), set(100, 5)] },
+    ]);
+    const monday = workout("Push", new Date(2026, 8, 14, 0, 0).toISOString(), [{ name: BENCH, sets: [set(100, 5)] }]);
+    expect(sets([monday, lastSunday]).chest).toBe(1);
+    // A minute into Monday, last week's sets are gone.
+    const firstThing = new Date(2026, 8, 14, 0, 1).getTime();
+    expect(weeklyMuscleSets([lastSunday], firstThing).every((m) => m.sets === 0)).toBe(true);
   });
 
   test("always lists the main muscles, most trained first", () => {

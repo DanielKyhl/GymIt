@@ -91,7 +91,7 @@ export default function Progress() {
         {grid.length > 0 && <ConsistencyHeatmap grid={grid} width={chartWidth} />}
       </View>
 
-      <Text style={styles.section}>Sets per muscle · last 7 days</Text>
+      <Text style={styles.section}>Sets per muscle · this week</Text>
       <View style={styles.panelCard}>
         <MuscleSetBars data={muscles} />
         <Text style={styles.caption}>

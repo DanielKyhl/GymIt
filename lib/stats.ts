@@ -228,8 +228,6 @@ export function bestSet(sets: WorkoutSet[]): BestSet | null {
 // ---------------------------------------------------------------------------
 // Calendar views. All in local time, weeks starting on Monday.
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 export function dayKey(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
@@ -305,19 +303,29 @@ export type MuscleSets = {
   direct: number; // just the whole sets, from exercises aimed at the muscle
 };
 
-// Finished working sets per muscle over the last 7 days, most trained first.
-// A set counts in full for the exercise's main muscle, and as half a set for
-// each muscle that helps move the weight, the way volume research counts
-// them: a set of bench press is 1 for Chest and ½ each for Shoulders and
-// Triceps. Which helpers count is HELPERS in lib/recovery.ts. The main muscle
+// Monday 00:00, local time, of the week `now` falls in: when the sets per
+// muscle start over, the same Monday the weekly goal does (weekKey in
+// lib/gamification.ts).
+export function startOfWeek(now: number = Date.now()): number {
+  const d = new Date(now);
+  // Built from calendar parts, not by subtracting 24h, so daylight saving can't shift it.
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7)).getTime();
+}
+
+// Finished working sets per muscle this week (since Monday 00:00), most
+// trained first. A set counts in full for the exercise's main muscle, and as
+// half a set for each muscle that helps move the weight, the way volume
+// research counts them: a set of bench press is 1 for Chest and ½ each for
+// Shoulders and Triceps. Which helpers count is HELPERS in lib/recovery.ts. The main muscle
 // counts in one place: a row is Back, even though it lights up the middle of
 // the back too on the recovery map.
 export function weeklyMuscleSets(workouts: Workout[], now: number = Date.now()): MuscleSets[] {
   const direct: Partial<Record<Slug, number>> = {};
   const helped: Partial<Record<Slug, number>> = {};
+  const monday = startOfWeek(now);
   workouts.forEach((w) => {
     const t = new Date(w.date).getTime();
-    if (t > now || now - t > 7 * DAY_MS) return;
+    if (t > now || t < monday) return;
     w.exercises.forEach((ex) => {
       const sets = ex.sets.filter((s) => s.done && s.type !== "warmup").length;
       if (sets === 0) return;
