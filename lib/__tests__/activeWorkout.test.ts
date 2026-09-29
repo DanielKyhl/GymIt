@@ -14,6 +14,7 @@ import {
   platesPerSide,
   restAfterSet,
   restFromParts,
+  restJustEnded,
   fillBlankTemplate,
   setNumber,
   templateAfterWorkout,
@@ -33,6 +34,23 @@ describe("timer", () => {
 
   test("never goes negative if the clock moves backwards", () => {
     expect(elapsedSeconds(2_000, 1_000)).toBe(0);
+  });
+});
+
+describe("ringing when a rest is up", () => {
+  const rest = { startedAt: 1_000_000, target: 90, exIndex: 0, setIndex: 0 };
+  const at = (seconds: number) => rest.startedAt + seconds * 1000;
+
+  test("rings right as it runs out", () => {
+    expect(restJustEnded(rest, at(89.9))).toBe(false);
+    expect(restJustEnded(rest, at(90))).toBe(true);
+    expect(restJustEnded(rest, at(92.5))).toBe(true);
+  });
+
+  test("not when you come back to the app after it ran out", () => {
+    // The phone was locked, so the app couldn't ring when it ran out.
+    expect(restJustEnded(rest, at(93))).toBe(false);
+    expect(restJustEnded(rest, at(600))).toBe(false);
   });
 });
 

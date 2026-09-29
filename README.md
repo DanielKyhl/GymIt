@@ -80,6 +80,11 @@ share card is hidden, because the screenshot library it uses is native-only;
 and on an iPhone the rest timer's sound is muted while the phone is on silent.
 That last one is the price of not pausing your music: iOS only lets a web page
 play over other audio in the "ambient" mode, which the silent switch mutes.
+And a web app only runs while it's on screen: with the phone locked, or
+another app in front, iOS stops it, so a rest that runs out then can't ring.
+(It doesn't ring late when you come back either; the rest row just shows
+it's up.) A notification at the end of the rest would need a server to send
+it, which this project doesn't have.
 
 ## Developing against the emulators
 

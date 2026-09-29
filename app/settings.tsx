@@ -182,7 +182,7 @@ export default function Settings() {
         </View>
         <Text style={[styles.hint, styles.fieldHint]}>
           {Platform.OS === "web"
-            ? "Tap one to hear it. It plays over your music without pausing it, but an iPhone on silent mutes it."
+            ? "Tap one to hear it. It plays over your music without pausing it. An iPhone only plays it while GymIt is open on screen, and mutes it on silent."
             : "Tap one to hear it. It plays over your music without pausing it."}
         </Text>
 

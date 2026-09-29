@@ -480,4 +480,18 @@ test("rest timer: type your own time, change it mid-rest, and ring without pausi
     await expect(text(page, "Drag an exercise to move it")).toHaveCount(0); // back to the sets
     await expect(labelled(page, "Pull-Up set 1 reps")).toHaveText("8"); // its sets went with it
   });
+
+  await test.step("a rest that runs out while the phone's locked doesn't ring late after", async () => {
+    // Time runs as normal until it's made to jump: the way an iPhone stops the
+    // app while the phone's locked, and it catches up when it's back.
+    await page.clock.install();
+    const rung = (await sound()).webAudio;
+    await onScreen(page.getByLabel("Mark set done", { exact: true })).first().click(); // Barbell Curl: a 2:00 rest
+    const running = onScreen(page.getByLabel(/^Resting /));
+    await expect(running).toHaveCount(1);
+    await page.clock.fastForward("05:00");
+    await expect(running.getByText("Rest's up", { exact: true })).toBeVisible();
+    await page.waitForTimeout(1500); // long enough to have rung
+    expect((await sound()).webAudio).toBe(rung);
+  });
 });

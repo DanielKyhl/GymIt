@@ -3,7 +3,7 @@ import { Pencil, Timer } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { C, R, T } from "../constants/theme";
-import { elapsedSeconds, formatClock, formatRest, RestTimer } from "../lib/activeWorkout";
+import { elapsedSeconds, formatClock, formatRest, restJustEnded, RestTimer } from "../lib/activeWorkout";
 import { playSound } from "../lib/sound";
 import { TimerSoundId } from "../lib/timerSounds";
 
@@ -79,13 +79,16 @@ function ActiveRest({
   const elapsed = elapsedSeconds(rest.startedAt, now);
   const over = elapsed >= rest.target;
 
-  // Reaching the target: one vibration and the sound picked in Settings.
+  // Reaching the target: one vibration and the sound picked in Settings. Only
+  // on time, though: coming back to the app after the rest ran out, it's too
+  // late to ring (see restJustEnded).
   useEffect(() => {
     if (!over || alerted.current) return;
     alerted.current = true;
+    if (!restJustEnded(rest, Date.now())) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     playSound(sound);
-  }, [over, sound]);
+  }, [over, sound, rest]);
 
   const progress = Math.min(1, elapsed / Math.max(1, rest.target));
 

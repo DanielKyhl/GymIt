@@ -24,6 +24,15 @@ export function elapsedSeconds(since: number, now: number): number {
   return Math.max(0, Math.floor((now - since) / 1000));
 }
 
+// Whether a rest has only just run out, so it's the moment to ring. The app
+// can only ring while it's running, and an iPhone stops a home-screen app
+// that isn't on screen (the phone locked, or you're in another app): a rest
+// that ran out then shouldn't ring minutes late when you come back to it.
+export function restJustEnded(rest: RestTimer, now: number): boolean {
+  const past = elapsedSeconds(rest.startedAt, now) - rest.target;
+  return past >= 0 && past <= 2;
+}
+
 export function formatClock(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;

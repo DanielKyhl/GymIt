@@ -30,7 +30,9 @@ function audio(): AudioContext | null {
 
 // A browser only lets a page start its audio from a tap. So while a workout
 // is open, every tap makes sure it's running, and a rest that ends minutes
-// after the tap that started it can still ring.
+// after the tap that started it can still ring. An iPhone also stops the
+// audio when the app goes off screen; coming back on screen, it's woken
+// again straight away, where the phone allows it without a tap.
 function wake() {
   const ctx = audio();
   if (ctx && ctx.state !== "running") ctx.resume().catch(() => undefined);
@@ -42,6 +44,9 @@ function listenForTaps() {
   for (const type of ["touchend", "click", "keydown"]) {
     document.addEventListener(type, () => wanted && wake(), { capture: true, passive: true });
   }
+  document.addEventListener("visibilitychange", () => {
+    if (wanted && document.visibilityState === "visible") wake();
+  });
 }
 
 // Lets the audio stop running once nothing needs it, after any sound has
