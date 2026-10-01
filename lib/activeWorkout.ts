@@ -76,9 +76,11 @@ export function setNumber(sets: WorkoutSet[], index: number): number {
 
 export type HistoryBests = { total: number; heaviest: number };
 
-// What this exercise has to beat today: its best total from any past workout
-// (see exerciseTotal) and the heaviest weight it was ever lifted with. Zeros
-// when it's new, which makes today only its baseline.
+// What this exercise has to beat today: its best total in the past workouts
+// given (see exerciseTotal) and the heaviest weight it was lifted with there.
+// Give it the workouts its records are measured against (workoutRecords): the
+// template's own, or all of them for a workout that isn't from a template.
+// Zeros when it's new there, which makes today only its baseline.
 export function historyBests(pastWorkouts: Workout[], name: string): HistoryBests {
   const bests = { total: 0, heaviest: 0 };
   pastWorkouts.forEach((w) => {
@@ -89,7 +91,7 @@ export function historyBests(pastWorkouts: Workout[], name: string): HistoryBest
   return bests;
 }
 
-// The PR badge goes on the set that takes today's total past the best ever.
+// The PR badge goes on the set that takes today's total past the best.
 export function isLivePR(exercise: WorkoutExercise, setIndex: number, historyBest: number): boolean {
   const set = exercise.sets[setIndex];
   if (!set || historyBest <= 0 || countedSets([set]).length === 0) return false;

@@ -22,6 +22,7 @@ import {
   unlinkFromNext,
   warmupSets,
 } from "../activeWorkout";
+import { templateHistory } from "../stats";
 import { WorkoutExercise, WorkoutSet } from "../../types/workout";
 import { set, workout } from "./fixtures";
 
@@ -153,6 +154,12 @@ describe("live PRs", () => {
 
   test("a first-ever session is a baseline, not a PR", () => {
     expect(isLivePR(bench(set(90, 7), set(90, 7)), 1, 0)).toBe(false);
+  });
+
+  test("given a template's own history, its bests are that template's", () => {
+    const a = { ...workout("Push A", "2026-09-07T08:00:00.000Z", [bench(set(90, 7))]), templateId: "a" };
+    const b = { ...workout("Push B", "2026-09-08T08:00:00.000Z", [bench(set(100, 8))]), templateId: "b" };
+    expect(historyBests(templateHistory([b, a], { id: "a", name: "Push A" }), "Bench")).toEqual({ total: 630, heaviest: 90 });
   });
 
   test("a dumbbell exercise counts both dumbbells, in today's total and the best alike", () => {

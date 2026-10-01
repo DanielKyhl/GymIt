@@ -80,11 +80,32 @@ export function getLastPerformance(workouts: Workout[], name: string): WorkoutSe
   return [];
 }
 // A template's own history: the past workouts started from it. That's where
-// its "last time" numbers come from, because the same exercise in another
-// template is another plan, with its own weights. Workouts saved before they
-// kept their template count by name.
+// its "last time" numbers come from, and what its PRs are measured against,
+// because the same exercise in another template is another plan, with its own
+// weights. Workouts saved before they kept their template count by name.
 export function templateHistory(workouts: Workout[], template: { id: string; name: string }): Workout[] {
   return workouts.filter((w) => (w.templateId ? w.templateId === template.id : w.name === template.name));
+}
+
+// Workouts saved before they kept their template (no templateId at all; an
+// empty workout's is null), given the id of the template with their name, so
+// their records count in that template (workoutRecords). Your own template
+// wins over an example one with the same name; a name two of your own
+// templates share stays unmatched. Only for reading: nothing is saved.
+export function withTemplateIds(workouts: Workout[], templates: { id: string; name: string }[]): Workout[] {
+  const ids = new Map<string, string | undefined>();
+  const match = (name: string) => {
+    const named = templates.filter((t) => t.name === name);
+    const mine = named.filter((t) => !t.id.startsWith("premade-"));
+    const candidates = mine.length > 0 ? mine : named;
+    return candidates.length === 1 ? candidates[0].id : undefined;
+  };
+  return workouts.map((w) => {
+    if (w.templateId !== undefined) return w;
+    if (!ids.has(w.name)) ids.set(w.name, match(w.name));
+    const id = ids.get(w.name);
+    return id ? { ...w, templateId: id } : w;
+  });
 }
 
 export function lastUsedDate(workouts: Workout[], name: string): string | null {
@@ -122,12 +143,12 @@ export function getVolumeByTemplate(
 // Personal records
 //
 // A PR belongs to an exercise in a workout: its total (its volume, so both
-// dumbbells for a dumbbell exercise) beat the best total it ever had.
-// Bodyweight exercises count total reps instead, since their "weight" is only
-// what you weighed that day.
+// dumbbells for a dumbbell exercise) beat the best total it ever had in that
+// template. Bodyweight exercises count total reps instead, since their
+// "weight" is only what you weighed that day.
 // A milestone is quieter: the first time you lift a weight heavier than ever
-// on that exercise. It isn't counted and gives no XP. The first time you do
-// an exercise only sets its baseline.
+// on that exercise in that template. It isn't counted and gives no XP. The
+// first time you do an exercise in a template only sets its baseline.
 
 // Working sets you ticked off: the sets records and History count.
 export function countedSets(sets: WorkoutSet[]): WorkoutSet[] {
@@ -162,33 +183,48 @@ function setsByExercise(workout: Workout): Map<string, WorkoutSet[]> {
   return byName;
 }
 
+type Best = { total: number; heaviest: number };
+
+// The best of a few bests (the same exercise in different groups of workouts).
+function bestOf(list: (Best | undefined)[]): Best | undefined {
+  return list.reduce<Best | undefined>(
+    (a, b) => (!a ? b : !b ? a : { total: Math.max(a.total, b.total), heaviest: Math.max(a.heaviest, b.heaviest) }),
+    undefined
+  );
+}
+
 // Every workout's PRs and milestones by workout id, worked out from the whole
 // history oldest first, so editing or deleting a workout changes what comes
-// after it. Pass the workouts in one unit (getWorkoutsForStats).
+// after it. A workout from a template is measured against that template's
+// earlier workouts only (templateHistory: by its id, or by name for workouts
+// saved before they kept their template). One that isn't from a template is
+// measured against all of them. Pass the workouts in one unit and matched to
+// their templates (getWorkoutsForStats).
 export function workoutRecords(workouts: Workout[]): Map<string, ExerciseRecord[]> {
-  const bests = new Map<string, { total: number; heaviest: number }>();
+  // Each exercise's bests so far, by group: a template's id, the name of
+  // workouts that don't say which template they're from, and all of them.
+  const bests = new Map<string, Map<string, Best>>();
+  const ALL = "all";
   const result = new Map<string, ExerciseRecord[]>();
   oldestFirst(workouts).forEach((w) => {
+    const against = w.templateId ? [`id:${w.templateId}`, `name:${w.name}`] : [ALL];
+    const into = [w.templateId ? `id:${w.templateId}` : `name:${w.name}`, ALL];
     const records: ExerciseRecord[] = [];
     setsByExercise(w).forEach((sets, name) => {
       const total = exerciseTotal(name, sets);
       if (total <= 0) return;
       const bodyweight = isBodyweight(name);
       const heaviest = bodyweight ? 0 : Math.max(...countedSets(sets).map((s) => s.weight));
-      const best = bests.get(name);
-      if (!best) {
-        bests.set(name, { total, heaviest });
-        return;
-      }
+      const best = bestOf(against.map((k) => bests.get(k)?.get(name)));
+      into.forEach((k) => {
+        const group = bests.get(k) ?? new Map<string, Best>();
+        group.set(name, bestOf([group.get(name), { total, heaviest }])!);
+        bests.set(k, group);
+      });
+      if (!best) return; // the first time: only a baseline
       const record: ExerciseRecord = { exercise: name };
-      if (total > best.total) {
-        record.pr = { total, previous: best.total, inReps: bodyweight };
-        best.total = total;
-      }
-      if (heaviest > best.heaviest) {
-        record.milestone = { weight: heaviest, previous: best.heaviest };
-        best.heaviest = heaviest;
-      }
+      if (total > best.total) record.pr = { total, previous: best.total, inReps: bodyweight };
+      if (heaviest > best.heaviest) record.milestone = { weight: heaviest, previous: best.heaviest };
       if (record.pr || record.milestone) records.push(record);
     });
     if (records.length > 0) result.set(w.id, records);
@@ -206,15 +242,16 @@ export function newRecords(past: Workout[], workout: Workout): ExerciseRecord[] 
   return workoutRecords([workout, ...past.filter((w) => w.id !== workout.id)]).get(workout.id) ?? [];
 }
 
-export type PersonalRecord = { date: string; total: number; previous: number; inReps: boolean };
+// `workout`: the name of the workout it was set in, which says which template.
+export type PersonalRecord = { date: string; workout: string; total: number; previous: number; inReps: boolean };
 
-// Every PR this exercise set, newest first.
+// Every PR this exercise set, newest first, in any template.
 export function prHistory(workouts: Workout[], name: string): PersonalRecord[] {
   const records = workoutRecords(workouts);
   return oldestFirst(workouts)
     .flatMap((w) => {
       const pr = records.get(w.id)?.find((r) => r.exercise === name)?.pr;
-      return pr ? [{ date: w.date, ...pr }] : [];
+      return pr ? [{ date: w.date, workout: w.name, ...pr }] : [];
     })
     .reverse();
 }

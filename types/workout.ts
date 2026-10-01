@@ -45,9 +45,10 @@ export type Workout = {
   durationSeconds: number;
   unit: "kg" | "lb";
   exercises: WorkoutExercise[];
-  // The template it was started from. Workouts saved before this was kept
-  // have none, and are matched to a template by its name (templateHistory).
-  templateId?: string;
+  // The template it was started from, or null for an empty workout. Workouts
+  // saved before this was kept have neither, and are matched to a template by
+  // its name (templateHistory, withTemplateIds).
+  templateId?: string | null;
 };
 
 // A planned set inside a template (like a WorkoutSet, but with no "done").

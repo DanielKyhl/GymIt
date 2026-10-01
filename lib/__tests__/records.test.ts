@@ -1,5 +1,5 @@
 import { countPRs } from "../gamification";
-import { newRecords, prHistory, workoutRecords } from "../stats";
+import { newRecords, prHistory, withTemplateIds, workoutRecords } from "../stats";
 import { Workout, WorkoutSet } from "../../types/workout";
 import { set, workout } from "./fixtures";
 
@@ -144,8 +144,67 @@ describe("prHistory", () => {
       bench(1, set(90, 7), set(90, 6)), // 1,170: baseline
     ];
     expect(prHistory(history, BENCH)).toEqual([
-      { date: day(7), total: 1400, previous: 1260, inReps: false },
-      { date: day(3), total: 1260, previous: 1170, inReps: false },
+      { date: day(7), workout: "Push", total: 1400, previous: 1260, inReps: false },
+      { date: day(3), workout: "Push", total: 1260, previous: 1170, inReps: false },
     ]);
+  });
+});
+
+describe("each template keeps its own records", () => {
+  // A workout started from a template: Push A or Push B.
+  const from = (templateId: string, n: number, ...sets: WorkoutSet[]): Workout => ({
+    ...workout(`Push ${templateId.toUpperCase()}`, day(n), [{ name: BENCH, sets }]),
+    templateId,
+  });
+
+  test("beating another template's best isn't a PR, and beating your own is", () => {
+    const a1 = from("a", 1, set(100, 5)); // 500
+    const b1 = from("b", 2, set(60, 12)); // 720: more than A, but B's first time
+    const a2 = from("a", 3, set(100, 6)); // 600: less than B's 720, more than A's 500
+    const history = [a2, b1, a1];
+    expect(recordsOf(history, b1)).toEqual([]);
+    expect(recordsOf(history, a2)).toEqual([{ exercise: BENCH, pr: { total: 600, previous: 500, inReps: false } }]);
+  });
+
+  test("a first time at a weight is within the template too", () => {
+    const a1 = from("a", 1, set(100, 5));
+    const b1 = from("b", 2, set(80, 8)); // 640
+    const b2 = from("b", 3, set(90, 6)); // 540: less in total, but B's heaviest yet
+    expect(recordsOf([b2, b1, a1], b2)).toEqual([{ exercise: BENCH, milestone: { weight: 90, previous: 80 } }]);
+  });
+
+  test("a workout that isn't from a template is measured against all of them, and doesn't count in theirs", () => {
+    const a1 = from("a", 1, set(100, 5)); // 500
+    const empty = bench(2, set(90, 6)); // 540, against A's 500
+    const a2 = from("a", 3, set(105, 5)); // 525, against A's 500 alone
+    const history = [a2, empty, a1];
+    expect(recordsOf(history, empty)[0].pr).toEqual({ total: 540, previous: 500, inReps: false });
+    expect(recordsOf(history, a2)[0].pr).toEqual({ total: 525, previous: 500, inReps: false });
+  });
+
+  test("older workouts saved without their template count in it by name", () => {
+    const old = bench(1, set(100, 5)); // "Push", from before workouts kept their template
+    const next = { ...bench(3, set(100, 6)), templateId: "t" }; // "Push", from template t
+    expect(recordsOf([next, old], next)[0].pr).toEqual({ total: 600, previous: 500, inReps: false });
+  });
+
+  test("so are older workouts matched to the template with their name", () => {
+    const old = [
+      workout("Push", day(1), []),
+      workout("Arms", day(2), []),
+      { ...workout("Legs", day(3), []), templateId: "x" }, // already says
+      workout("Upper", day(4), []),
+      workout("Workout", day(5), []), // an empty workout from before
+      { ...workout("Push", day(6), []), templateId: null }, // an empty workout that says so, named like a template
+    ];
+    const templates = [
+      { id: "t1", name: "Push" },
+      { id: "t2", name: "Legs" },
+      { id: "t3", name: "Arms" },
+      { id: "t4", name: "Arms" }, // two of your own called Arms: can't tell which
+      { id: "premade-upper", name: "Upper" },
+      { id: "t5", name: "Upper" }, // your own Upper wins over the example
+    ];
+    expect(withTemplateIds(old, templates).map((w) => w.templateId)).toEqual(["t1", undefined, "x", "t5", undefined, null]);
   });
 });

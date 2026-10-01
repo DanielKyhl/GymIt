@@ -37,7 +37,7 @@ import {
 } from "../lib/activeWorkout";
 import { BodyWeight, startingWeight } from "../lib/bodyweight";
 import { barWeight, isBodyweight } from "../lib/exercises";
-import { getLastPerformance, templateHistory } from "../lib/stats";
+import { getLastPerformance, templateHistory, withTemplateIds } from "../lib/stats";
 import {
   clearActiveWorkout,
   getActiveWorkout,
@@ -146,8 +146,9 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
       if (cancelled) return;
       setBodyWeightValue(bw);
       setTimerSound(sound);
-      // In the current unit, so "Prev" hints and PRs compare like with like.
-      setPastWorkouts(normalizeUnits(past, unit));
+      // In the current unit, so "Prev" hints and PRs compare like with like,
+      // and matched to their templates, so a template's PRs are its own.
+      setPastWorkouts(withTemplateIds(normalizeUnits(past, unit), templates));
       const template = id === "new" || id === "resume" ? null : (templates.find((t) => t.id === id) ?? null);
       const rest = template?.restSeconds ?? def;
       setDefaultRest(rest);
@@ -235,14 +236,14 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
   const workoutName = active?.name ?? "";
   // Per-exercise history lookups, only redone when the exercise list changes.
   // "Last time" (the Previous column, the number pad's hint, the greyed-out
-  // weights) is last time in this template: the same exercise in another
-  // template is another plan. A workout that isn't from a template looks at
-  // them all. PRs are against everything you've ever lifted.
+  // weights) is last time in this template, and PRs are this template's: the
+  // same exercise in another template is another plan. A workout that isn't
+  // from a template looks at them all.
   const history = useMemo(() => {
     const names = exerciseNames ? exerciseNames.split("\n") : [];
     const own = templateId ? templateHistory(pastWorkouts, { id: templateId, name: workoutName }) : pastWorkouts;
     return Object.fromEntries(
-      names.map((name) => [name, { bests: historyBests(pastWorkouts, name), prev: getLastPerformance(own, name) }])
+      names.map((name) => [name, { bests: historyBests(own, name), prev: getLastPerformance(own, name) }])
     );
   }, [pastWorkouts, exerciseNames, templateId, workoutName]);
 
@@ -471,7 +472,7 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
       durationSeconds: elapsedSeconds(active.startedAt, Date.now()),
       unit,
       exercises: loggedExercises(active.exercises),
-      ...(active.templateId ? { templateId: active.templateId } : {}),
+      templateId: active.templateId ?? null,
     };
     await saveWorkout(workout);
     await clearActiveWorkout();
