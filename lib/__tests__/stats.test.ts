@@ -46,6 +46,15 @@ describe("workoutVolume", () => {
     ]);
     expect(workoutVolume(w)).toBe(500);
   });
+
+  test("counts a dumbbell exercise's weight twice, one for each dumbbell, the way Strong does", () => {
+    const w = workout("Push", "2026-10-01", [
+      { name: "Barbell Bench Press", sets: [set(90, 8), set(90, 7)] }, // 1,350
+      { name: "Dumbbell Incline Bench Press", sets: [set(32, 10), set(32, 10)] }, // 640 a dumbbell
+      { name: "Cable One Arm Lateral Raise", sets: [set(8, 12), set(8, 11), set(8, 10)] }, // 264, a cable
+    ]);
+    expect(workoutVolume(w)).toBe(1350 + 2 * 640 + 264);
+  });
 });
 
 describe("getVolumeByTemplate", () => {

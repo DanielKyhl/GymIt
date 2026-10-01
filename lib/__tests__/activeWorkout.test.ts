@@ -155,6 +155,15 @@ describe("live PRs", () => {
     expect(isLivePR(bench(set(90, 7), set(90, 7)), 1, 0)).toBe(false);
   });
 
+  test("a dumbbell exercise counts both dumbbells, in today's total and the best alike", () => {
+    const curls = (...sets: ReturnType<typeof set>[]): WorkoutExercise => ({ name: "Dumbbell Hammer Curl", sets });
+    const past = [workout("Pull", "2026-09-29T08:00:00.000Z", [curls(set(16, 22), set(16, 22), set(16, 20))])];
+    const best = historyBests(past, "Dumbbell Hammer Curl");
+    expect(best).toEqual({ total: 2048, heaviest: 16 }); // 16 kg × 64 reps, twice
+    const today = curls(set(16, 22), set(16, 22), set(16, 21)); // 704, 1,408, 2,080
+    expect([0, 1, 2].map((i) => isLivePR(today, i, best.total))).toEqual([false, false, true]);
+  });
+
   test("the first set at a weight never lifted before gets the milestone note", () => {
     const today = bench(set(95, 5), set(95, 5), set(100, 2));
     expect([0, 1, 2].map((i) => isLiveMilestone(today, i, bests.heaviest))).toEqual([true, false, true]);

@@ -5,7 +5,7 @@ import { Pressable, SectionList, StyleSheet, Text, TouchableOpacity, View } from
 import { C, FONT, HIT, R } from "../../constants/theme";
 import { isBodyweight } from "../../lib/exercises";
 import { formatNumber, formatSets, plural, prGain } from "../../lib/format";
-import { countedSets, ExerciseRecord, prCount, workoutRecords } from "../../lib/stats";
+import { countedSets, ExerciseRecord, prCount, setsVolume, workoutRecords } from "../../lib/stats";
 import { getWorkoutsForStats } from "../../lib/storage";
 import { Workout } from "../../types/workout";
 
@@ -38,7 +38,7 @@ function byMonth(workouts: Workout[], records: Map<string, ExerciseRecord[]>): M
 function WorkoutCard({ workout, records, onPress }: { workout: Workout; records?: ExerciseRecord[]; onPress: () => void }) {
   const unit = workout.unit;
   const counted = workout.exercises.flatMap((ex) => countedSets(ex.sets));
-  const volume = counted.reduce((n, s) => n + s.weight * s.reps, 0);
+  const volume = workout.exercises.reduce((n, ex) => n + setsVolume(ex.name, countedSets(ex.sets)), 0);
   const prs = prCount(records);
   const meta = [
     new Date(workout.date).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }),

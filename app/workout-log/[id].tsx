@@ -13,7 +13,7 @@ import { setNumber } from "../../lib/activeWorkout";
 import { confirm } from "../../lib/confirm";
 import { formatNumber, plural, prGain, prTotal } from "../../lib/format";
 import { formatRPE, workoutRPE } from "../../lib/rpe";
-import { countedSets, ExerciseRecord, prCount, workoutRecords } from "../../lib/stats";
+import { countedSets, ExerciseRecord, prCount, setsVolume, workoutRecords } from "../../lib/stats";
 import { deleteWorkout, getWorkouts, getWorkoutsForStats, updateWorkout } from "../../lib/storage";
 import { Workout, WorkoutSet } from "../../types/workout";
 import { ExerciseInfoButton } from "../../components/ExerciseInfo";
@@ -237,8 +237,7 @@ export default function WorkoutLogDetail() {
   }
 
   const rpe = workoutRPE(workout);
-  const counted = workout.exercises.flatMap((ex) => countedSets(ex.sets));
-  const volume = counted.reduce((n, s) => n + s.weight * s.reps, 0);
+  const volume = workout.exercises.reduce((n, ex) => n + setsVolume(ex.name, countedSets(ex.sets)), 0);
   const prs = prCount(records.list);
 
   return (

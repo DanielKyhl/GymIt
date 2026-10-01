@@ -1,6 +1,6 @@
 import { Slug } from "react-native-body-highlighter";
 import { Workout, WorkoutSet } from "../types/workout";
-import { isBodyweight } from "./exercises";
+import { isBodyweight, isDumbbell } from "./exercises";
 import { musclesFor } from "./recovery";
 
 // Epley formula: estimate a one-rep max from a weight lifted for some reps.
@@ -91,16 +91,17 @@ export function lastUsedDate(workouts: Workout[], name: string): string | null {
   const match = workouts.find((w) => w.name === name);
   return match ? match.date : null;
 }
+
+// Volume, the weight moved: weight × reps, added up. A dumbbell exercise
+// counts its weight twice, one for each dumbbell, the way Strong counts
+// volume: two 20 kg dumbbells for 10 reps is 400 kg, though the set says 20 kg.
+export function setsVolume(name: string, sets: WorkoutSet[]): number {
+  const volume = sets.reduce((n, s) => n + s.weight * s.reps, 0);
+  return isDumbbell(name) ? volume * 2 : volume;
+}
+
 export function workoutVolume(workout: Workout): number {
-  let volume = 0;
-  workout.exercises.forEach((ex) => {
-    ex.sets
-      .filter((s) => s.type !== "warmup")
-      .forEach((s) => {
-        volume += s.weight * s.reps;
-      });
-  });
-  return volume;
+  return workout.exercises.reduce((n, ex) => n + setsVolume(ex.name, ex.sets.filter((s) => s.type !== "warmup")), 0);
 }
 
 export function getVolumeHistory(workouts: Workout[]): { date: string; volume: number }[] {
@@ -120,9 +121,10 @@ export function getVolumeByTemplate(
 // ---------------------------------------------------------------------------
 // Personal records
 //
-// A PR belongs to an exercise in a workout: its total (weight × reps added up
-// over its sets) beat the best total it ever had. Bodyweight exercises count
-// total reps instead, since their "weight" is only what you weighed that day.
+// A PR belongs to an exercise in a workout: its total (its volume, so both
+// dumbbells for a dumbbell exercise) beat the best total it ever had.
+// Bodyweight exercises count total reps instead, since their "weight" is only
+// what you weighed that day.
 // A milestone is quieter: the first time you lift a weight heavier than ever
 // on that exercise. It isn't counted and gives no XP. The first time you do
 // an exercise only sets its baseline.
@@ -135,9 +137,7 @@ export function countedSets(sets: WorkoutSet[]): WorkoutSet[] {
 // What a PR compares: total weight moved, or total reps for bodyweight exercises.
 export function exerciseTotal(name: string, sets: WorkoutSet[]): number {
   const counted = countedSets(sets);
-  const total = isBodyweight(name)
-    ? counted.reduce((n, s) => n + s.reps, 0)
-    : counted.reduce((n, s) => n + s.weight * s.reps, 0);
+  const total = isBodyweight(name) ? counted.reduce((n, s) => n + s.reps, 0) : setsVolume(name, counted);
   // Weights converted from lb carry decimals; keep float noise out of comparisons.
   return Math.round(total * 100) / 100;
 }

@@ -1,7 +1,7 @@
 import { Workout } from "../types/workout";
 import { countPRs, weeklyGoalBonusXP, XP_WEEKLY_GOAL_BONUS } from "./gamification";
 import { lifetimeKg } from "./milestones";
-import { estimate1RM, workoutVolume } from "./stats";
+import { estimate1RM, setsVolume, workoutVolume } from "./stats";
 import { convertWeight } from "./units";
 
 export type Achievement = {
@@ -43,7 +43,7 @@ function longestGoalStreak(workouts: Workout[], weeklyGoal: number): number {
 
 // Everything an achievement might check, computed once from the history.
 function buildContext(workouts: Workout[], weeklyGoal: number) {
-  let totalVolume = 0; // sum of weight * reps across every logged set
+  let totalVolume = 0; // the volume of every logged set, both dumbbells counted
   let totalReps = 0;
   let totalMinutes = 0;
   const exerciseNames = new Set<string>();
@@ -75,8 +75,8 @@ function buildContext(workouts: Workout[], weeklyGoal: number) {
       if (ex.supersetId) supersets = true;
       const working = ex.sets.filter((s) => s.type !== "warmup");
       if (working.length > 0) exerciseNames.add(ex.name);
+      totalVolume += setsVolume(ex.name, working);
       working.forEach((s) => {
-        totalVolume += s.weight * s.reps;
         totalReps += s.reps;
         mostRepsInSet = Math.max(mostRepsInSet, s.reps);
         best1RMKg = Math.max(best1RMKg, convertWeight(estimate1RM(s.weight, s.reps), w.unit, "kg"));

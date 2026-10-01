@@ -28,6 +28,10 @@ tap the bar or swipe it up to bring the workout back.
 **Progress.** History with editable past workouts, per-exercise charts and PR
 history, a consistency heatmap, weekly sets per muscle, a body-weight log, and
 a recovery view that estimates what's still sore and suggests what to train.
+Volume is weight × reps, and a dumbbell exercise counts its weight twice, one
+for each dumbbell, the way Strong counts it: two 20 kg dumbbells for 10 reps
+is 400 kg, though the set is logged as 20 kg. That goes for every total: a
+workout's, an exercise's PRs, the lifetime landmarks and the achievements.
 
 **Motivation.** XP and levels to a cap of 150 (about three years at five
 workouts a week), eleven ranks from Rookie to Legend, each with its own frame

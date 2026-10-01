@@ -51,6 +51,12 @@ const EQUIPMENT = new Map<string, string | null>([
     ...exercises.map((e) => [e.name, e.equipment] as const),
 ]);
 
+// Dumbbell exercises are logged with one dumbbell's weight. Volume counts it
+// twice, one for each dumbbell (lib/stats.ts, setsVolume).
+export function isDumbbell(name: string): boolean {
+    return EQUIPMENT.get(name) === 'dumbbell';
+}
+
 // Empty-bar weight for exercises loaded with plates, 0 for everything else.
 // Used by the plate and warm-up calculators.
 export function barWeight(name: string, unit: 'kg' | 'lb'): number {

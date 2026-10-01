@@ -26,6 +26,11 @@ describe("achievements", () => {
     expect(got.has("session-whale")).toBe(false);
   });
 
+  test("volume counts both dumbbells", () => {
+    const curls = workout("Arms", at(2026, 9, 1), [{ name: "Dumbbell Hammer Curl", sets: sets(2, 25, 10) }]); // 500 a dumbbell
+    expect(unlocked([curls]).has("volume-1k")).toBe(true);
+  });
+
   test("lifetime landmarks use the total in kg, whatever unit was logged", () => {
     const lb = { ...workout("Legs", at(2026, 9, 1), [{ name: "Squat", sets: sets(1, 27_600, 1) }]), unit: "lb" as const };
     expect(unlocked([lb]).has("landmark-bus")).toBe(true); // 27,600 lb ≈ 12,519 kg

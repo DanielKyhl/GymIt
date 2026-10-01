@@ -124,6 +124,17 @@ describe("newRecords", () => {
   });
 });
 
+describe("dumbbell exercises", () => {
+  test("their totals count both dumbbells, and so does a PR's gain", () => {
+    const curls = (n: number, ...sets: WorkoutSet[]) => workout("Pull", day(n), [{ name: "Dumbbell Hammer Curl", sets }]);
+    const before = curls(1, set(16, 20), set(16, 20)); // 640 a dumbbell
+    const after = curls(3, set(16, 22), set(16, 20)); // 672 a dumbbell
+    expect(recordsOf([after, before], after)).toEqual([
+      { exercise: "Dumbbell Hammer Curl", pr: { total: 1344, previous: 1280, inReps: false } },
+    ]);
+  });
+});
+
 describe("prHistory", () => {
   test("every PR one exercise set, newest first", () => {
     const history = [
