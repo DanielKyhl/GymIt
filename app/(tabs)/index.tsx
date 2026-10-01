@@ -1,8 +1,9 @@
-import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useFocusEffect, useIsFocused, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { BodyWeightPrompt } from "../../components/BodyWeightPrompt";
 import { LevelCard } from "../../components/LevelCard";
+import { useShowTips, useTipTarget } from "../../components/Tips";
 import { useAuth } from "../../context/AuthContext";
 import { useWorkoutSheet } from "../../context/WorkoutSheet";
 import { relativeDay } from "../../lib/format";
@@ -34,6 +35,8 @@ export default function HomeScreen() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [weeklyGoal, setWeeklyGoal] = useState(3);
   const [askWeight, setAskWeight] = useState(false);
+  // Whether it's been checked yet, so the welcome tips wait for the question.
+  const [weightChecked, setWeightChecked] = useState(false);
   const [unit, setUnit] = useState<"kg" | "lb">("kg");
   const [planIds, setPlanIds] = useState<string[]>([]);
 
@@ -43,10 +46,22 @@ export default function HomeScreen() {
       getWorkoutsForStats().then(setWorkouts);
       getWeeklyGoal().then(setWeeklyGoal);
       getDefaultUnit().then(setUnit);
-      shouldAskBodyWeight().then(setAskWeight);
+      shouldAskBodyWeight().then((ask) => {
+        setAskWeight(ask);
+        setWeightChecked(true);
+      });
       getPlanTemplates().then(setPlanIds);
     }, [])
   );
+
+  // A new account's welcome tips, once Home's settled and nothing's in the way.
+  const isFocused = useIsFocused();
+  const showTips = useShowTips();
+  useEffect(() => {
+    if (isFocused && weightChecked && !askWeight && !workout) return showTips("home");
+  }, [isFocused, weightChecked, askWeight, workout, showTips]);
+  const upNextRef = useTipTarget("home.upNext");
+  const settingsRef = useTipTarget("home.settings");
 
   const totalXP = computeXP(workouts, weeklyGoal);
   const { level, xpIntoLevel, xpForNext, isMax } = levelInfo(totalXP);
@@ -84,7 +99,7 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>GymIt</Text>
         <View style={styles.headerRight}>
-          <Pressable onPress={() => router.push("/settings")} hitSlop={HIT} accessibilityLabel="Settings">
+          <Pressable ref={settingsRef} onPress={() => router.push("/settings")} hitSlop={HIT} accessibilityLabel="Settings">
             <Settings size={22} color={C.text} />
           </Pressable>
           <Pressable onPress={logout}>
@@ -94,7 +109,7 @@ export default function HomeScreen() {
       </View>
 
       {!workout && suggestion && (
-        <View style={styles.hero}>
+        <View ref={upNextRef} style={styles.hero}>
           <Text style={styles.heroLabel}>Up next</Text>
           <Pressable onPress={() => router.push(`/template/${suggestion.template.id}`)} hitSlop={HIT}>
             <Text style={styles.heroName} numberOfLines={1}>

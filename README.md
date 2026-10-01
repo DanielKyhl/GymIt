@@ -34,7 +34,10 @@ workouts a week), eleven ranks from Rookie to Legend, each with its own frame
 around the level badge, a weekly-goal streak with shields that cover a missed
 week, 50 achievements, and an end-of-workout summary with a shareable card.
 
-**Accounts.** Email sign-up, password reset and account deletion. Everything is
+**Accounts.** Email sign-up, a short setup, then a few welcome tips on the
+real screens: three on Home and three in your first workout, each pointing at
+the thing it explains. They show once per account (Skip ends them all), and
+older accounts never see them. Password reset and account deletion. Everything is
 local first and syncs to Firestore in the background, so the app works offline
 and your history follows you to a new phone.
 

@@ -14,6 +14,7 @@ import { RestEditor } from "./RestEditor";
 import { RestRow } from "./RestRow";
 import { RpeCell, RpeHelpButton, rpeItems } from "./Rpe";
 import { SetBadge, setTypeItems } from "./SetBadge";
+import { useShowTips, useTipTarget } from "./Tips";
 import { C, HIT, R, T } from "../constants/theme";
 import {
   ActiveWorkout,
@@ -105,7 +106,7 @@ const blankSets = (weight: number, restSeconds: number): WorkoutSet[] =>
 
 export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => void }) {
   const router = useRouter();
-  const { setGlance } = useWorkoutSheet();
+  const { setGlance, open: sheetOpen } = useWorkoutSheet();
   const pad = usePad();
   // No dimming mid-set: the screen stays on while a workout is under way,
   // tucked away or not.
@@ -244,6 +245,15 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
       names.map((name) => [name, { bests: historyBests(pastWorkouts, name), prev: getLastPerformance(own, name) }])
     );
   }, [pastWorkouts, exerciseNames, templateId, workoutName]);
+
+  // A new account's welcome tips for a workout, once there's a set to point at.
+  const showTips = useShowTips();
+  const hasSet = Boolean(active?.exercises[0]?.sets.length);
+  useEffect(() => {
+    if (sheetOpen && hasSet) return showTips("workout");
+  }, [sheetOpen, hasSet, showTips]);
+  const firstSetRef = useTipTarget("workout.set");
+  const firstNameRef = useTipTarget("workout.name");
 
   if (status === "missing") {
     return (
@@ -578,7 +588,7 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
                 <View style={styles.cardHeader}>
                   <View style={styles.cardTitle}>
                     {ex.supersetId ? <Text style={styles.supersetLabel}>Superset</Text> : null}
-                    <View style={styles.nameRow}>
+                    <View ref={exIndex === 0 ? firstNameRef : undefined} style={styles.nameRow}>
                       <HoldToMove index={exIndex} onPickUp={() => pad?.close()} style={styles.nameShrink}>
                         <Text style={styles.exerciseName} numberOfLines={2} selectable={false}>
                           {ex.name}
@@ -633,7 +643,10 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
                   const lastTime = p ? `Last time ${!p.weight && bodyweight ? "BW" : p.weight} × ${p.reps}` : undefined;
                   return (
                     <View key={setIndex}>
-                      <View style={[styles.row, styles.setRow, set.done && styles.setRowDone]}>
+                      <View
+                        ref={exIndex === 0 && setIndex === 0 ? firstSetRef : undefined}
+                        style={[styles.row, styles.setRow, set.done && styles.setRowDone]}
+                      >
                         <SetBadge
                           type={set.type}
                           number={number}

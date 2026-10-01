@@ -6,6 +6,7 @@ import { currentName, withCurrentNames } from './exerciseNames';
 import { Experience, Goal, needsOnboarding, restForGoal } from './onboarding';
 import { hasSyncedBefore, isNewAccount, putRecords, readLocal, readyUid, SETTINGS_ID, updateRecord } from './sync';
 import { live, SyncRecord } from './syncMerge';
+import { TIP_TOURS, TipTour, tipsAfter } from './tips';
 import { timerSoundOrDefault, TimerSoundId } from './timerSounds';
 import { normalizeUnits } from './units';
 
@@ -30,6 +31,7 @@ type Settings = SyncRecord & {
     experience?: Experience;
     onboarded?: boolean; // finished or skipped the first-run setup
     planTemplates?: string[]; // the split picked during setup, e.g. upper then lower
+    tips?: TipTour[]; // welcome tips still to show: new accounts only, from setup on (lib/tips.ts)
     favoriteExercises?: string[]; // starred in the exercise picker, A-Z
 };
 
@@ -328,6 +330,7 @@ export async function completeOnboarding(a: OnboardingAnswers): Promise<void> {
         defaultRest: restForGoal(a.goal),
         planTemplates: a.planTemplates,
         onboarded: true,
+        tips: TIP_TOURS,
         // Asked here, so Home doesn't ask again (even if they left it blank).
         bodyWeightAsked: true,
         ...(a.bodyWeight
@@ -352,7 +355,24 @@ export async function getPlanTemplates(): Promise<string[]> {
 }
 
 export async function skipOnboarding(): Promise<void> {
-    await setSetting({ onboarded: true });
+    await setSetting({ onboarded: true, tips: TIP_TOURS });
+}
+
+// The welcome tips (components/Tips.tsx). Only accounts that went through the
+// first-run setup have any: older accounts never see them.
+export async function getPendingTips(): Promise<TipTour[]> {
+    return (await getSettings()).tips ?? [];
+}
+
+// A set of tips has been seen, or "Skip tips" ended them all. Synced, so
+// another phone doesn't show them again.
+export async function finishTips(done: TipTour | 'all'): Promise<void> {
+    await updateRecord<Settings>(await requireUid(), 'meta', SETTINGS_ID, (current) => ({
+        ...current,
+        tips: tipsAfter(current?.tips ?? [], done),
+        id: SETTINGS_ID,
+        updatedAt: Date.now(),
+    }));
 }
 
 // Everything the user owns, as plain JSON, for the Settings backup button.

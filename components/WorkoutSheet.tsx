@@ -13,6 +13,7 @@ import { scheduleOnRN } from "react-native-worklets";
 import { C } from "../constants/theme";
 import { useWorkoutSheet } from "../context/WorkoutSheet";
 import { NumberPadArea } from "./NumberPad";
+import { useTipTarget } from "./Tips";
 import { WorkoutInProgress } from "./WorkoutInProgress";
 
 // The workout in progress, in a sheet over the whole app (see
@@ -46,6 +47,7 @@ const gone = (Platform.OS === "web" ? { visibility: "hidden" } : {}) as ViewStyl
 
 export function WorkoutSheet() {
   const { workout, open, hide, close, y, dock, peeking } = useWorkoutSheet();
+  const gripRef = useTipTarget("workout.handle");
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const top = insets.top + GAP; // where its top edge sits when it's open
@@ -135,7 +137,9 @@ export function WorkoutSheet() {
             accessibilityRole="button"
             accessibilityLabel="Minimize workout"
           >
-            <View style={styles.handle} />
+            <View ref={gripRef} style={styles.handleArea}>
+              <View style={styles.handle} />
+            </View>
           </Pressable>
         </View>
         <NumberPadArea>
@@ -161,6 +165,8 @@ const styles = StyleSheet.create({
     borderColor: C.raised,
     overflow: "hidden",
   },
-  grip: { alignItems: "center", paddingTop: 10, paddingBottom: 14 },
+  grip: { alignItems: "center", paddingTop: 4, paddingBottom: 8 },
+  // Around the handle, for the welcome tip that points at it.
+  handleArea: { paddingVertical: 6, paddingHorizontal: 16 },
   handle: { width: 40, height: 5, borderRadius: 3, backgroundColor: C.selected },
 });

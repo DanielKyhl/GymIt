@@ -56,6 +56,24 @@ async function answerBodyWeight(page: Page) {
   }
 }
 
+// A new account's welcome tips: a set on Home, then a set in its first
+// workout. Each tip has to be gone past before anything else can be tapped.
+const tipCard = (page: Page) => onScreen(page.getByRole("alert")).filter({ hasText: /^Tip \d of \d/ });
+const HOME_TIPS = ["Your next workout", "History, progress and recovery", "Settings"];
+const WORKOUT_TIPS = ["Logging a set", "Look around mid-workout", "Change the order"];
+
+async function walkTips(page: Page, titles: string[]) {
+  for (const [i, title] of titles.entries()) {
+    const card = tipCard(page);
+    await expect(card).toContainText(`Tip ${i + 1} of ${titles.length}`);
+    await expect(card).toContainText(title);
+    const last = i === titles.length - 1;
+    await expect(card.getByText("Skip tips", { exact: true })).toHaveCount(last ? 0 : 1);
+    await card.getByRole("button", { name: last ? "Done" : "Next", exact: true }).click();
+  }
+  await expect(tipCard(page)).toHaveCount(0);
+}
+
 // A fresh account, past the first-run setup, on Home.
 async function signUp(page: Page) {
   await page.goto("/");
@@ -167,6 +185,14 @@ test("sign up, build a template, train from it, come back to it", async ({ page 
 
   await test.step("sign up and skip the setup", () => signUp(page));
 
+  await test.step("Home's welcome tips, once", async () => {
+    await walkTips(page, HOME_TIPS);
+    await page.getByRole("tab", { name: "History" }).click();
+    await page.getByRole("tab", { name: "Home" }).click();
+    await page.waitForTimeout(1500);
+    await expect(tipCard(page)).toHaveCount(0);
+  });
+
   await test.step("back arrows are drawn and work", async () => {
     await labelled(page, "Settings").click();
     await expect(page).toHaveURL(/\/settings$/);
@@ -218,6 +244,7 @@ test("sign up, build a template, train from it, come back to it", async ({ page 
   await test.step("a workout from it keeps the screen on and logs sets", async () => {
     await tap(page, "Start workout");
     await expectWorkoutOpen(page);
+    await walkTips(page, WORKOUT_TIPS); // the first workout's; the next one has none
     await expect.poll(() => page.evaluate(() => (window as unknown as { __wakeLocks: number }).__wakeLocks)).toBeGreaterThan(0);
 
     await expect(labelled(page, "About Pull-Up")).toBeVisible();
@@ -374,7 +401,12 @@ test("rest timer: type your own time, change it mid-rest, and ring without pausi
   const sound = () => page.evaluate(() => (window as unknown as { __sound: { webAudio: number; media: number } }).__sound);
   const audioSession = () => page.evaluate(() => (navigator as unknown as { audioSession: { type: string } }).audioSession.type);
 
-  await test.step("sign up", () => signUp(page));
+  await test.step("sign up, and skip the welcome tips", async () => {
+    await signUp(page);
+    await expect(tipCard(page)).toContainText("Tip 1 of 3");
+    await tipCard(page).getByText("Skip tips", { exact: true }).click();
+    await expect(tipCard(page)).toHaveCount(0);
+  });
 
   await test.step("pick the rest timer's sound in Settings, and hear it", async () => {
     await labelled(page, "Settings").click();
@@ -395,6 +427,9 @@ test("rest timer: type your own time, change it mid-rest, and ring without pausi
     await tap(page, "Pull-Up");
     // Three sets, and a rest after each, the last included.
     await expect(labelled(page, "Rest 2:00. Change rest time")).toHaveCount(3);
+    // Skipped on Home means skipped here too.
+    await page.waitForTimeout(1500);
+    await expect(tipCard(page)).toHaveCount(0);
 
     await labelled(page, "Rest 2:00. Change rest time").last().click();
     await pressKeys(page, "1>45"); // it opens on the minutes; Next to the seconds
