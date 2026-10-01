@@ -1,6 +1,6 @@
 import { SetType, Template, TemplateSet, Workout, WorkoutExercise, WorkoutSet } from "../types/workout";
 import { isBodyweight } from "./exercises";
-import { countedSets, exerciseTotal } from "./stats";
+import { countedSets, exerciseTotal, templateHistory } from "./stats";
 import { Unit } from "./units";
 
 // The workout in progress. Saved on the device after every change, so closing
@@ -307,15 +307,17 @@ const isBlankPlan = (sets?: TemplateSet[]) => !sets?.length || sets.every((s) =>
 
 // For templates that were never given numbers, including ones used before
 // workouts wrote theirs back: each blank exercise takes the sets from the
-// last time you did it, in any workout. Exercises that have a plan are left
-// alone. `workouts` newest first, in the template's unit. Null if there's
-// nothing to fill.
+// last time you did it in a workout from this template (not from another
+// template: that's another plan). Exercises that have a plan are left alone.
+// `workouts` newest first, in the template's unit. Null if there's nothing
+// to fill.
 export function fillBlankTemplate(template: Template, workouts: Workout[]): Template | null {
+  const own = templateHistory(workouts, template);
   const lastTimes: WorkoutExercise[] = [];
   template.exercises
     .filter((e) => isBlankPlan(e.sets))
     .forEach((e) => {
-      for (const w of workouts) {
+      for (const w of own) {
         const sets = w.exercises.find((x) => x.name === e.name)?.sets.filter((s) => s.done || s.reps > 0);
         if (sets?.length) {
           lastTimes.push({ name: e.name, sets: sets.map((s) => ({ ...s, done: true })) });

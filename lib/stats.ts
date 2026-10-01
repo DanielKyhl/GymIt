@@ -79,6 +79,14 @@ export function getLastPerformance(workouts: Workout[], name: string): WorkoutSe
   }
   return [];
 }
+// A template's own history: the past workouts started from it. That's where
+// its "last time" numbers come from, because the same exercise in another
+// template is another plan, with its own weights. Workouts saved before they
+// kept their template count by name.
+export function templateHistory(workouts: Workout[], template: { id: string; name: string }): Workout[] {
+  return workouts.filter((w) => (w.templateId ? w.templateId === template.id : w.name === template.name));
+}
+
 export function lastUsedDate(workouts: Workout[], name: string): string | null {
   const match = workouts.find((w) => w.name === name);
   return match ? match.date : null;

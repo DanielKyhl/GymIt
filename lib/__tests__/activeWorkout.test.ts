@@ -366,7 +366,8 @@ describe("templateAfterWorkout", () => {
 
 describe("fillBlankTemplate", () => {
   const set = (weight: number, reps: number, extra: Partial<WorkoutSet> = {}): WorkoutSet => ({ weight, reps, done: true, ...extra });
-  const session = (date: string, exercises: WorkoutExercise[]) => ({ id: date, name: "Pull", date, durationSeconds: 3600, unit: "kg" as const, exercises });
+  // Workouts from the "Pull-" template, saved before workouts kept their template's id.
+  const session = (date: string, exercises: WorkoutExercise[]) => ({ id: date, name: "Pull-", date, durationSeconds: 3600, unit: "kg" as const, exercises });
   // Newest first, like the app keeps them.
   const history = [
     session("2026-09-20T18:00:00.000Z", [
@@ -405,5 +406,25 @@ describe("fillBlankTemplate", () => {
     expect(fillBlankTemplate(t, history)).toBeNull();
     const once = fillBlankTemplate({ id: "t", name: "Pull-", exercises: [blank("Face Pull")] }, history)!;
     expect(fillBlankTemplate(once, history)).toBeNull();
+  });
+
+  test("only from this template's own workouts, never another template's", () => {
+    const otherTemplate = {
+      ...session("2026-09-25T18:00:00.000Z", [{ name: "Face Pull", sets: [set(30, 12)] }]),
+      name: "Shoulders",
+      templateId: "s",
+    };
+    const emptyWorkout = { ...session("2026-09-24T18:00:00.000Z", [{ name: "Barbell Curl", sets: [set(30, 10)] }]), name: "Workout" };
+    const t = { id: "t", name: "Pull-", exercises: [blank("Face Pull"), blank("Barbell Curl")] };
+    const filled = fillBlankTemplate(t, [otherTemplate, emptyWorkout, ...history])!;
+    expect(filled.exercises[0].sets).toEqual([{ weight: 20, reps: 15 }, { weight: 20, reps: 15 }]); // Pull-'s own, not the 30x12
+    expect(filled.exercises[1].sets).toHaveLength(2); // never done in Pull-: still blank
+    expect(filled.exercises[1].sets?.every((x) => x.reps === 0)).toBe(true);
+  });
+
+  test("a workout that kept its template's id counts under any name", () => {
+    const renamed = { ...session("2026-09-26T18:00:00.000Z", [{ name: "Face Pull", sets: [set(25, 12)] }]), name: "Old name", templateId: "t" };
+    const t = { id: "t", name: "Pull-", exercises: [blank("Face Pull")] };
+    expect(fillBlankTemplate(t, [renamed, ...history])!.exercises[0].sets).toEqual([{ weight: 25, reps: 12 }]);
   });
 });

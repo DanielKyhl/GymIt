@@ -5,7 +5,10 @@ TypeScript. Log every set, and watch the numbers go up.
 
 ## What it does
 
-**Logging.** Build templates or start an empty workout. Each set takes weight,
+**Logging.** Build templates or start an empty workout. Each template keeps
+its own numbers: a workout from it starts from what you did last time in that
+template, and shows last time's sets beside today's, so the same exercise can
+be heavy in one template and light in another. Each set takes weight,
 reps, a type (working, warm-up, drop, failure) and an optional RPE. Numbers are
 typed on the app's own number pad rather than the phone's keyboard, with minus
 and plus keys that step the weight by 2.5 kg (5 lb) or the reps by one, and

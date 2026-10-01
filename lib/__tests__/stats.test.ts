@@ -4,6 +4,7 @@ import {
     getTrainedExercises,
     getVolumeByTemplate,
     lastUsedDate,
+    templateHistory,
     weeklyMuscleSets,
     workoutVolume,
 } from "../stats";
@@ -84,6 +85,21 @@ describe("getTrainedExercises", () => {
 describe("lookups", () => {
   test("getLastPerformance returns the most recent working sets", () => {
     expect(getLastPerformance(history, "Bench")).toEqual([set(100, 5)]);
+  });
+
+  test("last time in a template is last time in that template, not another one", () => {
+    const pushA = { id: "a", name: "Push A" };
+    const pushB = { id: "b", name: "Push B" };
+    const workouts = [
+      { ...workout("Push A", "2026-09-10", [{ name: "Bench", sets: [set(100, 5)] }]), templateId: "a" },
+      { ...workout("Push B", "2026-09-08", [{ name: "Bench", sets: [set(60, 12)] }]), templateId: "b" },
+      workout("Push B", "2026-09-01", [{ name: "Bench", sets: [set(55, 12)] }]), // before ids were kept: by name
+      workout("Workout", "2026-08-30", [{ name: "Bench", sets: [set(90, 3)] }]), // an empty workout
+    ];
+    expect(getLastPerformance(templateHistory(workouts, pushB), "Bench")).toEqual([set(60, 12)]);
+    expect(getLastPerformance(templateHistory(workouts, pushA), "Bench")).toEqual([set(100, 5)]);
+    expect(templateHistory(workouts, pushB).map((w) => w.date)).toEqual(["2026-09-08", "2026-09-01"]);
+    expect(getLastPerformance(templateHistory(workouts, { id: "c", name: "Legs" }), "Bench")).toEqual([]);
   });
 
   test("lastUsedDate finds the newest use of a template", () => {

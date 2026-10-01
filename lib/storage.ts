@@ -162,7 +162,8 @@ export async function migrateExerciseNames(uid: string): Promise<void> {
 }
 
 // Templates still blank (0x0) take the numbers from the last time each
-// exercise was done (lib/activeWorkout.ts, fillBlankTemplate). Run after each
+// exercise was done in that template (lib/activeWorkout.ts,
+// fillBlankTemplate). Run after each
 // sign-in sync; it only writes templates that still have blank exercises with
 // history behind them, so it settles after one pass.
 export async function fillBlankTemplates(uid: string): Promise<void> {

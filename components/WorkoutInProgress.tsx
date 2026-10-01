@@ -36,7 +36,7 @@ import {
 } from "../lib/activeWorkout";
 import { BodyWeight, startingWeight } from "../lib/bodyweight";
 import { barWeight, isBodyweight } from "../lib/exercises";
-import { getLastPerformance } from "../lib/stats";
+import { getLastPerformance, templateHistory } from "../lib/stats";
 import {
   clearActiveWorkout,
   getActiveWorkout,
@@ -230,16 +230,20 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
   useEffect(() => (timerSound ? prepareSound(timerSound) : undefined), [timerSound]);
 
   const exerciseNames = active?.exercises.map((e) => e.name).join("\n") ?? "";
+  const templateId = active?.templateId ?? null;
+  const workoutName = active?.name ?? "";
   // Per-exercise history lookups, only redone when the exercise list changes.
+  // "Last time" (the Previous column, the number pad's hint, the greyed-out
+  // weights) is last time in this template: the same exercise in another
+  // template is another plan. A workout that isn't from a template looks at
+  // them all. PRs are against everything you've ever lifted.
   const history = useMemo(() => {
     const names = exerciseNames ? exerciseNames.split("\n") : [];
+    const own = templateId ? templateHistory(pastWorkouts, { id: templateId, name: workoutName }) : pastWorkouts;
     return Object.fromEntries(
-      names.map((name) => [
-        name,
-        { bests: historyBests(pastWorkouts, name), prev: getLastPerformance(pastWorkouts, name) },
-      ])
+      names.map((name) => [name, { bests: historyBests(pastWorkouts, name), prev: getLastPerformance(own, name) }])
     );
-  }, [pastWorkouts, exerciseNames]);
+  }, [pastWorkouts, exerciseNames, templateId, workoutName]);
 
   if (status === "missing") {
     return (
@@ -457,6 +461,7 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
       durationSeconds: elapsedSeconds(active.startedAt, Date.now()),
       unit,
       exercises: loggedExercises(active.exercises),
+      ...(active.templateId ? { templateId: active.templateId } : {}),
     };
     await saveWorkout(workout);
     await clearActiveWorkout();
