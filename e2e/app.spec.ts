@@ -173,6 +173,23 @@ async function pullBarUp(page: Page, by: number) {
   await page.mouse.up();
 }
 
+// Swipes a set's row to the left, starting on one of its numbers, slowly
+// (5 px every 40 ms, well under a flick), so only the distance decides.
+async function swipeLeft(page: Page, from: Locator, by: number) {
+  await from.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  const box = await from.boundingBox();
+  if (!box) throw new Error("the set isn't showing");
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  for (let moved = 5; moved <= by; moved += 5) {
+    await page.mouse.move(x - moved, y);
+    await page.waitForTimeout(40);
+  }
+  await page.mouse.up();
+}
+
 test("sign up, build a template, train from it, come back to it", async ({ page }) => {
   page.on("dialog", (d) => d.accept()); // "Finish workout?" and friends
 
@@ -536,5 +553,17 @@ test("rest timer: type your own time, change it mid-rest, and ring without pausi
     await expect(running.getByText("Rest's up", { exact: true })).toBeVisible();
     await page.waitForTimeout(1500); // long enough to have rung
     expect((await sound()).webAudio).toBe(rung);
+  });
+
+  await test.step("swipe a set left to delete it; a short swipe springs back", async () => {
+    const reps = (n: number) => labelled(page, `Barbell Curl set ${n} reps`);
+    await expect(reps(3)).toBeVisible();
+    await swipeLeft(page, reps(3), 40);
+    await page.waitForTimeout(500); // sprung back
+    await expect(reps(3)).toBeVisible();
+
+    await swipeLeft(page, reps(3), 250);
+    await expect(reps(3)).toHaveCount(0);
+    await expect(reps(2)).toBeVisible();
   });
 });

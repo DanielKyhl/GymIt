@@ -14,6 +14,7 @@ import { RestEditor } from "./RestEditor";
 import { RestRow } from "./RestRow";
 import { RpeCell, RpeHelpButton, rpeItems } from "./Rpe";
 import { SetBadge, setTypeItems } from "./SetBadge";
+import { SwipeToDelete } from "./SwipeToDelete";
 import { useShowTips, useTipTarget } from "./Tips";
 import { C, HIT, R, T } from "../constants/theme";
 import {
@@ -647,78 +648,88 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
                   const lastTime = p ? `Last time ${!p.weight && bodyweight ? "BW" : p.weight} × ${p.reps}` : undefined;
                   return (
                     <View key={setIndex}>
-                      <View
-                        ref={exIndex === 0 && setIndex === 0 ? firstSetRef : undefined}
-                        style={[styles.row, styles.setRow, set.done && styles.setRowDone]}
+                      {/* Swipe a set left to delete it, as in Strong. */}
+                      <SwipeToDelete
+                        onDelete={() => {
+                          pad?.close();
+                          removeSet(exIndex, setIndex);
+                        }}
+                        background={C.card}
+                        style={styles.setSwipe}
                       >
-                        <SetBadge
-                          type={set.type}
-                          number={number}
-                          onOpen={(anchor) =>
-                            setMenu({
-                              anchor,
-                              title: set.type === "warmup" ? "Warm-up set" : `Set ${number}`,
-                              items: setTypeItems(
-                                set.type,
-                                ex.sets.slice(0, setIndex).filter((s) => s.type !== "warmup").length + 1,
-                                (type) => updateSet(exIndex, setIndex, { type }),
-                                () => removeSet(exIndex, setIndex)
-                              ),
-                            })
-                          }
-                        />
-                        <View style={[styles.colPrev, styles.prevCell]}>
-                          <Text style={styles.prev} numberOfLines={1}>
-                            {p ? `${!p.weight && bodyweight ? "BW" : p.weight} × ${p.reps}` : "–"}
-                          </Text>
-                          {isLivePR(ex, setIndex, bests.total) && (
-                            <View style={styles.prPill}>
-                              <Text style={styles.prText}>PR</Text>
-                            </View>
-                          )}
-                          {isLiveMilestone(ex, setIndex, bests.heaviest) && (
-                            <View style={styles.firstPill} accessibilityLabel="First time at this weight">
-                              <Text style={styles.firstText}>↑ 1st</Text>
-                            </View>
-                          )}
+                        <View
+                          ref={exIndex === 0 && setIndex === 0 ? firstSetRef : undefined}
+                          style={[styles.row, styles.setRow, set.done && styles.setRowDone]}
+                        >
+                          <SetBadge
+                            type={set.type}
+                            number={number}
+                            onOpen={(anchor) =>
+                              setMenu({
+                                anchor,
+                                title: set.type === "warmup" ? "Warm-up set" : `Set ${number}`,
+                                items: setTypeItems(
+                                  set.type,
+                                  ex.sets.slice(0, setIndex).filter((s) => s.type !== "warmup").length + 1,
+                                  (type) => updateSet(exIndex, setIndex, { type }),
+                                  () => removeSet(exIndex, setIndex)
+                                ),
+                              })
+                            }
+                          />
+                          <View style={[styles.colPrev, styles.prevCell]}>
+                            <Text style={styles.prev} numberOfLines={1}>
+                              {p ? `${!p.weight && bodyweight ? "BW" : p.weight} × ${p.reps}` : "–"}
+                            </Text>
+                            {isLivePR(ex, setIndex, bests.total) && (
+                              <View style={styles.prPill}>
+                                <Text style={styles.prText}>PR</Text>
+                              </View>
+                            )}
+                            {isLiveMilestone(ex, setIndex, bests.heaviest) && (
+                              <View style={styles.firstPill} accessibilityLabel="First time at this weight">
+                                <Text style={styles.firstText}>↑ 1st</Text>
+                              </View>
+                            )}
+                          </View>
+                          <NumberInput
+                            style={[styles.input, styles.colWeight]}
+                            placeholder={p?.weight ? String(p.weight) : "0"}
+                            placeholderTextColor={C.textFaint}
+                            value={set.weight}
+                            onChangeValue={(v) => updateSet(exIndex, setIndex, { weight: v })}
+                            step={unit === "kg" ? 2.5 : 5}
+                            label={`${setName} · weight`}
+                            hint={lastTime}
+                            order={exIndex * 1000 + setIndex * 2}
+                            accessibilityLabel={`${ex.name} set ${setIndex + 1} weight`}
+                          />
+                          <NumberInput
+                            style={[styles.input, styles.colReps]}
+                            decimals={false}
+                            placeholder={p ? String(p.reps) : "0"}
+                            placeholderTextColor={C.textFaint}
+                            value={set.reps}
+                            onChangeValue={(v) => updateSet(exIndex, setIndex, { reps: v })}
+                            label={`${setName} · reps`}
+                            hint={lastTime}
+                            order={exIndex * 1000 + setIndex * 2 + 1}
+                            accessibilityLabel={`${ex.name} set ${setIndex + 1} reps`}
+                          />
+                          <RpeCell
+                            value={set.rpe}
+                            onOpen={(anchor) =>
+                              setMenu({
+                                anchor,
+                                align: "right",
+                                title: "How hard was that set?",
+                                items: rpeItems(set.rpe, (rpe) => updateSet(exIndex, setIndex, { rpe })),
+                              })
+                            }
+                          />
+                          <CheckButton done={set.done} onToggle={() => toggleDone(exIndex, setIndex)} />
                         </View>
-                        <NumberInput
-                          style={[styles.input, styles.colWeight]}
-                          placeholder={p?.weight ? String(p.weight) : "0"}
-                          placeholderTextColor={C.textFaint}
-                          value={set.weight}
-                          onChangeValue={(v) => updateSet(exIndex, setIndex, { weight: v })}
-                          step={unit === "kg" ? 2.5 : 5}
-                          label={`${setName} · weight`}
-                          hint={lastTime}
-                          order={exIndex * 1000 + setIndex * 2}
-                          accessibilityLabel={`${ex.name} set ${setIndex + 1} weight`}
-                        />
-                        <NumberInput
-                          style={[styles.input, styles.colReps]}
-                          decimals={false}
-                          placeholder={p ? String(p.reps) : "0"}
-                          placeholderTextColor={C.textFaint}
-                          value={set.reps}
-                          onChangeValue={(v) => updateSet(exIndex, setIndex, { reps: v })}
-                          label={`${setName} · reps`}
-                          hint={lastTime}
-                          order={exIndex * 1000 + setIndex * 2 + 1}
-                          accessibilityLabel={`${ex.name} set ${setIndex + 1} reps`}
-                        />
-                        <RpeCell
-                          value={set.rpe}
-                          onOpen={(anchor) =>
-                            setMenu({
-                              anchor,
-                              align: "right",
-                              title: "How hard was that set?",
-                              items: rpeItems(set.rpe, (rpe) => updateSet(exIndex, setIndex, { rpe })),
-                            })
-                          }
-                        />
-                        <CheckButton done={set.done} onToggle={() => toggleDone(exIndex, setIndex)} />
-                      </View>
+                      </SwipeToDelete>
 
                       {/* The rest after this set: before the next set, or after the
                           last one, before the next exercise. */}
@@ -839,7 +850,8 @@ const styles = StyleSheet.create({
   colHeadInline: { marginBottom: 0 },
   center: { textAlign: "center" },
   rpeHead: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 6 },
-  setRow: { paddingVertical: 5, paddingHorizontal: 6, marginHorizontal: -6, borderRadius: R.md },
+  setSwipe: { marginHorizontal: -6, borderRadius: R.md },
+  setRow: { paddingVertical: 5, paddingHorizontal: 6, borderRadius: R.md },
   setRowDone: { backgroundColor: C.successBg },
   prevCell: { flexDirection: "row", alignItems: "center", gap: 6 },
   prev: { color: C.textFaint, fontSize: 13, flexShrink: 1 },
