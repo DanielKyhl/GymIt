@@ -28,6 +28,7 @@ import {
   loggedExercises,
   movedIndex,
   moveExercise,
+  previousSet,
   restAfterSet,
   setNumber,
   toggleSet,
@@ -387,7 +388,9 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
     const prev = history[ex.name]?.prev ?? [];
     const bar = barWeight(ex.name, unit);
     const working =
-      ex.sets.find((s) => s.type !== "warmup" && s.weight > 0)?.weight ?? prev.find((s) => s.weight > 0)?.weight ?? 0;
+      ex.sets.find((s) => s.type !== "warmup" && s.weight > 0)?.weight ??
+      prev.find((s) => s.type !== "warmup" && s.weight > 0)?.weight ??
+      0;
     const rest = ex.sets.find((s) => s.restSeconds !== undefined)?.restSeconds ?? defaultRest;
     const next = active.exercises[exIndex + 1];
     const linkedToNext = Boolean(ex.supersetId && next?.supersetId === ex.supersetId);
@@ -635,7 +638,7 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
 
                 {ex.sets.map((set, setIndex) => {
                   const number = setNumber(ex.sets, setIndex);
-                  const p = prev[setIndex];
+                  const p = previousSet(ex.sets, setIndex, prev);
                   const rest = restAfterSet(active.exercises, exIndex, setIndex);
                   const running = active.rest?.exIndex === exIndex && active.rest.setIndex === setIndex ? active.rest : null;
                   // For the number pad: which set it is, and last time's numbers.

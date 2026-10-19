@@ -92,8 +92,17 @@ describe("getTrainedExercises", () => {
 });
 
 describe("lookups", () => {
-  test("getLastPerformance returns the most recent working sets", () => {
+  test("getLastPerformance returns the most recent session's sets", () => {
     expect(getLastPerformance(history, "Bench")).toEqual([set(100, 5)]);
+  });
+
+  test("warm-ups come along, to line up with this time's; a warm-up-only session is skipped", () => {
+    const warmup = set(40, 10, { type: "warmup" });
+    const w = [
+      workout("Push", "2026-09-08", [{ name: "Bench", sets: [warmup] }]),
+      workout("Push", "2026-09-05", [{ name: "Bench", sets: [warmup, set(100, 5)] }]),
+    ];
+    expect(getLastPerformance(w, "Bench")).toEqual([warmup, set(100, 5)]);
   });
 
   test("last time in a template is last time in that template, not another one", () => {

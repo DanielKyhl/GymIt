@@ -14,8 +14,9 @@ import {
   platesPerSide,
   restAfterSet,
   restFromParts,
-  restJustEnded,
+  ringsOnTime,
   fillBlankTemplate,
+  previousSet,
   setNumber,
   templateAfterWorkout,
   toggleSet,
@@ -38,19 +39,23 @@ describe("timer", () => {
 });
 
 describe("ringing when a rest is up", () => {
-  const rest = { startedAt: 1_000_000, target: 90, exIndex: 0, setIndex: 0 };
-  const at = (seconds: number) => rest.startedAt + seconds * 1000;
+  // Seconds into a 90-second rest; the app looks four times a second.
+  const at = (seconds: number) => 1_000_000 + seconds * 1000;
 
-  test("rings right as it runs out", () => {
-    expect(restJustEnded(rest, at(89.9))).toBe(false);
-    expect(restJustEnded(rest, at(90))).toBe(true);
-    expect(restJustEnded(rest, at(92.5))).toBe(true);
+  test("rings as it runs out, while the app is running", () => {
+    expect(ringsOnTime(at(89.8), at(90.05))).toBe(true);
+  });
+
+  test("still rings on a busy phone that looks a few seconds late", () => {
+    // What a 2-second window missed: the app was running, just slow.
+    expect(ringsOnTime(at(88), at(93))).toBe(true);
   });
 
   test("not when you come back to the app after it ran out", () => {
-    // The phone was locked, so the app couldn't ring when it ran out.
-    expect(restJustEnded(rest, at(93))).toBe(false);
-    expect(restJustEnded(rest, at(600))).toBe(false);
+    // The phone was locked from 1:20, so the app couldn't ring at 1:30.
+    expect(ringsOnTime(at(80), at(600))).toBe(false);
+    // Even locked just before the end, coming back late is late.
+    expect(ringsOnTime(at(89.9), at(120))).toBe(false);
   });
 });
 
@@ -58,6 +63,21 @@ describe("set numbers and rest labels", () => {
   test("warm-ups aren't numbered, working sets count from 1", () => {
     const sets = [set(20, 10, { type: "warmup" }), set(40, 5, { type: "warmup" }), set(60, 8), set(60, 8, { type: "drop" })];
     expect(sets.map((_, i) => setNumber(sets, i))).toEqual([0, 0, 1, 2]);
+  });
+
+  test("last time lines up warm-ups with warm-ups and set 1 with set 1", () => {
+    // Last time: one warm-up and two working sets on the pulldown.
+    const last = [set(20, 12, { type: "warmup" }), set(50, 10), set(50, 8)];
+    const today = [set(20, 12, { type: "warmup" }), set(55, 0), set(55, 0)];
+    expect([0, 1, 2].map((i) => previousSet(today, i, last))).toEqual(last);
+  });
+
+  test("a warm-up added this time doesn't push last time's sets down", () => {
+    const last = [set(50, 10), set(50, 8)]; // no warm-up last time
+    const today = [set(20, 12, { type: "warmup" }), set(50, 0), set(50, 0)];
+    expect(today.map((_, i) => previousSet(today, i, last))).toEqual([undefined, last[0], last[1]]);
+    // And one left out this time doesn't pull them up.
+    expect(previousSet([set(50, 0)], 0, [set(20, 12, { type: "warmup" }), set(50, 10)])).toEqual(set(50, 10));
   });
 
   test("rest reads like a clock", () => {

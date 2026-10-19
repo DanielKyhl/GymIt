@@ -67,15 +67,13 @@ export function getTrainedExercises(workouts: Workout[]): ExerciseSummary[] {
   return [...map.values()].sort((a, b) => b.sessionCount - a.sessionCount);
 }
 
-// The working sets from the most recent past workout that included this
-// exercise — used to show "previous" hints while logging.
+// The sets from the most recent past workout that included this exercise
+// (with working sets in it) — the "last time" shown while logging.
 export function getLastPerformance(workouts: Workout[], name: string): WorkoutSet[] {
   for (const w of workouts) {
     const ex = w.exercises.find((e) => e.name === name);
-    if (ex) {
-      const working = ex.sets.filter((s) => s.type !== "warmup");
-      if (working.length > 0) return working;
-    }
+    // Warm-ups included, to line up with this time's (previousSet).
+    if (ex?.sets.some((s) => s.type !== "warmup")) return ex.sets;
   }
   return [];
 }

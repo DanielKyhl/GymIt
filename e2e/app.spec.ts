@@ -12,16 +12,22 @@ const labelled = (page: Page, label: string) => onScreen(page.getByLabel(label, 
 
 // Tabs you've left stay in the page underneath the one you're on, so a name
 // can show up twice. Tap the first copy that's on top, as a finger would.
+// Whether it's still and on top is checked here, by its position a moment
+// apart, rather than by Playwright's own wait for it to be still, which counts
+// drawn frames: a busy computer can stop drawing them for a while.
 async function tapOnTop(l: Locator) {
   await expect(async () => {
     for (const match of await onScreen(l).all()) {
-      await match.scrollIntoViewIfNeeded({ timeout: 1000 });
-      const onTop = await match.evaluate((el) => {
+      const onTop = await match.evaluate(async (el) => {
+        el.scrollIntoView({ block: "nearest" });
+        const before = el.getBoundingClientRect();
+        await new Promise((r) => setTimeout(r, 100));
         const r = el.getBoundingClientRect();
+        if (r.x !== before.x || r.y !== before.y) return false; // still sliding in
         const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
         return !!hit && (el.contains(hit) || hit.contains(el));
       });
-      if (onTop) return match.click({ timeout: 2000 });
+      if (onTop) return match.click({ timeout: 2000, force: true });
     }
     throw new Error("nothing matching is on top");
   }).toPass({ timeout: 20_000 });
@@ -77,6 +83,8 @@ async function walkTips(page: Page, titles: string[]) {
 // A fresh account, past the first-run setup, on Home.
 async function signUp(page: Page) {
   await page.goto("/");
+  // The first load can be slow while the emulators are still warming up.
+  await expect(text(page, "Create account").first()).toBeVisible({ timeout: 60_000 });
   await tap(page, "Create account");
   await onScreen(page.getByPlaceholder("you@example.com")).fill(`e2e-${Date.now()}@gymit.test`);
   await onScreen(page.getByPlaceholder("Choose a password")).fill("testpass123");

@@ -24,13 +24,16 @@ export function elapsedSeconds(since: number, now: number): number {
   return Math.max(0, Math.floor((now - since) / 1000));
 }
 
-// Whether a rest has only just run out, so it's the moment to ring. The app
-// can only ring while it's running, and an iPhone stops a home-screen app
-// that isn't on screen (the phone locked, or you're in another app): a rest
-// that ran out then shouldn't ring minutes late when you come back to it.
-export function restJustEnded(rest: RestTimer, now: number): boolean {
-  const past = elapsedSeconds(rest.startedAt, now) - rest.target;
-  return past >= 0 && past <= 2;
+// Whether a rest just seen to be up should ring. The app can only ring while
+// it's running, and an iPhone stops a home-screen app that isn't on screen
+// (the phone locked, or you're in another app): a rest that ran out then
+// shouldn't ring minutes late when you come back to it. A running app looks
+// at the timer several times a second, so a long gap since it last looked
+// (lastLook) means it was stopped when the rest ran out. A phone that's only
+// busy, and looks a few seconds late, still rings.
+const STOPPED_MS = 5000;
+export function ringsOnTime(lastLook: number, now: number): boolean {
+  return now - lastLook <= STOPPED_MS;
 }
 
 export function formatClock(totalSeconds: number): string {
@@ -69,6 +72,16 @@ export const SET_TYPES: { type: SetType; letter: string; name: string; detail: s
 // numbers match what you'd call them: W, W, 1, 2, 3.
 export function setNumber(sets: WorkoutSet[], index: number): number {
   return sets.slice(0, index + 1).filter((s) => s.type !== "warmup").length;
+}
+
+// Last time's set to show beside this one: warm-ups beside last time's
+// warm-ups and working sets beside its working sets, each in order. So a
+// warm-up added this time doesn't push last time's set 1 down to set 2.
+export function previousSet(sets: WorkoutSet[], index: number, last: WorkoutSet[]): WorkoutSet | undefined {
+  const isWarmup = (s?: WorkoutSet) => s?.type === "warmup";
+  const warmup = isWarmup(sets[index]);
+  const nth = sets.slice(0, index).filter((s) => isWarmup(s) === warmup).length;
+  return last.filter((s) => isWarmup(s) === warmup)[nth];
 }
 
 // ---------------------------------------------------------------------------

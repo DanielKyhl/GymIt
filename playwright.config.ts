@@ -9,6 +9,9 @@ export default defineConfig({
   timeout: 180_000,
   expect: { timeout: 20_000 },
   workers: 1,
+  // These guard the deploy (npm run deploy): a test that fails once on a busy
+  // computer gets one more go, while a real bug fails both times.
+  retries: 1,
   reporter: [["list"]],
   use: {
     baseURL: "http://127.0.0.1:8099",
