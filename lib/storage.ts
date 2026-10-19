@@ -5,6 +5,7 @@ import { addWeighIn, BodyWeight, BodyWeightEntry, todayKey } from './bodyweight'
 import { currentName, withCurrentNames } from './exerciseNames';
 import { Experience, Goal, needsOnboarding, restForGoal } from './onboarding';
 import { hasSyncedBefore, isNewAccount, putRecords, readLocal, readyUid, SETTINGS_ID, updateRecord } from './sync';
+import { withTemplateIds } from './stats';
 import { live, SyncRecord } from './syncMerge';
 import { TIP_TOURS, TipTour, tipsAfter } from './tips';
 import { timerSoundOrDefault, TimerSoundId } from './timerSounds';
@@ -53,10 +54,12 @@ export async function getWorkouts(): Promise<Workout[]> {
 }
 
 // For anything that compares or adds up weights (progress, PRs, XP, volume):
-// every workout converted to the unit currently chosen in Settings.
+// every workout converted to the unit currently chosen in Settings, and
+// matched to its template if it was saved before workouts kept theirs (PRs
+// count within a template).
 export async function getWorkoutsForStats(): Promise<Workout[]> {
-    const [workouts, unit] = await Promise.all([getWorkouts(), getDefaultUnit()]);
-    return normalizeUnits(workouts, unit);
+    const [workouts, unit, templates] = await Promise.all([getWorkouts(), getDefaultUnit(), getTemplates()]);
+    return withTemplateIds(normalizeUnits(workouts, unit), templates);
 }
 
 // ---------------------------------------------------------------------------

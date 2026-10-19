@@ -8,7 +8,9 @@ TypeScript. Log every set, and watch the numbers go up.
 **Logging.** Build templates or start an empty workout. Each template keeps
 its own numbers: a workout from it starts from what you did last time in that
 template, and shows last time's sets beside today's, so the same exercise can
-be heavy in one template and light in another. Each set takes weight,
+be heavy in one template and light in another. Its PRs are its own too: a PR
+means beating that exercise's best in the same template, never another
+template's (an empty workout is measured against everything). Each set takes weight,
 reps, a type (working, warm-up, drop, failure) and an optional RPE. Numbers are
 typed on the app's own number pad rather than the phone's keyboard, with minus
 and plus keys that step the weight by 2.5 kg (5 lb) or the reps by one, and
@@ -20,7 +22,7 @@ minutes and seconds, and can be changed while the rest runs. When it's up it
 rings over your music rather than pausing it: a boxing bell, a gym bell, a gong
 or a whistle, picked in Settings. There's a plate calculator,
 a warm-up generator, supersets, per-exercise notes, and a PR badge the moment
-you beat an estimated 1RM. Close the app mid-workout and it picks up where you
+you beat an exercise's best total. Close the app mid-workout and it picks up where you
 left off. Pull a workout down by its top and it tucks into a bar above the
 tabs, clock and rest timer still running, while you use the rest of the app;
 tap the bar or swipe it up to bring the workout back.

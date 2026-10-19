@@ -67,7 +67,7 @@ export default function ExerciseProgress() {
         <Text style={styles.empty}>
           {sessions.length === 0
             ? "No logged sets yet."
-            : "Beat your best total for this exercise and the record shows up here."}
+            : "Beat your best total for this exercise and the record shows up here. Each template keeps its own."}
         </Text>
       ) : (
         <View style={styles.prList}>
@@ -76,7 +76,9 @@ export default function ExerciseProgress() {
               <Flame size={18} color={C.signal} />
               <View style={styles.prMain}>
                 <Text style={styles.prSet}>{prTotal(r, unit)}</Text>
-                <Text style={styles.prDate}>{formatDate(r.date)}</Text>
+                <Text style={styles.prDate} numberOfLines={1}>
+                  {r.workout} · {formatDate(r.date)}
+                </Text>
               </View>
               <View style={styles.prRight}>
                 <Text style={styles.prValue}>{prGain(r, unit)}</Text>
