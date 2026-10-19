@@ -1,4 +1,4 @@
-import { DEFAULT_TIMER_SOUND, TIMER_SOUNDS, timerSoundOrDefault } from "../timerSounds";
+import { audioStuck, DEFAULT_TIMER_SOUND, TIMER_SOUNDS, timerSoundOrDefault } from "../timerSounds";
 
 // Node's own modules, declared here rather than pulling @types/node into the
 // whole project (see serviceWorker.test.ts).
@@ -22,5 +22,18 @@ describe("timer sounds", () => {
     TIMER_SOUNDS.forEach((s) => {
       expect(fs.existsSync(path.join(__dirname, "..", "..", "assets", "sounds", `${s.id}.wav`))).toBe(true);
     });
+  });
+});
+
+describe("stuck audio", () => {
+  test("a clock that kept up while a sound played is fine", () => {
+    expect(audioStuck(1, 1)).toBe(false);
+    expect(audioStuck(0.9, 1.1)).toBe(false); // a little behind, the way a busy phone is
+  });
+
+  test("one that stood still, or barely moved, is stuck", () => {
+    expect(audioStuck(0, 1)).toBe(true);
+    expect(audioStuck(0.1, 1)).toBe(true);
+    expect(audioStuck(0.5, 60)).toBe(true); // the app was stopped while it played
   });
 });

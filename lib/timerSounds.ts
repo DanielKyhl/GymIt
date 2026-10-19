@@ -24,3 +24,11 @@ export const DEFAULT_TIMER_SOUND: TimerSoundId = "boxing-bell";
 export function timerSoundOrDefault(id: unknown): TimerSoundId {
   return TIMER_SOUNDS.find((s) => s.id === id)?.id ?? DEFAULT_TIMER_SOUND;
 }
+
+// Whether the audio's stuck: iOS can leave a home-screen app's audio saying
+// it's running after it's been off screen, but with its clock standing still
+// and nothing coming out. A sound that's playing moves the clock, so if it
+// moved less than a quarter of the time that passed (in seconds), it's stuck.
+export function audioStuck(audioSeconds: number, wallSeconds: number): boolean {
+  return audioSeconds < wallSeconds / 4;
+}

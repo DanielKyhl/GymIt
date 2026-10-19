@@ -96,7 +96,12 @@ And a web app only runs while it's on screen: with the phone locked, or
 another app in front, iOS stops it, so a rest that runs out then can't ring.
 (It doesn't ring late when you come back either; the rest row just shows
 it's up.) A notification at the end of the rest would need a server to send
-it, which this project doesn't have.
+it, which this project doesn't have. iOS can also leave a home-screen app's
+sound stuck after it's been off screen, saying it's playing while nothing
+comes out until you leave the app and come back. So the app checks the sound's
+clock really moved: if not, it cuts the sound before it can come out late,
+restarts the audio and tries once more, and failing that, your next tap starts
+the audio afresh (`lib/sound.web.ts`).
 
 ## Developing against the emulators
 
