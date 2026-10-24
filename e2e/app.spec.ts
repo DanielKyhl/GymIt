@@ -51,6 +51,16 @@ async function enter(page: Page, label: string, keys: string) {
   await pressKeys(page, keys);
 }
 
+// Takes the app off screen, or brings it back: what the phone tells it when
+// it's locked or another app is in front, and when you come back to it.
+async function setOnScreen(page: Page, on: boolean) {
+  await page.evaluate((on) => {
+    if (on) Reflect.deleteProperty(document, "visibilityState");
+    else Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "hidden" });
+    document.dispatchEvent(new Event("visibilitychange"));
+  }, on);
+}
+
 // New accounts get asked their body weight on Home; answer if it's showing.
 async function answerBodyWeight(page: Page) {
   await page.waitForTimeout(800);
@@ -282,18 +292,25 @@ test("sign up, build a template, train from it, come back to it", async ({ page 
     await markDone.first().click();
     await expect(onScreen(page.getByLabel("Mark set not done", { exact: true }))).toHaveCount(2);
 
+    // Rows first today: the template should keep that order.
+    const order = () => onScreen(page.getByLabel(/ options$/)).evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
+    await holdAndDrag(page, onScreen(page.locator("#root").getByText("Barbell Bent Over Row", { exact: true })), -120);
+    await expect.poll(order).toEqual(["Barbell Bent Over Row options", "Pull-Up options"]);
+
     await tap(page, "Finish workout");
     await expect(text(page, "Workout complete!")).toBeVisible();
     await tap(page, "Done");
     await expect(labelled(page, "Settings")).toBeVisible();
   });
 
-  await test.step("the template now shows those numbers, in view and edit", async () => {
+  await test.step("the template now shows those numbers, in that order, in view and edit", async () => {
     await answerBodyWeight(page);
     await tap(page, "E2E Pull");
     await expect(page).toHaveURL(/\/template\//);
     await expect(text(page, "BW×8")).toBeVisible();
     await expect(text(page, "60×8")).toBeVisible();
+    const top = async (name: string) => (await text(page, name).first().boundingBox())?.y ?? 0;
+    expect(await top("Barbell Bent Over Row")).toBeLessThan(await top("Pull-Up"));
 
     await tap(page, "Edit");
     await expect(page).toHaveURL(/create-template/);
@@ -541,7 +558,7 @@ test("rest timer: type your own time, change it mid-rest, and ring without pausi
     await expect(labelled(page, "Pull-Up set 1 reps")).toHaveText("8"); // its sets went with it
   });
 
-  await test.step("a rest that runs out while the phone's locked doesn't ring late after", async () => {
+  await test.step("a rest that runs out while the phone's locked rings once you're back", async () => {
     // Time runs as normal until it's made to jump: the way an iPhone stops the
     // app while the phone's locked, and it catches up when it's back.
     await page.clock.install();
@@ -549,10 +566,15 @@ test("rest timer: type your own time, change it mid-rest, and ring without pausi
     await onScreen(page.getByLabel("Mark set done", { exact: true })).first().click(); // Barbell Curl: a 2:00 rest
     const running = onScreen(page.getByLabel(/^Resting /));
     await expect(running).toHaveCount(1);
+    await setOnScreen(page, false);
     await page.clock.fastForward("05:00");
     await expect(running.getByText("Rest's up", { exact: true })).toBeVisible();
     await page.waitForTimeout(1500); // long enough to have rung
-    expect((await sound()).webAudio).toBe(rung);
+    expect((await sound()).webAudio).toBe(rung); // not while it can't be heard
+    await setOnScreen(page, true);
+    await expect.poll(async () => (await sound()).webAudio).toBe(rung + 1);
+    await page.waitForTimeout(1500);
+    expect((await sound()).webAudio).toBe(rung + 1); // and only once
   });
 
   await test.step("swipe a set left to delete it; a short swipe springs back", async () => {

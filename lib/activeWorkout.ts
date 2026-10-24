@@ -17,23 +17,22 @@ export type ActiveWorkout = {
 // Timers store when they started rather than counting ticks, so they stay
 // right when the phone locks or the app is in the background (where
 // intervals pause). exIndex/setIndex: the finished set the rest follows; the
-// running timer is shown right under it.
-export type RestTimer = { startedAt: number; target: number; exIndex: number; setIndex: number };
+// running timer is shown right under it. rung: its bell has rung, kept so a
+// reopened app doesn't ring it again.
+export type RestTimer = { startedAt: number; target: number; exIndex: number; setIndex: number; rung?: boolean };
 
 export function elapsedSeconds(since: number, now: number): number {
   return Math.max(0, Math.floor((now - since) / 1000));
 }
 
-// Whether a rest just seen to be up should ring. The app can only ring while
-// it's running, and an iPhone stops a home-screen app that isn't on screen
-// (the phone locked, or you're in another app): a rest that ran out then
-// shouldn't ring minutes late when you come back to it. A running app looks
-// at the timer several times a second, so a long gap since it last looked
-// (lastLook) means it was stopped when the rest ran out. A phone that's only
-// busy, and looks a few seconds late, still rings.
-const STOPPED_MS = 5000;
-export function ringsOnTime(lastLook: number, now: number): boolean {
-  return now - lastLook <= STOPPED_MS;
+// Whether a rest should ring now: it's up, and hasn't rung yet. The app can't
+// ring while it's off screen (the phone locked, or another app in front: iOS
+// stops it), so a rest that ran out then rings when you're back, and in a
+// reopened app too, unless it was up so long ago that you're past it.
+export const RING_LATE_SECONDS = 15 * 60;
+export function shouldRing(rest: RestTimer, now: number): boolean {
+  const over = elapsedSeconds(rest.startedAt, now) - rest.target;
+  return !rest.rung && over >= 0 && over <= RING_LATE_SECONDS;
 }
 
 export function formatClock(totalSeconds: number): string {
@@ -208,7 +207,7 @@ export function moveExercise(a: ActiveWorkout, from: number, to: number): Active
 
 // Each superset as one unbroken run. An exercise left on its own isn't in a
 // superset; a run split off from the rest of its superset becomes one of its own.
-function backToBack(exercises: WorkoutExercise[]): WorkoutExercise[] {
+function backToBack<E extends { supersetId?: string }>(exercises: E[]): E[] {
   const seen = new Set<string>();
   let runId: string | undefined;
   return exercises.map((e, i) => {
@@ -289,15 +288,17 @@ export function loggedExercises(exercises: WorkoutExercise[]): WorkoutExercise[]
 // After a workout started from a template: the template with each exercise's
 // sets replaced by the ones ticked off this time, so the template screen, its
 // editor and the next workout from it all start from last time's numbers.
-// Exercises skipped this time keep what they had; exercises added mid-workout
-// aren't added to the template. Null when nothing changed.
+// The exercises take the order you did them in (and their supersets) too, so
+// moving one mid-workout moves it in the template. Exercises skipped this time
+// keep what they had, after the exercise they followed; exercises added
+// mid-workout aren't added to the template. Null when nothing changed.
 export function templateAfterWorkout(template: Template, done: WorkoutExercise[]): Template | null {
   const used = new Set<number>();
-  let changed = false;
-  const exercises = template.exercises.map((planned) => {
+  // Each planned exercise as it is after today, and where it was done (-1: skipped).
+  const after = template.exercises.map((planned) => {
     // Paired by name, in order, so an exercise that appears twice matches up.
     const i = done.findIndex((ex, k) => !used.has(k) && ex.name === planned.name);
-    if (i === -1) return planned;
+    if (i === -1) return { at: -1, exercise: planned };
     used.add(i);
     const sets: TemplateSet[] = done[i].sets
       .filter((s) => s.done)
@@ -309,11 +310,18 @@ export function templateAfterWorkout(template: Template, done: WorkoutExercise[]
         ...(s.restSeconds !== undefined ? { restSeconds: s.restSeconds } : {}),
         ...(s.type && s.type !== "normal" ? { type: s.type } : {}),
       }));
-    if (sets.length === 0 || JSON.stringify(sets) === JSON.stringify(planned.sets ?? [])) return planned;
-    changed = true;
-    return { ...planned, sets };
+    return {
+      at: i,
+      exercise: { ...planned, supersetId: done[i].supersetId, ...(sets.length > 0 ? { sets } : {}) },
+    };
   });
-  return changed ? { ...template, exercises } : null;
+  const order = after.map((_, t) => t).filter((t) => after[t].at >= 0);
+  order.sort((x, y) => after[x].at - after[y].at);
+  after.forEach((e, t) => {
+    if (e.at === -1) order.splice(t === 0 ? 0 : order.indexOf(t - 1) + 1, 0, t);
+  });
+  const exercises = backToBack(order.map((t) => after[t].exercise));
+  return JSON.stringify(exercises) === JSON.stringify(template.exercises) ? null : { ...template, exercises };
 }
 
 // A plan with nothing in it: no sets, or sets with no reps (added in the

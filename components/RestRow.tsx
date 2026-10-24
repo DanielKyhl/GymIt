@@ -1,9 +1,9 @@
 import * as Haptics from "expo-haptics";
 import { Pencil, Timer } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { AppState, Pressable, StyleSheet, Text, View } from "react-native";
 import { C, R, T } from "../constants/theme";
-import { elapsedSeconds, formatClock, formatRest, RestTimer, ringsOnTime } from "../lib/activeWorkout";
+import { elapsedSeconds, formatClock, formatRest, RestTimer, shouldRing } from "../lib/activeWorkout";
 import { playSound } from "../lib/sound";
 import { TimerSoundId } from "../lib/timerSounds";
 
@@ -18,15 +18,17 @@ export function RestRow({
   sound,
   onEdit,
   onStop,
+  onRung,
 }: {
   seconds: number;
   running: RestTimer | null; // this row's rest, while it runs
   sound: TimerSoundId; // played when the rest is up
   onEdit: () => void;
   onStop: () => void;
+  onRung: () => void; // the rest's bell has rung
 }) {
   return running ? (
-    <ActiveRest rest={running} sound={sound} onEdit={onEdit} onStop={onStop} />
+    <ActiveRest rest={running} sound={sound} onEdit={onEdit} onStop={onStop} onRung={onRung} />
   ) : (
     <IdleRest seconds={seconds} onEdit={onEdit} />
   );
@@ -56,42 +58,36 @@ function ActiveRest({
   sound,
   onEdit,
   onStop,
+  onRung,
 }: {
   rest: RestTimer;
   sound: TimerSoundId;
   onEdit: () => void;
   onStop: () => void;
+  onRung: () => void;
 }) {
   const [now, setNow] = useState(Date.now());
-  const alerted = useRef(false);
 
   useEffect(() => {
     const tick = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(tick);
   }, []);
 
-  // A new rest, or a changed target, can alert again. One that already ran
-  // out while the app was closed doesn't beep late on reopening.
-  useEffect(() => {
-    alerted.current = elapsedSeconds(rest.startedAt, Date.now()) >= rest.target;
-  }, [rest.startedAt, rest.target]);
-
   const elapsed = elapsedSeconds(rest.startedAt, now);
   const over = elapsed >= rest.target;
 
-  // Reaching the target: one vibration and the sound picked in Settings. Only
-  // if the app was running when it was reached, though: coming back to the
-  // app after the rest ran out, it's too late to ring (see ringsOnTime).
-  const lastLook = useRef(now);
+  // The rest is up: one vibration and the sound picked in Settings, once (see
+  // shouldRing). Only with the app on screen, where it can be heard: a rest
+  // that ran out while it wasn't rings when you're back.
+  const rang = useRef<number | null>(null); // the rest it rang for, until onRung lands
   useEffect(() => {
-    const previous = lastLook.current;
-    lastLook.current = now;
-    if (!over || alerted.current) return;
-    alerted.current = true;
-    if (!ringsOnTime(previous, now)) return;
+    if (!shouldRing(rest, now) || rang.current === rest.startedAt) return;
+    if (AppState.currentState !== "active") return;
+    rang.current = rest.startedAt;
+    onRung();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     playSound(sound);
-  }, [now, over, sound]);
+  }, [now, rest, sound, onRung]);
 
   const progress = Math.min(1, elapsed / Math.max(1, rest.target));
 

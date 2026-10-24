@@ -7,8 +7,9 @@ TypeScript. Log every set, and watch the numbers go up.
 
 **Logging.** Build templates or start an empty workout. Each template keeps
 its own numbers: a workout from it starts from what you did last time in that
-template, and shows last time's sets beside today's, so the same exercise can
-be heavy in one template and light in another. Its PRs are its own too: a PR
+template, in the order you did the exercises in, and shows last time's sets
+beside today's, so the same exercise can be heavy in one template and light in
+another. Its PRs are its own too: a PR
 means beating that exercise's best in the same template, never another
 template's (an empty workout is measured against everything). Each set takes weight,
 reps, a type (working, warm-up, drop, failure) and an optional RPE. Numbers are
@@ -94,8 +95,8 @@ That last one is the price of not pausing your music: iOS only lets a web page
 play over other audio in the "ambient" mode, which the silent switch mutes.
 And a web app only runs while it's on screen: with the phone locked, or
 another app in front, iOS stops it, so a rest that runs out then can't ring.
-(It doesn't ring late when you come back either; the rest row just shows
-it's up.) A notification at the end of the rest would need a server to send
+It rings when you're back instead, once, unless the rest ran out more than
+15 minutes before. A notification at the end of the rest would need a server to send
 it, which this project doesn't have. iOS can also leave a home-screen app's
 sound stuck after it's been off screen, saying it's playing while nothing
 comes out until you leave the app and come back. So the app checks the sound's

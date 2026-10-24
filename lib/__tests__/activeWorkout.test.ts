@@ -14,7 +14,8 @@ import {
   platesPerSide,
   restAfterSet,
   restFromParts,
-  ringsOnTime,
+  RING_LATE_SECONDS,
+  shouldRing,
   fillBlankTemplate,
   previousSet,
   setNumber,
@@ -40,23 +41,26 @@ describe("timer", () => {
 });
 
 describe("ringing when a rest is up", () => {
-  // Seconds into a 90-second rest; the app looks four times a second.
+  // A 90-second rest, and the time that many seconds into it.
+  const rest = { startedAt: 1_000_000, target: 90, exIndex: 0, setIndex: 0 };
   const at = (seconds: number) => 1_000_000 + seconds * 1000;
 
-  test("rings as it runs out, while the app is running", () => {
-    expect(ringsOnTime(at(89.8), at(90.05))).toBe(true);
+  test("rings once it's up, not before", () => {
+    expect(shouldRing(rest, at(89.9))).toBe(false);
+    expect(shouldRing(rest, at(90))).toBe(true);
   });
 
-  test("still rings on a busy phone that looks a few seconds late", () => {
-    // What a 2-second window missed: the app was running, just slow.
-    expect(ringsOnTime(at(88), at(93))).toBe(true);
+  test("a rest that ran out while the app was off screen rings when you're back", () => {
+    expect(shouldRing(rest, at(90 + 5 * 60))).toBe(true);
   });
 
-  test("not when you come back to the app after it ran out", () => {
-    // The phone was locked from 1:20, so the app couldn't ring at 1:30.
-    expect(ringsOnTime(at(80), at(600))).toBe(false);
-    // Even locked just before the end, coming back late is late.
-    expect(ringsOnTime(at(89.9), at(120))).toBe(false);
+  test("but not long after: by then you're past it", () => {
+    expect(shouldRing(rest, at(90 + RING_LATE_SECONDS))).toBe(true);
+    expect(shouldRing(rest, at(90 + RING_LATE_SECONDS + 1))).toBe(false);
+  });
+
+  test("only once, even in a reopened app", () => {
+    expect(shouldRing({ ...rest, rung: true }, at(95))).toBe(false);
   });
 });
 
@@ -397,6 +401,65 @@ describe("templateAfterWorkout", () => {
   test("nothing to write when nothing changed", () => {
     expect(templateAfterWorkout(template, [{ name: "Barbell Curl", sets: [done(30, 10)] }])).toBeNull();
     expect(templateAfterWorkout(template, [])).toBeNull();
+  });
+
+  const names = (t: { exercises: { name: string }[] } | null) => t?.exercises.map((e) => e.name);
+
+  test("exercises moved mid-workout move in the template too, even with the same numbers", () => {
+    const curlFirst = templateAfterWorkout(template, [
+      { name: "Barbell Curl", sets: [done(30, 10)] },
+      { name: "Barbell Bent Over Row", sets: [done(60, 8)] },
+      { name: "Pull-Up", sets: [done(82, 8)] },
+    ]);
+    expect(names(curlFirst)).toEqual(["Barbell Curl", "Barbell Bent Over Row", "Pull-Up"]);
+    expect(curlFirst!.exercises[0].sets).toEqual([{ weight: 30, reps: 10 }]); // same as before, but moved
+  });
+
+  test("an exercise skipped today stays after the one it followed", () => {
+    const skipPullUp = templateAfterWorkout(template, [
+      { name: "Barbell Curl", sets: [done(30, 10)] },
+      { name: "Barbell Bent Over Row", sets: [done(60, 8)] },
+    ]);
+    expect(names(skipPullUp)).toEqual(["Barbell Curl", "Barbell Bent Over Row", "Pull-Up"]);
+    const skipRow = templateAfterWorkout(template, [
+      { name: "Barbell Curl", sets: [done(30, 10)] },
+      { name: "Pull-Up", sets: [done(82, 8)] },
+    ]);
+    expect(names(skipRow)).toEqual(["Barbell Bent Over Row", "Barbell Curl", "Pull-Up"]); // it was first
+  });
+
+  test("supersets end up as they were in the workout", () => {
+    const paired = {
+      id: "t3",
+      name: "Arms",
+      exercises: [
+        { name: "Barbell Curl", supersetId: "s", sets: [{ weight: 30, reps: 10 }] },
+        { name: "Cable Pushdown", supersetId: "s", sets: [{ weight: 25, reps: 12 }] },
+        { name: "Face Pull", sets: [{ weight: 20, reps: 15 }] },
+      ],
+    };
+    // Face Pull moved between them, which split the superset in the workout.
+    const split = templateAfterWorkout(paired, [
+      { name: "Barbell Curl", sets: [done(30, 10)] },
+      { name: "Face Pull", sets: [done(20, 15)] },
+      { name: "Cable Pushdown", sets: [done(25, 12)] },
+    ])!;
+    expect(split.exercises.map((e) => [e.name, e.supersetId])).toEqual([
+      ["Barbell Curl", undefined],
+      ["Face Pull", undefined],
+      ["Cable Pushdown", undefined],
+    ]);
+    // Face Pull moved to the top: the superset stays one.
+    const kept = templateAfterWorkout(paired, [
+      { name: "Face Pull", sets: [done(20, 15)] },
+      { name: "Barbell Curl", supersetId: "s", sets: [done(30, 10)] },
+      { name: "Cable Pushdown", supersetId: "s", sets: [done(25, 12)] },
+    ])!;
+    expect(kept.exercises.map((e) => [e.name, e.supersetId])).toEqual([
+      ["Face Pull", undefined],
+      ["Barbell Curl", "s"],
+      ["Cable Pushdown", "s"],
+    ]);
   });
 });
 

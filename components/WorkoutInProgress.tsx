@@ -344,11 +344,17 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
       ...sets.filter((s) => !(s.type === "warmup" && !s.done)),
     ]);
 
-  // One rest length for every set of the exercise; a running rest follows it.
+  // One rest length for every set of the exercise; a running rest follows it,
+  // and rings again at its new end (unless that's already passed).
   const setExerciseRest = (exIndex: number, seconds: number) =>
     update((a) => ({
       ...a,
-      rest: a.rest?.exIndex === exIndex ? (seconds > 0 ? { ...a.rest, target: seconds } : null) : a.rest,
+      rest:
+        a.rest?.exIndex === exIndex
+          ? seconds > 0
+            ? { ...a.rest, target: seconds, rung: elapsedSeconds(a.rest.startedAt, Date.now()) >= seconds }
+            : null
+          : a.rest,
       exercises: a.exercises.map((ex, i) =>
         i === exIndex ? { ...ex, sets: ex.sets.map((s) => ({ ...s, restSeconds: seconds })) } : ex
       ),
@@ -740,6 +746,11 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
                           sound={timerSound ?? DEFAULT_TIMER_SOUND}
                           onEdit={() => editRest(exIndex, running ? running.target : rest)}
                           onStop={() => update((a) => ({ ...a, rest: null }))}
+                          onRung={() =>
+                            update((a) =>
+                              a.rest && a.rest.startedAt === running?.startedAt ? { ...a, rest: { ...a.rest, rung: true } } : a
+                            )
+                          }
                         />
                       )}
                     </View>
