@@ -17,6 +17,15 @@ export function relativeDay(iso: string): string {
   return `${days} days ago`;
 }
 
+// A length of time in hours and minutes: "45 min", "3 h 52 min", "2 h".
+export function formatDuration(seconds: number): string {
+  const minutes = Math.round(seconds / 60);
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m} min`;
+  return m === 0 ? `${h} h` : `${h} h ${m} min`;
+}
+
 // Numbers in one style app-wide, matching the English text: "2,420", "8.5".
 export function formatNumber(n: number, maxDecimals = 1): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: maxDecimals });

@@ -1,4 +1,4 @@
-import { formatNumber, formatSets, plural, prGain, prTotal, relativeDay } from "../format";
+import { formatDuration, formatNumber, formatSets, plural, prGain, prTotal, relativeDay } from "../format";
 import { set } from "./fixtures";
 
 const NOW = "2026-09-09T12:00:00.000Z";
@@ -96,5 +96,13 @@ describe("prGain and prTotal", () => {
     const reps = { total: 28, previous: 27, inReps: true };
     expect(prGain(reps, "kg")).toBe("+1 rep");
     expect(prTotal(reps, "kg")).toBe("28 reps");
+  });
+});
+
+describe("formatDuration", () => {
+  test("minutes, then hours and minutes", () => {
+    expect(formatDuration(45 * 60)).toBe("45 min");
+    expect(formatDuration(3 * 3600 + 52 * 60 + 10)).toBe("3 h 52 min");
+    expect(formatDuration(2 * 3600)).toBe("2 h");
   });
 });

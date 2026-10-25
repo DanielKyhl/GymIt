@@ -36,7 +36,10 @@ for each dumbbell, the way Strong counts it: two 20 kg dumbbells for 10 reps
 is 400 kg, though the set is logged as 20 kg. That goes for every total: a
 workout's, an exercise's PRs, the lifetime landmarks and the achievements.
 
-**Motivation.** XP and levels to a cap of 150 (about three years at five
+**Motivation.** A look back at the week, the first time you open the app in a
+new one: workouts against your weekly goal, weight lifted next to the week
+before, XP and levels gained, PRs, sets, time trained, your streak and the
+achievements you unlocked. XP and levels to a cap of 150 (about three years at five
 workouts a week), eleven ranks from Rookie to Legend, each with its own frame
 around the level badge, a weekly-goal streak with shields that cover a missed
 week, 50 achievements, and an end-of-workout summary with a shareable card.

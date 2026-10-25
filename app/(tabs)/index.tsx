@@ -4,21 +4,26 @@ import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 
 import { BodyWeightPrompt } from "../../components/BodyWeightPrompt";
 import { LevelCard } from "../../components/LevelCard";
 import { useShowTips, useTipTarget } from "../../components/Tips";
+import { WeeklyRecap } from "../../components/WeeklyRecap";
 import { useAuth } from "../../context/AuthContext";
 import { useWorkoutSheet } from "../../context/WorkoutSheet";
 import { relativeDay } from "../../lib/format";
 import { computeXP, levelInfo, thisWeekCount } from "../../lib/gamification";
+import { recapCheck, WeekRecap, weekRecap } from "../../lib/recap";
 import { computeRecovery } from "../../lib/recovery";
 import { consistencyGrid, lastUsedDate } from "../../lib/stats";
 import { computeStreak } from "../../lib/streak";
 import { Suggestion, suggestTemplate } from "../../lib/suggest";
 import {
   getDefaultUnit,
+  getPendingTips,
   getPlanTemplates,
+  getRecapShown,
   getTemplates,
   getWeeklyGoal,
   getWorkoutsForStats,
   setBodyWeight,
+  setRecapShown,
   shouldAskBodyWeight,
   skipBodyWeight,
 } from "../../lib/storage";
@@ -62,6 +67,33 @@ export default function HomeScreen() {
   }, [isFocused, weightChecked, askWeight, workout, showTips]);
   const upNextRef = useTipTarget("home.upNext");
   const settingsRef = useTipTarget("home.settings");
+
+  // The weekly recap: the first time Home's opened in a new week, a look back
+  // at the last one (lib/recap.ts). After the body-weight question and the
+  // welcome tips, and never over a workout.
+  const [recap, setRecap] = useState<WeekRecap | null>(null);
+  useEffect(() => {
+    if (!isFocused || !weightChecked || askWeight || workout) return;
+    let cancelled = false;
+    Promise.all([getRecapShown(), getPendingTips(), getWorkoutsForStats(), getWeeklyGoal()]).then(
+      ([shown, tips, all, goal]) => {
+        if (cancelled || tips.includes("home")) return;
+        const check = recapCheck(shown, Date.now());
+        if (!check) return;
+        const due = check.show ? weekRecap(all, goal, check.start) : null;
+        // Nothing to look back on (or the first check): counted as seen.
+        if (due) setRecap(due);
+        else setRecapShown(check.week).catch(() => undefined);
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [isFocused, weightChecked, askWeight, workout]);
+  const closeRecap = () => {
+    if (recap) setRecapShown(recap.week).catch(() => undefined);
+    setRecap(null);
+  };
 
   const totalXP = computeXP(workouts, weeklyGoal);
   const { level, xpIntoLevel, xpForNext, isMax } = levelInfo(totalXP);
@@ -181,6 +213,7 @@ export default function HomeScreen() {
           <View style={styles.list}>{premade.map(renderCard)}</View>
         </>
       )}
+      <WeeklyRecap recap={recap} unit={unit} onClose={closeRecap} />
       <BodyWeightPrompt
         visible={askWeight}
         unit={unit}
