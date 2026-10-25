@@ -24,8 +24,9 @@ describe("when the recap shows", () => {
     expect(recapCheck("2026-10-19", monday)).toBeNull(); // seen
   });
 
-  test("after weeks away, it's the last week that shows", () => {
-    expect(recapCheck("2026-09-07", monday)?.week).toBe("2026-10-19");
+  test("after weeks away, only the last week shows: the ones before don't stack up", () => {
+    expect(recapCheck("2026-09-07", monday)?.week).toBe("2026-10-19"); // not 14 Sep, 21 Sep...
+    expect(recapCheck("2026-10-19", monday)).toBeNull(); // once it's closed, nothing's left
   });
 });
 
