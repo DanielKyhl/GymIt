@@ -9,7 +9,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useWorkoutSheet } from "../../context/WorkoutSheet";
 import { relativeDay } from "../../lib/format";
 import { computeXP, levelInfo, thisWeekCount } from "../../lib/gamification";
-import { recapCheck, WeekRecap, weekRecap } from "../../lib/recap";
+import { recapDue, WeekRecap, weekRecap } from "../../lib/recap";
 import { computeRecovery } from "../../lib/recovery";
 import { consistencyGrid, lastUsedDate } from "../../lib/stats";
 import { computeStreak } from "../../lib/streak";
@@ -18,12 +18,12 @@ import {
   getDefaultUnit,
   getPendingTips,
   getPlanTemplates,
-  getRecapShown,
+  getRecapSeen,
   getTemplates,
   getWeeklyGoal,
   getWorkoutsForStats,
   setBodyWeight,
-  setRecapShown,
+  setRecapSeen,
   shouldAskBodyWeight,
   skipBodyWeight,
 } from "../../lib/storage";
@@ -75,15 +75,15 @@ export default function HomeScreen() {
   useEffect(() => {
     if (!isFocused || !weightChecked || askWeight || workout) return;
     let cancelled = false;
-    Promise.all([getRecapShown(), getPendingTips(), getWorkoutsForStats(), getWeeklyGoal()]).then(
-      ([shown, tips, all, goal]) => {
+    Promise.all([getRecapSeen(), getPendingTips(), getWorkoutsForStats(), getWeeklyGoal()]).then(
+      ([seen, tips, all, goal]) => {
         if (cancelled || tips.includes("home")) return;
-        const check = recapCheck(shown, Date.now());
-        if (!check) return;
-        const due = check.show ? weekRecap(all, goal, check.start) : null;
-        // Nothing to look back on (or the first check): counted as seen.
-        if (due) setRecap(due);
-        else setRecapShown(check.week).catch(() => undefined);
+        const due = recapDue(seen, Date.now());
+        if (!due) return;
+        const week = weekRecap(all, goal, due.start);
+        // A week with nothing to look back on counts as seen.
+        if (week) setRecap(week);
+        else setRecapSeen(due.week).catch(() => undefined);
       }
     );
     return () => {
@@ -91,7 +91,7 @@ export default function HomeScreen() {
     };
   }, [isFocused, weightChecked, askWeight, workout]);
   const closeRecap = () => {
-    if (recap) setRecapShown(recap.week).catch(() => undefined);
+    if (recap) setRecapSeen(recap.week).catch(() => undefined);
     setRecap(null);
   };
 

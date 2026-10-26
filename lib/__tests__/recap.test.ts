@@ -1,4 +1,4 @@
-import { lastWeekStart, recapCheck, weekRecap } from "../recap";
+import { lastWeekStart, recapDue, weekRecap } from "../recap";
 import { set, workout } from "./fixtures";
 
 // Local times, so the weeks don't depend on the time zone the tests run in.
@@ -14,19 +14,19 @@ describe("when the recap shows", () => {
     expect(new Date(lastWeekStart(sunday))).toEqual(new Date(2026, 9, 12));
   });
 
-  test("the first check only starts the count", () => {
-    expect(recapCheck(undefined, sunday)).toEqual({ week: "2026-10-12", start: lastWeekStart(sunday), show: false });
+  test("the first time, last week's shows straight away", () => {
+    expect(recapDue(undefined, monday)).toEqual({ week: "2026-10-19", start: lastWeekStart(monday) });
   });
 
   test("then once a week: the first time the app's opened in a new week", () => {
-    expect(recapCheck("2026-10-12", sunday)).toBeNull(); // still the same week
-    expect(recapCheck("2026-10-12", monday)).toEqual({ week: "2026-10-19", start: lastWeekStart(monday), show: true });
-    expect(recapCheck("2026-10-19", monday)).toBeNull(); // seen
+    expect(recapDue("2026-10-12", sunday)).toBeNull(); // still the same week
+    expect(recapDue("2026-10-12", monday)).toEqual({ week: "2026-10-19", start: lastWeekStart(monday) });
+    expect(recapDue("2026-10-19", monday)).toBeNull(); // seen
   });
 
   test("after weeks away, only the last week shows: the ones before don't stack up", () => {
-    expect(recapCheck("2026-09-07", monday)?.week).toBe("2026-10-19"); // not 14 Sep, 21 Sep...
-    expect(recapCheck("2026-10-19", monday)).toBeNull(); // once it's closed, nothing's left
+    expect(recapDue("2026-09-07", monday)?.week).toBe("2026-10-19"); // not 14 Sep, 21 Sep...
+    expect(recapDue("2026-10-19", monday)).toBeNull(); // once it's closed, nothing's left
   });
 });
 

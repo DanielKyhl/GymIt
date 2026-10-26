@@ -37,16 +37,14 @@ const nextWeek = (start: number) => {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7).getTime();
 };
 
-// Whether a recap is due, and which: the last full week, unless its recap was
-// handled already (`shown`: the Monday of the last one). The first check, with
-// nothing saved yet, only starts the count, so a new account (or a new version
-// of the app) doesn't look back on a week from before it: the first recap
-// comes the week after. Null when there's nothing to do.
-export function recapCheck(shown: string | undefined, now: number): { week: string; start: number; show: boolean } | null {
+// Which recap is due, if any: the last full week, unless its recap was seen
+// already (`seen`: the Monday of the last one). After weeks away it's still
+// only the last week, never the ones before it. A new account's last week
+// has no workouts, so there's nothing to show (weekRecap).
+export function recapDue(seen: string | undefined, now: number): { week: string; start: number } | null {
   const start = lastWeekStart(now);
   const week = dayKey(new Date(start));
-  if (shown !== undefined && shown >= week) return null;
-  return { week, start, show: shown !== undefined };
+  return seen !== undefined && seen >= week ? null : { week, start };
 }
 
 // The week starting at `start`, from the workouts (in one unit and matched to

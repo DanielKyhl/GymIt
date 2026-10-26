@@ -33,7 +33,10 @@ type Settings = SyncRecord & {
     onboarded?: boolean; // finished or skipped the first-run setup
     planTemplates?: string[]; // the split picked during setup, e.g. upper then lower
     tips?: TipTour[]; // welcome tips still to show: new accounts only, from setup on (lib/tips.ts)
-    recapShown?: string; // the Monday of the last week whose recap was shown (lib/recap.ts)
+    // The Monday of the last week whose recap was seen (lib/recap.ts). Not
+    // "recapShown", which the first version set on its first look without
+    // showing anything, so it's left behind.
+    recapSeen?: string;
     favoriteExercises?: string[]; // starred in the exercise picker, A-Z
 };
 
@@ -368,14 +371,14 @@ export async function getPendingTips(): Promise<TipTour[]> {
     return (await getSettings()).tips ?? [];
 }
 
-// The weekly recap (lib/recap.ts): which week's was shown last. Synced, so
+// The weekly recap (lib/recap.ts): which week's was seen last. Synced, so
 // another phone doesn't show it again.
-export async function getRecapShown(): Promise<string | undefined> {
-    return (await getSettings()).recapShown;
+export async function getRecapSeen(): Promise<string | undefined> {
+    return (await getSettings()).recapSeen;
 }
 
-export async function setRecapShown(week: string): Promise<void> {
-    await setSetting({ recapShown: week });
+export async function setRecapSeen(week: string): Promise<void> {
+    await setSetting({ recapSeen: week });
 }
 
 // A set of tips has been seen, or "Skip tips" ended them all. Synced, so
