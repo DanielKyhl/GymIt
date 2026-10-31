@@ -36,6 +36,28 @@ describe("achievements", () => {
     expect(unlocked([lb]).has("landmark-bus")).toBe(true); // 27,600 lb ≈ 12,519 kg
   });
 
+  test("Millionaire is a million in the unit you use", () => {
+    const squat = (weight: number, unit: "kg" | "lb") => ({
+      ...workout("Legs", at(2026, 9, 1), [{ name: "Squat", sets: sets(1, weight, 1) }]),
+      unit,
+    });
+    expect(unlocked([squat(999_999, "kg")]).has("millionaire")).toBe(false);
+    expect(unlocked([squat(1_000_000, "kg")]).has("millionaire")).toBe(true);
+    // A million pounds is about 453,600 kg: Millionaire, but not yet in kilograms.
+    expect(unlocked([squat(1_000_000, "lb")]).has("millionaire")).toBe(true);
+    expect(getAchievements([squat(1, "lb")], 3).find((a) => a.id === "millionaire")?.description).toBe(
+      "Lift a million pounds in total"
+    );
+  });
+
+  test("no one loses a landmark achievement: the old Eiffel Tower total still unlocks Millionaire", () => {
+    const eiffel = workout("Legs", at(2026, 9, 1), [{ name: "Squat", sets: sets(1, 10_100_000, 1) }]);
+    const got = unlocked([eiffel]);
+    for (const id of ["landmark-bus", "landmark-liberty", "landmark-iss", "landmark-saturn", "millionaire"]) {
+      expect(got.has(id)).toBe(true);
+    }
+  });
+
   test("Weekend Warrior needs Saturday and the Sunday right after it", () => {
     const sat = workout("A", at(2026, 9, 19), [{ name: "Squat", sets: sets(1) }]); // a Saturday
     const sun = workout("B", at(2026, 9, 20), [{ name: "Squat", sets: sets(1) }]);

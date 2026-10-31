@@ -106,12 +106,17 @@ function buildContext(workouts: Workout[], weeklyGoal: number) {
   });
 
   const goalWeeks = weeklyGoalBonusXP(workouts, weeklyGoal) / XP_WEEKLY_GOAL_BONUS;
+  // The unit you use: the workouts come here in it (getWorkoutsForStats).
+  const unit = workouts[0]?.unit ?? "kg";
+  const lifetime = lifetimeKg(workouts);
 
   return {
     count: workouts.length,
     prs: countPRs(workouts),
     totalVolume,
-    lifetimeKg: lifetimeKg(workouts),
+    lifetimeKg: lifetime,
+    unit,
+    lifetimeInUnit: convertWeight(lifetime, "kg", unit),
     totalReps,
     totalHours: totalMinutes / 60,
     distinctExercises: exerciseNames.size,
@@ -166,7 +171,9 @@ export function getAchievements(workouts: Workout[], weeklyGoal: number): Achiev
     { id: "landmark-liberty", title: "Lady Liberty", description: "Lift more than the Statue of Liberty in total", unlocked: c.lifetimeKg >= 204_000 },
     { id: "landmark-iss", title: "Orbital", description: "Lift more than the International Space Station in total", unlocked: c.lifetimeKg >= 420_000 },
     { id: "landmark-saturn", title: "Lift-Off", description: "Lift more than a Saturn V rocket in total", unlocked: c.lifetimeKg >= 2_800_000 },
-    { id: "landmark-eiffel", title: "Tour de Force", description: "Lift more than the Eiffel Tower in total", unlocked: c.lifetimeKg >= 10_100_000 },
+    // A million in the unit you use. (Tour de Force, the Eiffel Tower at
+    // 10.1 million kg, was here; this is lower, so no one who had it loses it.)
+    { id: "millionaire", title: "Millionaire", description: `Lift a million ${c.unit === "lb" ? "pounds" : "kilograms"} in total`, unlocked: c.lifetimeInUnit >= 1_000_000 },
 
     // Big sessions
     { id: "session-elephant", title: "Elephant In The Room", description: "Lift an elephant's weight (6,000 kg) in one workout", unlocked: c.biggestSessionKg >= 6000 },

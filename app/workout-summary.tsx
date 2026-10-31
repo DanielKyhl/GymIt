@@ -70,7 +70,8 @@ export default function WorkoutSummary() {
       const beforeKg = w ? totalKg - convertWeight(workoutVolume(w), w.unit, "kg") : totalKg;
       setLifetime({
         totalKg,
-        newMilestone: lifetimeMilestone(totalKg).passed?.id !== lifetimeMilestone(beforeKg).passed?.id,
+        newMilestone:
+          lifetimeMilestone(totalKg, w?.unit).passed?.id !== lifetimeMilestone(beforeKg, w?.unit).passed?.id,
       });
     });
   }, [params.id]);

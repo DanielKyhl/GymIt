@@ -5,9 +5,9 @@ import { lifetimeMilestone } from "../lib/milestones";
 import { convertWeight, Unit } from "../lib/units";
 
 // Everything you've ever lifted, next to the heaviest famous thing it beats
-// and how far along you are to the next one.
+// and how far along you are from it to the next one (lib/milestones.ts).
 export function LifetimeCard({ totalKg, unit, newMilestone }: { totalKg: number; unit: Unit; newMilestone?: boolean }) {
-  const m = lifetimeMilestone(totalKg);
+  const m = lifetimeMilestone(totalKg, unit);
   const shown = Math.round(convertWeight(totalKg, "kg", unit));
   return (
     <View style={[styles.card, newMilestone && styles.cardNew]}>
@@ -19,19 +19,15 @@ export function LifetimeCard({ totalKg, unit, newMilestone }: { totalKg: number;
         <Text style={styles.unit}> {unit}</Text>
       </Text>
       {m.passed && <Text style={styles.passed}>More than {m.passed.name}</Text>}
-      {m.next && (
-        <>
-          <View style={styles.bar}>
-            <View style={[styles.fill, { width: `${m.progress * 100}%` }]} />
-          </View>
-          <View style={styles.nextRow}>
-            <Text style={styles.next} numberOfLines={1}>
-              Next: {m.next.name}
-            </Text>
-            <Text style={styles.pct}>{Math.floor(m.progress * 100)}%</Text>
-          </View>
-        </>
-      )}
+      <View style={styles.bar}>
+        <View style={[styles.fill, { width: `${m.progress * 100}%` }]} />
+      </View>
+      <View style={styles.nextRow}>
+        <Text style={styles.next} numberOfLines={1}>
+          Next: {m.next.name}
+        </Text>
+        <Text style={styles.pct}>{Math.floor(m.progress * 100)}%</Text>
+      </View>
     </View>
   );
 }
