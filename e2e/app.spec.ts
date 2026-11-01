@@ -201,7 +201,13 @@ async function swipeLeft(page: Page, from: Locator, by: number) {
 }
 
 test("sign up, build a template, train from it, come back to it", async ({ page }) => {
-  page.on("dialog", (d) => d.accept()); // "Finish workout?" and friends
+  // "Finish workout?" and friends: yes, unless the test is saying no.
+  const dialogs: string[] = [];
+  let sayNo = false;
+  page.on("dialog", (d) => {
+    dialogs.push(d.message());
+    return sayNo ? d.dismiss() : d.accept();
+  });
 
   // Count screen wake-lock requests; WebKit here has no real screen to keep on.
   await page.addInitScript(() => {
@@ -297,6 +303,14 @@ test("sign up, build a template, train from it, come back to it", async ({ page 
     await holdAndDrag(page, onScreen(page.locator("#root").getByText("Barbell Bent Over Row", { exact: true })), -120);
     await expect.poll(order).toEqual(["Barbell Bent Over Row options", "Pull-Up options"]);
 
+    // Finishing asks first; saying no keeps the workout going.
+    sayNo = true;
+    await tap(page, "Finish workout");
+    await expect.poll(() => dialogs.at(-1)).toMatch(/^Finish workout\?/);
+    await page.waitForTimeout(500);
+    await expectWorkoutOpen(page);
+    await expect(text(page, "Workout complete!")).toHaveCount(0);
+    sayNo = false;
     await tap(page, "Finish workout");
     await expect(text(page, "Workout complete!")).toBeVisible();
     await tap(page, "Done");
