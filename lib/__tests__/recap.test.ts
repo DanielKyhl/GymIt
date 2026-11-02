@@ -1,4 +1,4 @@
-import { lastWeekStart, recapDue, weekRecap } from "../recap";
+import { lastWeekStart, pastWeeks, recapDue, weekRecap } from "../recap";
 import { set, workout } from "./fixtures";
 
 // Local times, so the weeks don't depend on the time zone the tests run in.
@@ -74,5 +74,31 @@ describe("the recap", () => {
 
   test("a week with no workouts has nothing to look back on", () => {
     expect(weekRecap(history, 2, at(9, 28, 0))).toBeNull();
+  });
+
+  describe("the list of past recaps", () => {
+    const weeks = pastWeeks(history, 2, at(10, 21)); // during the week of 19 October
+
+    test("every finished week trained, newest first, not the one in progress", () => {
+      expect(weeks.map((w) => w.week)).toEqual(["2026-10-12", "2026-10-05"]);
+    });
+
+    test("each line's numbers are the ones its recap shows", () => {
+      for (const w of weeks) {
+        const full = weekRecap(history, 2, w.start)!;
+        expect(w).toEqual({
+          week: full.week,
+          start: full.start,
+          workouts: full.workouts,
+          goalHit: full.workouts >= full.goal,
+          volume: full.volume,
+          xp: full.xp,
+          prs: full.prs,
+          levelUp: full.levelAfter > full.levelBefore,
+        });
+      }
+      expect(weeks[0]).toMatchObject({ goalHit: true, prs: 1, levelUp: true });
+      expect(weeks[1]).toMatchObject({ workouts: 1, goalHit: false, prs: 0, levelUp: false });
+    });
   });
 });

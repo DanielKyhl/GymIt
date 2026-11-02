@@ -181,6 +181,15 @@ export default function Progress() {
         <Text style={styles.volumeLinkText}>Volume per template</Text>
         <ChevronRight size={20} color={C.textMuted} />
       </Pressable>
+      {/* Every week's recap, the one Home shows when a new week starts. */}
+      <Pressable
+        style={[styles.volumeLink, styles.linkNext]}
+        onPress={() => router.push("/weekly-recaps")}
+        accessibilityRole="button"
+      >
+        <Text style={styles.volumeLinkText}>Weekly recaps</Text>
+        <ChevronRight size={20} color={C.textMuted} />
+      </Pressable>
       {exercises.length === 0 && (
         <Text style={styles.empty}>Log some sets in a workout and your progress shows up here.</Text>
       )}

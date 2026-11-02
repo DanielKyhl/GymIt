@@ -9,23 +9,36 @@ import { Unit } from "../lib/units";
 import { AnimalIcon } from "./AnimalIcon";
 
 // The weekly recap (lib/recap.ts): Home shows it the first time the app's
-// opened in a new week, as a look back at the week before.
-export function WeeklyRecap({ recap, unit, onClose }: { recap: WeekRecap | null; unit: Unit; onClose: () => void }) {
+// opened in a new week, as a look back at the week before, and the list of
+// past recaps (app/weekly-recaps.tsx) opens any week's.
+export function WeeklyRecap({
+  recap,
+  unit,
+  onClose,
+  closeLabel = "On to this week",
+}: {
+  recap: WeekRecap | null;
+  unit: Unit;
+  onClose: () => void;
+  closeLabel?: string;
+}) {
   return (
     <Modal visible={recap !== null} transparent animationType="fade" onRequestClose={onClose}>
-      {recap && <Recap recap={recap} unit={unit} onClose={onClose} />}
+      {recap && <Recap recap={recap} unit={unit} onClose={onClose} closeLabel={closeLabel} />}
     </Modal>
   );
 }
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
-// "12 Oct – 18 Oct", in the phone's own way of writing dates.
-function weekRange(start: number): string {
+// "12 Oct – 18 Oct", in the phone's own way of writing dates; with the year
+// too ("… 18 Oct 2025") for a week from another year.
+export function weekRange(start: number, withYear = false): string {
   const first = new Date(start);
   const last = new Date(first.getFullYear(), first.getMonth(), first.getDate() + 6);
-  const day = (d: Date) => d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
-  return `${day(first)} – ${day(last)}`;
+  const day = (d: Date, year?: boolean) =>
+    d.toLocaleDateString(undefined, { day: "numeric", month: "short", ...(year ? { year: "numeric" } : {}) });
+  return `${day(first)} – ${day(last, withYear)}`;
 }
 
 // The weight lifted next to the week before: "↑ 12% on the week before".
@@ -36,7 +49,17 @@ function change(volume: number, before: number): { text: string; up: boolean } |
   return { text: `${pct > 0 ? "↑" : "↓"} ${Math.abs(pct)}% on the week before`, up: pct > 0 };
 }
 
-function Recap({ recap, unit, onClose }: { recap: WeekRecap; unit: Unit; onClose: () => void }) {
+function Recap({
+  recap,
+  unit,
+  onClose,
+  closeLabel,
+}: {
+  recap: WeekRecap;
+  unit: Unit;
+  onClose: () => void;
+  closeLabel: string;
+}) {
   const goalHit = recap.workouts >= recap.goal;
   const levelUp = recap.levelAfter > recap.levelBefore;
   const vsBefore = change(recap.volume, recap.volumeBefore);
@@ -122,7 +145,7 @@ function Recap({ recap, unit, onClose }: { recap: WeekRecap; unit: Unit; onClose
           onPress={onClose}
           accessibilityRole="button"
         >
-          <Text style={styles.buttonText}>On to this week</Text>
+          <Text style={styles.buttonText}>{closeLabel}</Text>
         </Pressable>
       </View>
     </ScrollView>

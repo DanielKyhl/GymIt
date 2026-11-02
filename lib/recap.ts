@@ -47,6 +47,59 @@ export function recapDue(seen: string | undefined, now: number): { week: string;
   return seen !== undefined && seen >= week ? null : { week, start };
 }
 
+// One line per finished week you trained, newest first, for the list of past
+// recaps (app/weekly-recaps.tsx): the headline numbers, which match that
+// week's full recap (weekRecap). Quick enough for a whole history, since XP
+// is added up once per week rather than from scratch for each one. The week
+// in progress isn't in it: its recap comes when it's over.
+export type WeekSummary = {
+  week: string; // its Monday, "2026-10-19"
+  start: number; // Monday 00:00, local time
+  workouts: number;
+  goalHit: boolean;
+  volume: number; // weight lifted, in the workouts' unit
+  xp: number; // XP gained
+  prs: number;
+  levelUp: boolean;
+};
+
+export function pastWeeks(workouts: Workout[], weeklyGoal: number, now: number): WeekSummary[] {
+  const time = (w: Workout) => new Date(w.date).getTime();
+  const thisWeek = startOfWeek(now);
+  const byWeek = new Map<number, Workout[]>();
+  workouts.forEach((w) => {
+    const start = startOfWeek(time(w));
+    if (start < thisWeek) byWeek.set(start, [...(byWeek.get(start) ?? []), w]);
+  });
+  const records = workoutRecords(workouts);
+  const weeks: WeekSummary[] = [];
+  // Every workout before a week is in an earlier week of the list, so the XP
+  // after one week is the XP before the next.
+  let xpBefore = 0;
+  [...byWeek.keys()]
+    .sort((a, b) => a - b)
+    .forEach((start) => {
+      const inWeek = byWeek.get(start)!;
+      const end = nextWeek(start);
+      const xpAfter = computeXP(
+        workouts.filter((w) => time(w) < end),
+        weeklyGoal
+      );
+      weeks.push({
+        week: dayKey(new Date(start)),
+        start,
+        workouts: inWeek.length,
+        goalHit: inWeek.length >= weeklyGoal,
+        volume: inWeek.reduce((n, w) => n + workoutVolume(w), 0),
+        xp: xpAfter - xpBefore,
+        prs: inWeek.reduce((n, w) => n + prCount(records.get(w.id)), 0),
+        levelUp: levelInfo(xpAfter).level > levelInfo(xpBefore).level,
+      });
+      xpBefore = xpAfter;
+    });
+  return weeks.reverse();
+}
+
 // The week starting at `start`, from the workouts (in one unit and matched to
 // their templates: getWorkoutsForStats). Null for a week with no workouts:
 // nothing to look back on.
