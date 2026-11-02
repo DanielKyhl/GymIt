@@ -1,5 +1,6 @@
 import {
     estimate1RM,
+    getExerciseSessions,
     getLastPerformance,
     getTrainedExercises,
     getVolumeByTemplate,
@@ -47,6 +48,14 @@ describe("workoutVolume", () => {
     expect(workoutVolume(w)).toBe(500);
   });
 
+  test("sets left unticked, with last time's numbers still in them, weren't lifted", () => {
+    const w = workout("Push", "2026-09-05", [
+      { name: "Bench", sets: [set(100, 5), set(100, 5, { done: false })] },
+      { name: "Barbell Curl", sets: [set(30, 10, { done: false }), set(30, 10, { done: false })] },
+    ]);
+    expect(workoutVolume(w)).toBe(500);
+  });
+
   test("counts a dumbbell exercise's weight twice, one for each dumbbell, the way Strong does", () => {
     const w = workout("Push", "2026-10-01", [
       { name: "Barbell Bench Press", sets: [set(90, 8), set(90, 7)] }, // 1,350
@@ -83,6 +92,18 @@ describe("getTrainedExercises", () => {
     expect(bench.best1RM).toBe(117);
   });
 
+  test("only what was ticked off: the best sets, and whether it was done at all", () => {
+    const w = [
+      workout("Push", "2026-09-08", [
+        { name: "Bench", sets: [set(80, 5), set(140, 5, { done: false })] },
+        { name: "Flyes", sets: [set(20, 12, { done: false })] },
+      ]),
+    ];
+    expect(getTrainedExercises(w)).toEqual([{ name: "Bench", bestWeight: 80, best1RM: 93, sessionCount: 1 }]);
+    expect(getExerciseSessions(w, "Bench")).toEqual([{ date: "2026-09-08", topWeight: 80, best1RM: 93 }]);
+    expect(getExerciseSessions(w, "Flyes")).toEqual([]);
+  });
+
   test("skips exercises that were only warmed up", () => {
     const w = workout("Push", "2026-09-05", [
       { name: "Flyes", sets: [set(10, 12, { type: "warmup" })] },
@@ -94,6 +115,14 @@ describe("getTrainedExercises", () => {
 describe("lookups", () => {
   test("getLastPerformance returns the most recent session's sets", () => {
     expect(getLastPerformance(history, "Bench")).toEqual([set(100, 5)]);
+  });
+
+  test("a session where the exercise was left unticked isn't last time: it wasn't done", () => {
+    const w = [
+      workout("Push", "2026-09-08", [{ name: "Bench", sets: [set(100, 5, { done: false }), set(100, 5, { done: false })] }]),
+      workout("Push", "2026-09-05", [{ name: "Bench", sets: [set(95, 5)] }]),
+    ];
+    expect(getLastPerformance(w, "Bench")).toEqual([set(95, 5)]);
   });
 
   test("warm-ups come along, to line up with this time's; a warm-up-only session is skipped", () => {

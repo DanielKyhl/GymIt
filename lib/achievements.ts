@@ -1,7 +1,7 @@
 import { Workout } from "../types/workout";
 import { countPRs, weeklyGoalBonusXP, XP_WEEKLY_GOAL_BONUS } from "./gamification";
 import { lifetimeKg } from "./milestones";
-import { estimate1RM, setsVolume, workoutVolume } from "./stats";
+import { countedSets, estimate1RM, setsVolume, workoutVolume } from "./stats";
 import { convertWeight } from "./units";
 
 export type Achievement = {
@@ -73,7 +73,8 @@ function buildContext(workouts: Workout[], weeklyGoal: number) {
     let sessionSets = 0;
     w.exercises.forEach((ex) => {
       if (ex.supersetId) supersets = true;
-      const working = ex.sets.filter((s) => s.type !== "warmup");
+      // Only what you ticked off counts as lifted.
+      const working = countedSets(ex.sets);
       if (working.length > 0) exerciseNames.add(ex.name);
       totalVolume += setsVolume(ex.name, working);
       working.forEach((s) => {

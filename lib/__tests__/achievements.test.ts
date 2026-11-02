@@ -26,6 +26,17 @@ describe("achievements", () => {
     expect(got.has("session-whale")).toBe(false);
   });
 
+  test("sets left unticked weren't lifted: no volume, reps, 1RM or exercises from them", () => {
+    const unticked = workout("Push", at(2026, 9, 1), [
+      { name: "Squat", sets: sets(40, 50, 25, { done: false }) }, // 50,000 kg and 1,000 reps if it counted
+      { name: "Bench", sets: [set(200, 5, { done: false })] }, // an estimated 1RM of 233
+    ]);
+    const got = unlocked([unticked]);
+    for (const id of ["volume-1k", "reps-1000", "triple-digits", "session-elephant", "landmark-bus"]) {
+      expect(got.has(id)).toBe(false);
+    }
+  });
+
   test("volume counts both dumbbells", () => {
     const curls = workout("Arms", at(2026, 9, 1), [{ name: "Dumbbell Hammer Curl", sets: sets(2, 25, 10) }]); // 500 a dumbbell
     expect(unlocked([curls]).has("volume-1k")).toBe(true);

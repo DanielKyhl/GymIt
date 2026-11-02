@@ -29,6 +29,13 @@ describe("computeRecovery", () => {
     expect(all.every((m) => m.fraction === 1 && m.hoursLeft === 0)).toBe(true);
   });
 
+  test("an exercise with nothing ticked off wasn't trained", () => {
+    const untouched = workout("Push", hoursAgo(1), [
+      { name: "Barbell Bench Press - Medium Grip", sets: [set(100, 5, { done: false })] },
+    ]);
+    expect(muscle([untouched], "chest").color).toBe(COLOR_RECOVERED);
+  });
+
   test("a muscle trained an hour ago is red with nearly all its time left", () => {
     const chest = muscle([bench(hoursAgo(1))], "chest");
     expect(chest.color).toBe(COLOR_TRAINED);

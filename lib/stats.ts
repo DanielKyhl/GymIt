@@ -18,14 +18,14 @@ export type ExerciseSession = {
 };
 
 // Every past session that included this exercise, oldest first, with the
-// heaviest weight and best estimated 1RM logged that day.
+// heaviest weight and best estimated 1RM logged that day (in the sets ticked off).
 export function getExerciseSessions(workouts: Workout[], name: string): ExerciseSession[] {
   const sessions: ExerciseSession[] = [];
   // Stored newest-first, so reverse for a left-to-right timeline.
   [...workouts].reverse().forEach((w) => {
     const ex = w.exercises.find((e) => e.name === name);
     if (!ex) return;
-    const working = ex.sets.filter((s) => s.type !== "warmup");
+    const working = countedSets(ex.sets);
     if (working.length === 0) return;
     let topWeight = 0;
     let best1RM = 0;
@@ -46,12 +46,12 @@ export type ExerciseSummary = {
   sessionCount: number;
 };
 
-// One summary row per exercise you've ever logged sets for, most-trained first.
+// One summary row per exercise you've ever ticked off sets of, most-trained first.
 export function getTrainedExercises(workouts: Workout[]): ExerciseSummary[] {
   const map = new Map<string, ExerciseSummary>();
   workouts.forEach((w) => {
     w.exercises.forEach((ex) => {
-      const working = ex.sets.filter((s) => s.type !== "warmup");
+      const working = countedSets(ex.sets);
       if (working.length === 0) return;
       const summary =
         map.get(ex.name) ?? { name: ex.name, bestWeight: 0, best1RM: 0, sessionCount: 0 };
@@ -67,13 +67,14 @@ export function getTrainedExercises(workouts: Workout[]): ExerciseSummary[] {
   return [...map.values()].sort((a, b) => b.sessionCount - a.sessionCount);
 }
 
-// The sets from the most recent past workout that included this exercise
-// (with working sets in it) — the "last time" shown while logging.
+// The sets from the most recent past workout where this exercise was done
+// (a working set ticked off: one left unticked wasn't) — the "last time"
+// shown while logging.
 export function getLastPerformance(workouts: Workout[], name: string): WorkoutSet[] {
   for (const w of workouts) {
     const ex = w.exercises.find((e) => e.name === name);
     // Warm-ups included, to line up with this time's (previousSet).
-    if (ex?.sets.some((s) => s.type !== "warmup")) return ex.sets;
+    if (ex && countedSets(ex.sets).length > 0) return ex.sets;
   }
   return [];
 }
@@ -119,8 +120,11 @@ export function setsVolume(name: string, sets: WorkoutSet[]): number {
   return isDumbbell(name) ? volume * 2 : volume;
 }
 
+// A workout's volume: only the working sets you ticked off count as lifted
+// (countedSets), the way History counts them, not ones left unticked with
+// last time's numbers still in them.
 export function workoutVolume(workout: Workout): number {
-  return workout.exercises.reduce((n, ex) => n + setsVolume(ex.name, ex.sets.filter((s) => s.type !== "warmup")), 0);
+  return workout.exercises.reduce((n, ex) => n + setsVolume(ex.name, countedSets(ex.sets)), 0);
 }
 
 export function getVolumeHistory(workouts: Workout[]): { date: string; volume: number }[] {

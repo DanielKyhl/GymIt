@@ -159,7 +159,9 @@ export function computeRecovery(workouts: Workout[], now: number = Date.now()): 
   workouts.forEach((w) => {
     const elapsedH = (now - new Date(w.date).getTime()) / (1000 * 60 * 60);
     w.exercises.forEach((ex) => {
-      if (ex.sets.length === 0) return;
+      // Only an exercise you ticked off a working set of was trained (the
+      // sets countedSets in lib/stats.ts counts).
+      if (!ex.sets.some((s) => s.done && s.type !== "warmup" && s.reps > 0)) return;
       const mm = musclesFor(ex.name);
       // floor: the least recovered this can make a muscle look.
       const apply = (slug: Slug, factor: number, floor = 0) => {
