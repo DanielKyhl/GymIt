@@ -408,6 +408,23 @@ test("sign up, build a template, train from it, come back to it", async ({ page 
     await expect(text(page, "Each week you train gets a recap here once it's over.")).toBeVisible();
     await expectWorkingBackArrow(page, /\/progress$/);
   });
+
+  await test.step("a workout finished with nothing ticked off isn't saved", async () => {
+    await page.getByRole("tab", { name: "History" }).click();
+    const cards = onScreen(page.locator("#root").getByText(/ min · /));
+    await expect(cards).toHaveCount(2);
+    await page.getByRole("tab", { name: "Home" }).click();
+    await tap(page, "E2E Pull");
+    await expect(page).toHaveURL(/\/template\//);
+    await tap(page, "Start workout");
+    await expectWorkoutOpen(page);
+    await tap(page, "Finish workout"); // nothing ticked
+    await expect.poll(() => dialogs.at(-1)).toMatch(/Nothing's ticked off, so nothing will be saved/);
+    await expect(labelled(page, "Settings")).toBeVisible(); // straight back to Home, no summary
+    await expect(text(page, "Workout complete!")).toHaveCount(0);
+    await page.getByRole("tab", { name: "History" }).click();
+    await expect(cards).toHaveCount(2);
+  });
 });
 
 test("rest timer: type your own time, change it mid-rest, and ring without pausing music", async ({ page }) => {

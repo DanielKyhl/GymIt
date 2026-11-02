@@ -476,18 +476,29 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
 
   const handleEnd = async () => {
     // A stray tap shouldn't end the workout. Sets not ticked off yet are worth
-    // a mention: they're easy to forget at the end.
+    // a mention: they're easy to forget at the end. With nothing ticked off
+    // there's nothing to save (only ticked sets count as lifted), so finishing
+    // then throws the workout away, as Discard does, rather than saving an
+    // empty one that would still count as a workout.
+    const ticked = active.exercises.some((ex) => ex.sets.some((s) => s.done));
     const unticked = active.exercises.reduce((n, ex) => n + ex.sets.filter((s) => !s.done).length, 0);
     const ok = await confirm(
       "Finish workout?",
-      unticked > 0
-        ? `${plural(unticked, "set")} ${unticked === 1 ? "isn't" : "aren't"} ticked off yet.`
-        : "It'll be saved to your history.",
+      !ticked
+        ? "Nothing's ticked off, so nothing will be saved."
+        : unticked > 0
+          ? `${plural(unticked, "set")} ${unticked === 1 ? "isn't" : "aren't"} ticked off yet.`
+          : "It'll be saved to your history.",
       "Finish",
-      { cancel: "Keep going" }
+      { cancel: "Keep going", destructive: !ticked }
     );
     if (!ok) return;
     finished.current = true;
+    if (!ticked) {
+      await clearActiveWorkout();
+      onClose();
+      return;
+    }
     const workout: Workout = {
       id: Date.now().toString(),
       name: active.name.trim() || "Workout",
