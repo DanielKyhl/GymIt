@@ -20,11 +20,12 @@ type Props = {
   records: ExerciseRecord[]; // this workout's PRs
   comparison?: Comparison | null; // "the weight of 7 elephants"
   level?: number; // frames the card in the colours of your rank
+  vsLast?: { volume: number; date: string } | null; // PROTOTYPE: the inline layout
 };
 
 // The workout at a glance. Shown on the summary screen and saved as an image
 // by the Share button, so what you see is what gets shared.
-export function ShareCard({ ref, workout, volume, records, comparison, level }: Props) {
+export function ShareCard({ ref, workout, volume, records, comparison, level, vsLast }: Props) {
   const unit = workout.unit;
   const sets = workout.exercises.reduce(
     (n, ex) => n + ex.sets.filter((s) => s.done && s.type !== "warmup").length,
@@ -112,6 +113,19 @@ export function ShareCard({ ref, workout, volume, records, comparison, level }: 
           </View>
         </View>
 
+        {vsLast && (() => {
+          const diff = Math.round(volume) - Math.round(vsLast.volume);
+          const up = diff > 0;
+          const pct = Math.round((diff / vsLast.volume) * 100);
+          return (
+            <Text style={[styles.vs, up && { color: C.signal }]}>
+              {diff === 0
+                ? "Same weight as last time"
+                : `${up ? "\u2191" : "\u2193"} ${formatNumber(Math.abs(diff), 0)} ${unit} ${up ? "more" : "less"} than last time (${up ? "+" : "\u2212"}${Math.abs(pct)}%)`}
+            </Text>
+          );
+        })()}
+
         {lines.length > 0 && (
           <View style={styles.lines}>
             <View style={styles.linesHeader}>
@@ -153,6 +167,7 @@ const styles = StyleSheet.create({
   statValue: { ...T.num, fontSize: 30 },
   statUnit: { ...T.num, color: C.textMuted, fontSize: 16 },
   statLabel: { color: C.textMuted, fontSize: 12, marginTop: 2 },
+  vs: { color: C.textSoft, fontSize: 14, fontWeight: "600", marginTop: 12 },
   hero: { alignItems: "center", paddingTop: 6, paddingBottom: 22 },
   heroText: { color: C.text, fontSize: 20, fontWeight: "700", textAlign: "center", marginTop: 16, lineHeight: 26 },
   lines: { borderTopWidth: 1, borderTopColor: C.raised, marginTop: 18, paddingTop: 14, gap: 8 },

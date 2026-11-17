@@ -86,6 +86,22 @@ export function templateHistory(workouts: Workout[], template: { id: string; nam
   return workouts.filter((w) => (w.templateId ? w.templateId === template.id : w.name === template.name));
 }
 
+// The last time a workout's template was done before it, for the summary's
+// "more / less than last time": the latest earlier workout from the same
+// template that lifted anything (an old one saved with nothing ticked off
+// doesn't count). Null for a workout not from a template, or the first one.
+// From getWorkoutsForStats, so workouts saved before they kept their template
+// count, and the weights are all in one unit.
+export function lastTimeFromTemplate(workouts: Workout[], workout: Workout): Workout | null {
+  if (!workout.templateId) return null;
+  const time = (w: Workout) => new Date(w.date).getTime();
+  return workouts.reduce<Workout | null>((latest, w) => {
+    const earlier = w.id !== workout.id && w.templateId === workout.templateId && time(w) < time(workout);
+    if (!earlier || workoutVolume(w) <= 0) return latest;
+    return latest === null || time(w) > time(latest) ? w : latest;
+  }, null);
+}
+
 // Workouts saved before they kept their template (no templateId at all; an
 // empty workout's is null), given the id of the template with their name, so
 // their records count in that template (workoutRecords). Your own template

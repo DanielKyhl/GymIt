@@ -1,7 +1,7 @@
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
-import { ArrowUp, Award, Share2, Sparkles } from "lucide-react-native";
+import { ArrowUp, Award, Minus, Share2, Sparkles, TrendingDown, TrendingUp } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
@@ -15,9 +15,9 @@ import { compareVolume, Comparison } from "../lib/funFacts";
 import { lifetimeKg, lifetimeMilestone } from "../lib/milestones";
 import { rankFor } from "../lib/ranks";
 import { formatRPE, workoutRPE } from "../lib/rpe";
-import { convertWeight } from "../lib/units";
+import { convertWeight, Unit } from "../lib/units";
 import { formatNumber } from "../lib/format";
-import { ExerciseRecord, workoutVolume } from "../lib/stats";
+import { ExerciseRecord, lastTimeFromTemplate, workoutVolume } from "../lib/stats";
 import { getWorkoutsForStats } from "../lib/storage";
 import { Workout } from "../types/workout";
 
@@ -39,10 +39,13 @@ export default function WorkoutSummary() {
     levelBefore?: string;
     achievements?: string;
     records?: string;
+    vs?: string; // PROTOTYPE: "inline" shows the second layout
   }>();
   const [workout, setWorkout] = useState<Workout | null>(null);
   const [comparison, setComparison] = useState<Comparison | null>(null);
   const [lifetime, setLifetime] = useState<{ totalKg: number; newMilestone: boolean } | null>(null);
+  // The last time this template was done: what today's weight is compared with.
+  const [lastTime, setLastTime] = useState<LastTime | null>(null);
   const [sharing, setSharing] = useState(false);
   const cardRef = useRef<View>(null);
 
@@ -65,6 +68,8 @@ export default function WorkoutSummary() {
       // Seeded by how many workouts came before, so each new workout gets a
       // different animal even when the total barely changed.
       if (w) setComparison(compareVolume(workoutVolume(w), w.unit, all.filter((x) => x.date < w.date).length));
+      const last = w ? lastTimeFromTemplate(all, w) : null;
+      setLastTime(last ? { volume: workoutVolume(last), date: last.date } : null);
       // Did this workout take the lifetime total past a new landmark?
       const totalKg = lifetimeKg(all);
       const beforeKg = w ? totalKg - convertWeight(workoutVolume(w), w.unit, "kg") : totalKg;
@@ -109,7 +114,14 @@ export default function WorkoutSummary() {
             records={prs}
             comparison={comparison}
             level={level}
+            vsLast={params.vs === "inline" && lastTime ? { volume: lastTime.volume, date: lastTime.date } : null}
           />
+        </Animated.View>
+      )}
+
+      {workout && lastTime && params.vs !== "inline" && (
+        <Animated.View entering={FadeInDown.delay(270)} style={styles.full}>
+          <VsLastTime volume={workoutVolume(workout)} last={lastTime} unit={workout.unit} />
         </Animated.View>
       )}
 
@@ -205,11 +217,68 @@ export default function WorkoutSummary() {
   );
 }
 
+type LastTime = { volume: number; date: string };
+
+// Today's weight lifted next to the last time this template was done:
+// "+1,240 kg more than last time". Up in the highlight colour; down plainly,
+// since a lighter day isn't a mistake.
+function VsLastTime({ volume, last, unit }: { volume: number; last: LastTime; unit: Unit }) {
+  const diff = Math.round(volume) - Math.round(last.volume);
+  const pct = Math.round((diff / last.volume) * 100);
+  const up = diff > 0;
+  const Icon = diff > 0 ? TrendingUp : diff < 0 ? TrendingDown : Minus;
+  const date = new Date(last.date).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+  return (
+    <View style={styles.vsCard}>
+      <View style={[styles.vsIcon, up && styles.vsIconUp]}>
+        <Icon size={20} color={up ? C.signal : C.textSoft} />
+      </View>
+      <View style={styles.vsBody}>
+        <View style={styles.vsTop}>
+          <Text style={[styles.vsValue, up && styles.vsValueUp]} numberOfLines={1}>
+            {diff === 0 ? "Same weight" : `${up ? "+" : "\u2212"}${formatNumber(Math.abs(diff), 0)}`}
+            {diff !== 0 && <Text style={styles.vsUnit}> {unit}</Text>}
+          </Text>
+          {pct !== 0 && (
+            <View style={[styles.vsPill, up && styles.vsPillUp]}>
+              <Text style={[styles.vsPillText, up && styles.vsPillTextUp]}>
+                {up ? "\u2191" : "\u2193"} {Math.abs(pct)}%
+              </Text>
+            </View>
+          )}
+        </View>
+        <Text style={styles.vsLabel}>
+          {diff === 0 ? "as" : up ? "more than" : "less than"} last time · {date}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   content: { padding: 24, paddingTop: 64, paddingBottom: 40, alignItems: "center" },
   full: { width: "100%" },
   lifetime: { marginTop: 12 },
+  vsCard: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: C.card, borderRadius: 16, padding: 14, marginTop: 12,
+  },
+  vsIcon: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: C.raised, alignItems: "center", justifyContent: "center",
+  },
+  vsIconUp: { backgroundColor: C.signalBg },
+  vsBody: { flex: 1, minWidth: 0 },
+  vsTop: { flexDirection: "row", alignItems: "center", gap: 10 },
+  vsValue: { ...T.num, fontSize: 26, lineHeight: 30 },
+  vsValueUp: { color: C.signal },
+  vsUnit: { ...T.num, fontSize: 16, color: C.textMuted },
+  vsLabel: { color: C.textMuted, fontSize: 13 },
+  vsPill: { backgroundColor: C.raised, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
+  vsPillUp: { backgroundColor: C.signalBg },
+  vsPillText: { color: C.textSoft, fontSize: 13, fontWeight: "600" },
+  vsPillTextUp: { color: C.signal },
   milestones: { backgroundColor: C.card, borderRadius: 16, padding: 14, marginTop: 12, gap: 8 },
   milestonesHeader: { color: C.textMuted, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
   milestoneRow: { flexDirection: "row", alignItems: "center", gap: 8 },
