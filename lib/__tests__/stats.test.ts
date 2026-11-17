@@ -4,11 +4,14 @@ import {
     getLastPerformance,
     getTrainedExercises,
     getVolumeByTemplate,
+    lastTimeFromTemplate,
     lastUsedDate,
     templateHistory,
     weeklyMuscleSets,
+    withTemplateIds,
     workoutVolume,
 } from "../stats";
+import { WorkoutSet } from "../../types/workout";
 import { set, workout } from "./fixtures";
 
 // Newest first — the order storage returns them in.
@@ -154,6 +157,42 @@ describe("lookups", () => {
     expect(lastUsedDate(history, "Never Done")).toBeNull();
   });
 });
+describe("lastTimeFromTemplate: what the summary compares today's weight with", () => {
+  // A workout on a day of September 2026, from a template (or not: null, or
+  // undefined for one saved before workouts kept their template).
+  const done = (name: string, templateId: string | null | undefined, day: string, sets: WorkoutSet[]) => ({
+    ...workout(name, `2026-09-${day}T18:00:00.000Z`, [{ name: "Bench", sets }]),
+    templateId,
+  });
+  const today = done("Upper", "upper", "10", [set(100, 5)]);
+
+  test("the latest earlier workout from the same template, not another one", () => {
+    const workouts = [today, done("Lower", "lower", "08", [set(60, 5)]), done("Upper", "upper", "06", [set(90, 5)]), done("Upper", "upper", "01", [set(80, 5)])];
+    expect(lastTimeFromTemplate(workouts, today)?.date).toBe("2026-09-06T18:00:00.000Z");
+  });
+
+  test("not one after it, nor one where nothing was lifted", () => {
+    const workouts = [
+      done("Upper", "upper", "12", [set(110, 5)]),
+      today,
+      done("Upper", "upper", "06", [set(90, 5, { done: false })]), // saved with nothing ticked off
+      done("Upper", "upper", "01", [set(80, 5)]),
+    ];
+    expect(lastTimeFromTemplate(workouts, today)?.date).toBe("2026-09-01T18:00:00.000Z");
+  });
+
+  test("nothing the first time, or for a workout not from a template", () => {
+    expect(lastTimeFromTemplate([today, done("Lower", "lower", "06", [set(90, 5)])], today)).toBeNull();
+    const empty = done("Workout", null, "10", [set(100, 5)]);
+    expect(lastTimeFromTemplate([empty, done("Workout", null, "06", [set(90, 5)])], empty)).toBeNull();
+  });
+
+  test("a workout from before templates were kept counts, matched by its name", () => {
+    const workouts = withTemplateIds([today, done("Upper", undefined, "06", [set(90, 5)])], [{ id: "upper", name: "Upper" }]);
+    expect(lastTimeFromTemplate(workouts, today)?.date).toBe("2026-09-06T18:00:00.000Z");
+  });
+});
+
 describe("weekly sets per muscle", () => {
   const NOW = new Date("2026-09-20T12:00:00.000Z").getTime();
   const sets = (name: string, n: number) => ({ name, sets: Array.from({ length: n }, () => set(50, 10)) });

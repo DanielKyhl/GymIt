@@ -31,6 +31,19 @@ export function formatNumber(n: number, maxDecimals = 1): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: maxDecimals });
 }
 
+// A workout's volume next to the last time its template was done, for the
+// card on the summary: "↑ 1,055 kg more than last time (+16%)". In whole kg or
+// lb, with the percentage left out when it rounds to nothing. up: more than
+// last time.
+export function vsLastTime(volume: number, last: number, unit: string): { text: string; up: boolean } {
+  const diff = Math.round(volume) - Math.round(last);
+  if (diff === 0) return { text: "Same weight as last time", up: false };
+  const up = diff > 0;
+  const pct = last > 0 ? Math.round((Math.abs(diff) / last) * 100) : 0;
+  const change = `${up ? "↑" : "↓"} ${formatNumber(Math.abs(diff), 0)} ${unit} ${up ? "more" : "less"} than last time`;
+  return { text: pct > 0 ? `${change} (${up ? "+" : "−"}${pct}%)` : change, up };
+}
+
 // An exercise's sets in a few characters, for the History cards: "65 kg × 10,
 // 8, 8" when the weight stayed the same, "55×12 · 60×10 · 60×9" when it
 // changed, "BW × 10, 9, 8" for bodyweight exercises. Only the working sets you

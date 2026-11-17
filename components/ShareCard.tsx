@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { C, FONT, T } from "../constants/theme";
 import { Comparison } from "../lib/funFacts";
-import { formatNumber, prGain, prTotal } from "../lib/format";
+import { formatNumber, prGain, prTotal, vsLastTime } from "../lib/format";
 import { rankFor } from "../lib/ranks";
 import { bestSet, ExerciseRecord } from "../lib/stats";
 import { AnimalIcon } from "./AnimalIcon";
@@ -20,12 +20,12 @@ type Props = {
   records: ExerciseRecord[]; // this workout's PRs
   comparison?: Comparison | null; // "the weight of 7 elephants"
   level?: number; // frames the card in the colours of your rank
-  vsLast?: { volume: number; date: string } | null; // PROTOTYPE: the inline layout
+  lastVolume?: number; // the volume the last time its template was done: "↑ 1,055 kg more than last time"
 };
 
 // The workout at a glance. Shown on the summary screen and saved as an image
 // by the Share button, so what you see is what gets shared.
-export function ShareCard({ ref, workout, volume, records, comparison, level, vsLast }: Props) {
+export function ShareCard({ ref, workout, volume, records, comparison, level, lastVolume }: Props) {
   const unit = workout.unit;
   const sets = workout.exercises.reduce(
     (n, ex) => n + ex.sets.filter((s) => s.done && s.type !== "warmup").length,
@@ -33,6 +33,7 @@ export function ShareCard({ ref, workout, volume, records, comparison, level, vs
   );
   const minutes = Math.max(1, Math.round(workout.durationSeconds / 60));
   const date = new Date(workout.date).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  const vsLast = lastVolume === undefined ? null : vsLastTime(volume, lastVolume, unit);
 
   // Each PR's new total and what it beat the best by; with no PRs, the best
   // set of each exercise instead.
@@ -112,19 +113,8 @@ export function ShareCard({ ref, workout, volume, records, comparison, level, vs
             <Text style={styles.statLabel}>Sets</Text>
           </View>
         </View>
-
-        {vsLast && (() => {
-          const diff = Math.round(volume) - Math.round(vsLast.volume);
-          const up = diff > 0;
-          const pct = Math.round((diff / vsLast.volume) * 100);
-          return (
-            <Text style={[styles.vs, up && { color: C.signal }]}>
-              {diff === 0
-                ? "Same weight as last time"
-                : `${up ? "\u2191" : "\u2193"} ${formatNumber(Math.abs(diff), 0)} ${unit} ${up ? "more" : "less"} than last time (${up ? "+" : "\u2212"}${Math.abs(pct)}%)`}
-            </Text>
-          );
-        })()}
+        {/* More in the highlight colour; less plainly, since a lighter day isn't a mistake. */}
+        {vsLast && <Text style={[styles.vsLast, vsLast.up && styles.vsLastUp]}>{vsLast.text}</Text>}
 
         {lines.length > 0 && (
           <View style={styles.lines}>
@@ -167,7 +157,8 @@ const styles = StyleSheet.create({
   statValue: { ...T.num, fontSize: 30 },
   statUnit: { ...T.num, color: C.textMuted, fontSize: 16 },
   statLabel: { color: C.textMuted, fontSize: 12, marginTop: 2 },
-  vs: { color: C.textSoft, fontSize: 14, fontWeight: "600", marginTop: 12 },
+  vsLast: { color: C.textSoft, fontSize: 14, fontWeight: "600", marginTop: 12 },
+  vsLastUp: { color: C.signal },
   hero: { alignItems: "center", paddingTop: 6, paddingBottom: 22 },
   heroText: { color: C.text, fontSize: 20, fontWeight: "700", textAlign: "center", marginTop: 16, lineHeight: 26 },
   lines: { borderTopWidth: 1, borderTopColor: C.raised, marginTop: 18, paddingTop: 14, gap: 8 },

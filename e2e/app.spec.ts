@@ -313,6 +313,7 @@ test("sign up, build a template, train from it, come back to it", async ({ page 
     sayNo = false;
     await tap(page, "Finish workout");
     await expect(text(page, "Workout complete!")).toBeVisible();
+    await expect(text(page, /than last time/)).toHaveCount(0); // the template's first time: nothing to compare
     await tap(page, "Done");
     await expect(labelled(page, "Settings")).toBeVisible();
   });
@@ -364,6 +365,8 @@ test("sign up, build a template, train from it, come back to it", async ({ page 
     await tap(page, "Finish workout");
     await expect(text(page, "New PR!")).toBeVisible();
     await expect(text(page, "520 kg (+40 kg)")).toBeVisible();
+    // The weight lifted next to last time's 1,120 kg (pull-ups at 80 kg body weight, and the row).
+    await expect(text(page, "↑ 40 kg more than last time (+4%)")).toBeVisible();
     await expect(text(page, /First time at 65 kg/)).toBeVisible();
     await tap(page, "Done");
     await expect(labelled(page, "Settings")).toBeVisible();

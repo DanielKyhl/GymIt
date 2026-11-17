@@ -1,4 +1,4 @@
-import { formatDuration, formatNumber, formatSets, plural, prGain, prTotal, relativeDay } from "../format";
+import { formatDuration, formatNumber, formatSets, plural, prGain, prTotal, relativeDay, vsLastTime } from "../format";
 import { set } from "./fixtures";
 
 const NOW = "2026-09-09T12:00:00.000Z";
@@ -104,5 +104,23 @@ describe("formatDuration", () => {
     expect(formatDuration(45 * 60)).toBe("45 min");
     expect(formatDuration(3 * 3600 + 52 * 60 + 10)).toBe("3 h 52 min");
     expect(formatDuration(2 * 3600)).toBe("2 h");
+  });
+});
+
+describe("vsLastTime", () => {
+  test("more than last time: how much, and the percentage", () => {
+    expect(vsLastTime(7775, 6720, "kg")).toEqual({ text: "↑ 1,055 kg more than last time (+16%)", up: true });
+  });
+
+  test("less, in the workout's unit", () => {
+    expect(vsLastTime(8460, 9360, "lb")).toEqual({ text: "↓ 900 lb less than last time (−10%)", up: false });
+  });
+
+  test("in whole kg or lb: under half of one either way is the same weight", () => {
+    expect(vsLastTime(2267.6, 2268.4, "kg")).toEqual({ text: "Same weight as last time", up: false });
+  });
+
+  test("a percentage that rounds to nothing is left out", () => {
+    expect(vsLastTime(10004, 10000, "kg").text).toBe("↑ 4 kg more than last time");
   });
 });
