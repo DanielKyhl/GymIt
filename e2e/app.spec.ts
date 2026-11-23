@@ -33,6 +33,8 @@ async function tapOnTop(l: Locator) {
   }).toPass({ timeout: 20_000 });
 }
 const tap = (page: Page, t: string) => tapOnTop(text(page, t));
+// Finish sits in the workout's header, beside the clock.
+const finish = (page: Page) => tapOnTop(labelled(page, "Finish workout"));
 
 // Numbers are typed on the app's own number pad, never the phone's keyboard:
 // tap the keys, the way a thumb does. `keys` like "62.5", or ">" for Next.
@@ -305,13 +307,13 @@ test("sign up, build a template, train from it, come back to it", async ({ page 
 
     // Finishing asks first; saying no keeps the workout going.
     sayNo = true;
-    await tap(page, "Finish workout");
+    await finish(page);
     await expect.poll(() => dialogs.at(-1)).toMatch(/^Finish workout\?/);
     await page.waitForTimeout(500);
     await expectWorkoutOpen(page);
     await expect(text(page, "Workout complete!")).toHaveCount(0);
     sayNo = false;
-    await tap(page, "Finish workout");
+    await finish(page);
     await expect(text(page, "Workout complete!")).toBeVisible();
     await expect(text(page, /than last time/)).toHaveCount(0); // the template's first time: nothing to compare
     await tap(page, "Done");
@@ -362,7 +364,7 @@ test("sign up, build a template, train from it, come back to it", async ({ page 
     await expect(text(page, "PR")).toHaveCount(1); // the row, not the same-reps pull-ups
     await expect(text(page, "↑ 1st")).toBeVisible();
 
-    await tap(page, "Finish workout");
+    await finish(page);
     await expect(text(page, "New PR!")).toBeVisible();
     await expect(text(page, "520 kg (+40 kg)")).toBeVisible();
     // The weight lifted next to last time's 1,120 kg (pull-ups at 80 kg body weight, and the row).
@@ -377,7 +379,8 @@ test("sign up, build a template, train from it, come back to it", async ({ page 
     await expect(page).toHaveURL(/\/history$/);
     await expect(text(page, "1 PR")).toBeVisible();
     await expect(text(page, /^2 workouts · 1 PR$/)).toBeVisible();
-    await expect(text(page, /^65 kg × 8 · \+40 kg · ↑ first 65 kg$/)).toBeVisible();
+    // A PR says more than a first time at 65 kg, so the row notes only the PR.
+    await expect(text(page, /^65 kg × 8 · \+40 kg$/)).toBeVisible();
   });
 
   await test.step("the calendar marks today and opens its workouts", async () => {
@@ -421,7 +424,7 @@ test("sign up, build a template, train from it, come back to it", async ({ page 
     await expect(page).toHaveURL(/\/template\//);
     await tap(page, "Start workout");
     await expectWorkoutOpen(page);
-    await tap(page, "Finish workout"); // nothing ticked
+    await finish(page); // nothing ticked
     await expect.poll(() => dialogs.at(-1)).toMatch(/Nothing's ticked off, so nothing will be saved/);
     await expect(labelled(page, "Settings")).toBeVisible(); // straight back to Home, no summary
     await expect(text(page, "Workout complete!")).toHaveCount(0);
@@ -623,6 +626,10 @@ test("rest timer: type your own time, change it mid-rest, and ring without pausi
     await swipeLeft(page, reps(3), 40);
     await page.waitForTimeout(500); // sprung back
     await expect(reps(3)).toBeVisible();
+    // A mouse also clicks the reps field it let go on, which opens the number
+    // pad (a finger's swipe doesn't). Put it away so it isn't over the row.
+    await page.keyboard.press("Escape");
+    await expect(onScreen(page.getByTestId("number-pad"))).toHaveCount(0);
 
     await swipeLeft(page, reps(3), 250);
     await expect(reps(3)).toHaveCount(0);

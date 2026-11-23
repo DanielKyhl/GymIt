@@ -131,22 +131,46 @@ export function restAfterSet(exercises: WorkoutExercise[], exIndex: number, setI
   return exercises[exIndex + 1]?.supersetId === ex.supersetId ? 0 : rest;
 }
 
-// Ticking a set starts the rest that follows it (replacing any rest already
-// running); unticking it stops that rest. Within a superset round there's
-// no rest, so ticking just ends the previous one.
+// A set without the note of how long its rest ran.
+function withoutRested(set: WorkoutSet): WorkoutSet {
+  const { rested: _, ...rest } = set;
+  return rest;
+}
+
+// Ends the running rest, noting on the set it followed how long it actually
+// ran, so the line under that set can say "rested 2:06".
+export function endRest(a: ActiveWorkout, now: number): ActiveWorkout {
+  const r = a.rest;
+  if (!r) return a;
+  const seconds = elapsedSeconds(r.startedAt, now);
+  return {
+    ...a,
+    rest: null,
+    exercises: a.exercises.map((ex, i) =>
+      i === r.exIndex
+        ? { ...ex, sets: ex.sets.map((s, j) => (j === r.setIndex && s.done ? { ...s, rested: seconds } : s)) }
+        : ex
+    ),
+  };
+}
+
+// Ticking a set starts the rest that follows it, ending any rest already
+// running (and noting how long that one ran); unticking it stops that rest.
+// Within a superset round there's no rest, so ticking just ends the previous one.
 export function toggleSet(a: ActiveWorkout, exIndex: number, setIndex: number, now: number): ActiveWorkout {
   const set = a.exercises[exIndex]?.sets[setIndex];
   if (!set) return a;
   const done = !set.done;
-  const exercises = a.exercises.map((ex, i) =>
-    i === exIndex ? { ...ex, sets: ex.sets.map((s, j) => (j === setIndex ? { ...s, done } : s)) } : ex
+  const base = done ? endRest(a, now) : a;
+  const exercises = base.exercises.map((ex, i) =>
+    i === exIndex ? { ...ex, sets: ex.sets.map((s, j) => (j === setIndex ? { ...withoutRested(s), done } : s)) } : ex
   );
   if (!done) {
     const ownRest = a.rest?.exIndex === exIndex && a.rest?.setIndex === setIndex;
     return { ...a, exercises, rest: ownRest ? null : a.rest };
   }
   const seconds = restAfterSet(exercises, exIndex, setIndex);
-  return { ...a, exercises, rest: seconds > 0 ? { startedAt: now, target: seconds, exIndex, setIndex } : null };
+  return { ...base, exercises, rest: seconds > 0 ? { startedAt: now, target: seconds, exIndex, setIndex } : null };
 }
 
 // Join an exercise with the one after it (merging their groups if either is
@@ -281,7 +305,7 @@ export function warmupSets(working: number, unit: Unit, bar: number, restSeconds
 // and so are exercises with nothing left, so history only shows real work.
 export function loggedExercises(exercises: WorkoutExercise[]): WorkoutExercise[] {
   return exercises
-    .map((ex) => ({ ...ex, sets: ex.sets.filter((s) => s.done || s.reps > 0) }))
+    .map((ex) => ({ ...ex, sets: ex.sets.filter((s) => s.done || s.reps > 0).map(withoutRested) }))
     .filter((ex) => ex.sets.length > 0);
 }
 

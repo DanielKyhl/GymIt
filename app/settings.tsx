@@ -17,16 +17,18 @@ import {
   getBodyWeight,
   getDefaultRest,
   getDefaultUnit,
+  getShowRpe,
   getTimerSound,
   getWeeklyGoal,
   setBodyGender,
   setBodyWeight,
   setDefaultRest,
   setDefaultUnit,
+  setShowRpe,
   setTimerSound,
   setWeeklyGoal,
 } from "../lib/storage";
-import { C } from "../constants/theme";
+import { C, T } from "../constants/theme";
 
 export default function Settings() {
   const router = useRouter();
@@ -41,10 +43,12 @@ export default function Settings() {
   const [goal, setGoalState] = useState(3);
   const [gender, setGenderState] = useState<"male" | "female">("male");
   const [weight, setWeightState] = useState(0);
+  const [rpe, setRpeState] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
       getDefaultUnit().then(setUnitState);
+      getShowRpe().then(setRpeState);
       getDefaultRest().then(setRestState);
       getTimerSound().then(setSoundState);
       getWeeklyGoal().then(setGoalState);
@@ -64,6 +68,7 @@ export default function Settings() {
   };
   const chooseGoal = (g: number) => { setGoalState(g); setWeeklyGoal(g); };
   const chooseGender = (g: "male" | "female") => { setGenderState(g); setBodyGender(g); };
+  const chooseRpe = (show: boolean) => { setRpeState(show); setShowRpe(show); };
   const saveRest = (v: number) => { setRestState(v); setDefaultRest(v || 90); };
   // Plays it too, so you hear what you picked.
   const chooseSound = (id: TimerSoundId) => { setSoundState(id); setTimerSound(id); playSound(id); };
@@ -186,6 +191,24 @@ export default function Settings() {
             : "Tap one to hear it. It plays over your music without pausing it."}
         </Text>
 
+        <Text style={styles.section}>RPE in workouts</Text>
+        <View style={styles.segment}>
+          {([true, false] as const).map((show) => (
+            <Pressable
+              key={String(show)}
+              style={[styles.segBtn, rpe === show && styles.segActive]}
+              onPress={() => chooseRpe(show)}
+              accessibilityRole="radio"
+              aria-checked={rpe === show}
+            >
+              <Text style={styles.segText}>{show ? "Show" : "Hide"}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <Text style={[styles.hint, styles.fieldHint]}>
+          A column for how hard each set felt, from 1 to 10. Hide it to give weight and reps more room.
+        </Text>
+
         <Text style={styles.section}>Weekly workout goal</Text>
         <View style={styles.grid}>
           {Array.from({ length: 7 }, (_, i) => i + 1).map((n) => (
@@ -270,7 +293,7 @@ export default function Settings() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   content: { padding: 20, paddingTop: 16, paddingBottom: 40 },
-  section: { color: C.textMuted, fontSize: 13, textTransform: "uppercase", marginBottom: 10, marginTop: 20 },
+  section: { ...T.label, marginBottom: 10, marginTop: 20 },
   card: { backgroundColor: C.card, borderRadius: 12, padding: 16 },
   email: { color: C.text, fontSize: 16, marginBottom: 10 },
   logout: { color: C.accent, fontSize: 15 },

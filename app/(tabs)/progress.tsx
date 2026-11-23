@@ -263,9 +263,9 @@ function shortDay(key: string): string {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
-  title: { color: C.text, fontSize: 28, fontWeight: "bold", marginBottom: 4 },
+  title: { ...T.title, marginBottom: 4 },
   lifetime: { marginTop: 12 },
-  section: { color: C.textMuted, fontSize: 13, textTransform: "uppercase", marginBottom: 12, marginTop: 20 },
+  section: { ...T.label, marginBottom: 12, marginTop: 20 },
   panelCard: { backgroundColor: C.card, borderRadius: 14, padding: 16 },
   caption: { color: C.textFaint, fontSize: 12, lineHeight: 17, marginTop: 14 },
   captionTop: { marginTop: 0 },

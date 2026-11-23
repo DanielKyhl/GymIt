@@ -37,8 +37,9 @@ export const R = { sm: 6, md: 10, lg: 14, xl: 20, pill: 999 } as const;
 
 export const S = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 28 } as const;
 
-// Barlow Condensed for numbers (timers, weights, stats); the system font for
-// everything else. Loaded in app/_layout.tsx before the app is shown.
+// Barlow Condensed for numbers (timers, weights, stats), the wordmark and
+// screen titles; the system font for everything else. Loaded in
+// app/_layout.tsx before the app is shown.
 export const FONT = {
   num: 'BarlowCondensed_600SemiBold',
   numBold: 'BarlowCondensed_700Bold',
@@ -46,11 +47,15 @@ export const FONT = {
 
 // Type scale.
 export const T = {
-  title: { fontSize: 28, fontWeight: '700', color: C.text },
+  // A screen's big title, in the condensed face that sets the numbers and the
+  // wordmark. No fontWeight: the bold is in the font itself.
+  title: { fontFamily: FONT.numBold, fontSize: 34, lineHeight: 38, letterSpacing: 0.2, color: C.text },
   heading: { fontSize: 20, fontWeight: '600', color: C.text },
   subheading: { fontSize: 16, fontWeight: '500', color: C.text },
   body: { fontSize: 15, color: C.text },
-  label: { fontSize: 13, color: C.textMuted },
+  // The one style for small uppercase labels above a section or value
+  // ("UP NEXT", "LIFETIME TOTAL"). Only the colour changes between uses.
+  label: { fontSize: 12, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase', color: C.textMuted },
   caption: { fontSize: 12, color: C.textFaint },
   // Numbers line up digit-for-digit so timers don't jitter as they count.
   num: { fontFamily: FONT.num, fontVariant: ['tabular-nums'], color: C.text },

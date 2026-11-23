@@ -1,6 +1,7 @@
 import {
   ActiveWorkout,
   elapsedSeconds,
+  endRest,
   formatClock,
   formatRest,
   historyBests,
@@ -146,6 +147,24 @@ describe("toggleSet and the rest timer", () => {
     expect(toggleSet(one, 0, 0, 6_000).rest).toBeNull();
     const two = toggleSet(one, 0, 1, 7_000);
     expect(toggleSet(two, 0, 0, 8_000).rest?.setIndex).toBe(1);
+  });
+
+  test("ticking the next set notes how long the last rest ran", () => {
+    const a = toggleSet(toggleSet(workoutWith([bench]), 0, 0, 5_000), 0, 1, 131_000);
+    expect(a.exercises[0].sets[0].rested).toBe(126);
+    expect(a.exercises[0].sets[1].rested).toBeUndefined();
+  });
+
+  test("ending a rest notes its length; unticking the set forgets it", () => {
+    const ended = endRest(toggleSet(workoutWith([bench]), 0, 0, 5_000), 65_000);
+    expect(ended.rest).toBeNull();
+    expect(ended.exercises[0].sets[0].rested).toBe(60);
+    expect(toggleSet(ended, 0, 0, 70_000).exercises[0].sets[0]).not.toHaveProperty("rested");
+  });
+
+  test("how long you rested isn't saved with the workout", () => {
+    const ended = endRest(toggleSet(workoutWith([bench]), 0, 0, 5_000), 65_000);
+    expect(loggedExercises(ended.exercises)[0].sets[0]).not.toHaveProperty("rested");
   });
 
   test("no rest inside a superset round", () => {

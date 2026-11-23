@@ -15,7 +15,7 @@ import { getBodyGender, getPlanTemplates, getTemplates, getWorkouts } from "../.
 import { suggestTemplate } from "../../lib/suggest";
 import { ReadinessRing } from "../../components/ReadinessRing";
 import { Template, Workout } from "../../types/workout";
-import { C } from "../../constants/theme";
+import { C, T } from "../../constants/theme";
 import { ChevronRight, CircleCheck, RotateCw } from "lucide-react-native";
 
 function headline(score: number): string {
@@ -154,13 +154,13 @@ export default function Recovery() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   content: { padding: 20, paddingTop: 60 },
-  title: { color: C.text, fontSize: 28, fontWeight: "bold", marginBottom: 16 },
+  title: { ...T.title, marginBottom: 16 },
   readyCard: {
     flexDirection: "row", alignItems: "center", gap: 16,
     backgroundColor: C.card, borderRadius: 16, padding: 16, marginBottom: 16,
   },
   readyText: { flex: 1 },
-  readyLabel: { color: C.textMuted, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
+  readyLabel: { ...T.label },
   readyHeadline: { color: C.text, fontSize: 19, fontWeight: "600", marginTop: 2 },
   readyFor: {
     flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 4, marginTop: 10,
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   legendText: { color: C.textSoft, fontSize: 12 },
   dot: { width: 12, height: 12, borderRadius: 6 },
-  section: { color: C.textMuted, fontSize: 13, textTransform: "uppercase", marginBottom: 12 },
+  section: { ...T.label, marginBottom: 12 },
   empty: { color: C.textMuted, fontSize: 15, textAlign: "center", marginTop: 10 },
   row: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",

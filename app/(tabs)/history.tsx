@@ -2,7 +2,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { CalendarDays, Trophy } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
 import { Pressable, SectionList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { C, FONT, HIT, R } from "../../constants/theme";
+import { C, FONT, HIT, R, T } from "../../constants/theme";
 import { isBodyweight } from "../../lib/exercises";
 import { formatNumber, formatSets, plural, prGain } from "../../lib/format";
 import { countedSets, ExerciseRecord, prCount, setsVolume, workoutRecords } from "../../lib/stats";
@@ -87,15 +87,20 @@ function WorkoutCard({ workout, records, onPress }: { workout: Workout; records?
                     {name}
                   </Text>
                 </View>
-                <Text style={[styles.sets, pr && styles.gold]} numberOfLines={1}>
+                <Text style={[styles.sets, pr && styles.gold, !pr && milestone && styles.setsWithTag]} numberOfLines={1}>
                   {sets}
                   {pr ? ` · ${prGain(pr, unit)}` : ""}
-                  {milestone ? (
-                    <Text style={styles.milestone}>
-                      {" · "}↑ first {formatNumber(milestone.weight)} {unit}
-                    </Text>
-                  ) : null}
                 </Text>
+                {/* One note per line: a PR says more than a first time at a weight. */}
+                {!pr && milestone ? (
+                  <View
+                    style={styles.newTag}
+                    accessible
+                    accessibilityLabel={`First time at ${formatNumber(milestone.weight)} ${unit}`}
+                  >
+                    <Text style={styles.newTagText}>New weight</Text>
+                  </View>
+                ) : null}
               </View>
             );
           })}
@@ -165,7 +170,7 @@ export default function History() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg, padding: 20, paddingTop: 60 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
-  title: { color: C.text, fontSize: 28, fontWeight: "bold" },
+  title: { ...T.title },
   calendarBtn: {
     width: 40, height: 40, borderRadius: R.md, backgroundColor: C.card,
     alignItems: "center", justifyContent: "center",
@@ -195,6 +200,8 @@ const styles = StyleSheet.create({
   name: { flexShrink: 1, color: C.textSoft, fontSize: 12 },
   sets: { flexShrink: 0, maxWidth: "72%", textAlign: "right", fontFamily: FONT.num, fontSize: 14, color: C.text },
   gold: { color: C.signal },
-  milestone: { color: C.textSoft },
+  setsWithTag: { maxWidth: "52%" },
+  newTag: { flexShrink: 0, backgroundColor: C.raised, borderRadius: R.pill, paddingHorizontal: 7, paddingVertical: 1 },
+  newTagText: { color: C.textSoft, fontSize: 11, fontWeight: "500" },
   more: { color: C.textFaint, fontSize: 12, marginTop: 2 },
 });

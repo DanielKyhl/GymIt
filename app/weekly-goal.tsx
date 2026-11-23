@@ -2,7 +2,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { getWeeklyGoal, setWeeklyGoal } from "../lib/storage";
-import { C } from "../constants/theme";
+import { C, T } from "../constants/theme";
 
 export default function WeeklyGoalScreen() {
   const router = useRouter();
@@ -45,7 +45,7 @@ export default function WeeklyGoalScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg, padding: 20, paddingTop: 16 },
-  title: { color: C.text, fontSize: 26, fontWeight: "bold", marginBottom: 8 },
+  title: { ...T.title, marginBottom: 8 },
   subtitle: { color: C.textMuted, fontSize: 15, marginBottom: 28, lineHeight: 21 },
   grid: { flexDirection: "row", gap: 6 },
   option: {

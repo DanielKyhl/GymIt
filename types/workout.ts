@@ -24,6 +24,7 @@ export type WorkoutSet = {
   done: boolean;
   type?: SetType; // defaults to "normal" when absent
   restSeconds?: number; // rest to take after this set; 0/undefined = no rest
+  rested?: number; // how long the rest after it actually ran, in seconds: shown mid-workout, not saved
   rpe?: number; // no longer asked for; kept so older workouts that have it still load
 };
 

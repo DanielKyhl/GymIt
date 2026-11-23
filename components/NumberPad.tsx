@@ -14,7 +14,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { C, FONT, R } from "../constants/theme";
+import { C, FONT, R, T } from "../constants/theme";
 import { formatStep, PadKey } from "../lib/numberPad";
 
 // The app's own number pad, used for every number instead of the phone's
@@ -321,14 +321,7 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   context: { flexDirection: "row", alignItems: "baseline", gap: 12, paddingHorizontal: 6, paddingBottom: 10 },
-  what: {
-    flex: 1,
-    color: C.textFaint,
-    fontSize: 12,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
+  what: { ...T.label, flex: 1, color: C.textFaint },
   hint: { color: C.textMuted, fontSize: 13 },
   rows: { gap: 7 },
   row: { flexDirection: "row", gap: 7 },

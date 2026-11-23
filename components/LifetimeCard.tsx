@@ -35,7 +35,7 @@ export function LifetimeCard({ totalKg, unit, newMilestone }: { totalKg: number;
 const styles = StyleSheet.create({
   card: { width: "100%", backgroundColor: C.card, borderRadius: R.lg, padding: 16 },
   cardNew: { borderWidth: 1, borderColor: C.signal },
-  caption: { color: C.textFaint, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
+  caption: { ...T.label, color: C.textFaint },
   captionNew: { color: C.signal },
   total: { ...T.num, fontSize: 36, marginTop: 2 },
   unit: { ...T.num, fontSize: 18, color: C.textMuted },

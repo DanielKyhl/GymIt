@@ -2,7 +2,7 @@ import { Image } from "expo-image";
 import { CircleHelp, Star, X } from "lucide-react-native";
 import { useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { C, HIT } from "../constants/theme";
+import { C, HIT, T } from "../constants/theme";
 import { EXERCISE_CREDIT, exerciseByName, exerciseImageUrl, muscleList } from "../lib/exercises";
 import { Exercise } from "../types/workout";
 
@@ -189,14 +189,7 @@ const styles = StyleSheet.create({
   tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 6 },
   tag: { backgroundColor: C.raised, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
   tagText: { color: C.textSoft, fontSize: 12, textTransform: "capitalize" },
-  sectionLabel: {
-    color: C.textFaint,
-    fontSize: 11,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginTop: 14,
-    marginBottom: 4,
-  },
+  sectionLabel: { ...T.label, color: C.textFaint, marginTop: 14, marginBottom: 4 },
   body: { color: C.text, fontSize: 15, textTransform: "capitalize" },
   step: { flexDirection: "row", gap: 10, marginBottom: 10 },
   stepNum: { color: C.textFaint, fontSize: 13, width: 16, marginTop: 2 },

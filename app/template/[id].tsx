@@ -5,7 +5,7 @@ import { isBodyweight } from "../../lib/exercises";
 import { plural } from "../../lib/format";
 import { deleteTemplate, getTemplates } from "../../lib/storage";
 import { Template } from "../../types/workout";
-import { C } from "../../constants/theme";
+import { C, T } from "../../constants/theme";
 import { ExerciseInfoButton } from "../../components/ExerciseInfo";
 import { useWorkoutSheet } from "../../context/WorkoutSheet";
 
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   nameShrink: { flexShrink: 1 },
   container: { flex: 1, backgroundColor: C.bg, padding: 20, paddingTop: 16 },
-  title: { color: C.text, fontSize: 28, fontWeight: "bold", marginBottom: 4 },
+  title: { ...T.title, marginBottom: 4 },
   subtitle: { color: C.textMuted, fontSize: 14, marginBottom: 24 },
   list: { gap: 10 },
   row: { backgroundColor: C.card, borderRadius: 12, padding: 16 },

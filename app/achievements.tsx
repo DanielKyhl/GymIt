@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { Achievement, getAchievements } from "../lib/achievements";
 import { getWeeklyGoal, getWorkoutsForStats } from "../lib/storage";
-import { C } from "../constants/theme";
+import { C, T } from "../constants/theme";
 import { Lock, Trophy } from "lucide-react-native";
 
 export default function Achievements() {
@@ -46,7 +46,7 @@ export default function Achievements() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg, padding: 20, paddingTop: 16 },
-  title: { color: C.text, fontSize: 28, fontWeight: "bold", marginBottom: 4 },
+  title: { ...T.title, marginBottom: 4 },
   subtitle: { color: C.textMuted, fontSize: 14, marginBottom: 20 },
   list: { gap: 10 },
   card: {

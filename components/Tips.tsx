@@ -1,6 +1,6 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
-import { C, HIT, R } from "../constants/theme";
+import { C, HIT, R, T } from "../constants/theme";
 import { finishTips, getPendingTips } from "../lib/storage";
 import { placeTip, Rect, Tip, TIPS, TipTour } from "../lib/tips";
 
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   },
   arrowUp: { top: -9, borderLeftWidth: 1, borderTopWidth: 1 },
   arrowDown: { bottom: -9, borderRightWidth: 1, borderBottomWidth: 1 },
-  step: { color: C.signal, fontSize: 12, fontWeight: "700", letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 6 },
+  step: { ...T.label, color: C.signal, marginBottom: 6 },
   title: { color: C.text, fontSize: 18, fontWeight: "700", marginBottom: 6 },
   body: { color: C.textSoft, fontSize: 15, lineHeight: 21 },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 14 },

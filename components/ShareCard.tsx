@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   heroText: { color: C.text, fontSize: 20, fontWeight: "700", textAlign: "center", marginTop: 16, lineHeight: 26 },
   lines: { borderTopWidth: 1, borderTopColor: C.raised, marginTop: 18, paddingTop: 14, gap: 8 },
   linesHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 },
-  linesTitle: { color: C.textMuted, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
+  linesTitle: { ...T.label },
   line: { flexDirection: "row", justifyContent: "space-between", gap: 12 },
   lineName: { flex: 1, color: C.text, fontSize: 14 },
   lineSet: { ...T.num, color: C.textSoft, fontSize: 16 },

@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
   nameShrink: { flexShrink: 1 },
   container: { flex: 1, backgroundColor: C.bg, padding: 20, paddingTop: 16 },
   flex: { flex: 1 },
-  title: { color: C.text, fontSize: 28, fontWeight: "bold", marginBottom: 4 },
+  title: { ...T.title, marginBottom: 4 },
   nameInput: {
     color: C.text,
     fontSize: 24,
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
   noSets: { color: C.textMuted, fontSize: 13 },
   setRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 },
   setLine: { color: C.textSoft, fontSize: 14 },
-  superset: { color: C.signal, fontSize: 11, fontWeight: "600", textTransform: "uppercase", marginBottom: 2 },
+  superset: { ...T.label, color: C.signal, marginBottom: 2 },
   notes: { color: C.textMuted, fontSize: 13, fontStyle: "italic", marginBottom: 8 },
   prBadge: {
     flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start",

@@ -23,6 +23,7 @@ type Settings = SyncRecord & {
     defaultUnit?: 'kg' | 'lb';
     defaultRest?: number;
     timerSound?: TimerSoundId; // what the rest timer plays when a rest is up
+    showRpe?: boolean; // the RPE column in a workout: shown unless turned off
     premadeSeeded?: boolean;
     bodyWeight?: number;
     bodyWeightUnit?: 'kg' | 'lb';
@@ -265,6 +266,14 @@ export async function getTimerSound(): Promise<TimerSoundId> {
 
 export async function setTimerSound(id: TimerSoundId): Promise<void> {
     await setSetting({ timerSound: id });
+}
+
+export async function getShowRpe(): Promise<boolean> {
+    return (await getSettings()).showRpe !== false;
+}
+
+export async function setShowRpe(show: boolean): Promise<void> {
+    await setSetting({ showRpe: show });
 }
 
 // Used as the weight for bodyweight exercises. Kept with the unit it was

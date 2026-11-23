@@ -8,12 +8,14 @@ import { playSound } from "../lib/sound";
 import { TimerSoundId } from "../lib/timerSounds";
 
 // The rest after a set: before the next set, or after an exercise's last set,
-// before the next exercise. Idle, it's a thin divider showing the rest length
-// (tap to change it). Once the set above is ticked it lights up and counts
-// up, past the target too, so you see how long you really rested; its length
-// can still be changed while it runs.
+// before the next exercise. Idle, it's a hairline showing the rest length, or
+// once that rest is over, how long you actually rested (tap to change the
+// length). Once the set above is ticked it lights up and counts down the time
+// left, then up past the target, so you see how long you really rested; its
+// length can still be changed while it runs.
 export function RestRow({
   seconds,
+  rested,
   running,
   sound,
   onEdit,
@@ -21,6 +23,7 @@ export function RestRow({
   onRung,
 }: {
   seconds: number;
+  rested?: number; // how long the rest after this set ran, once it's over
   running: RestTimer | null; // this row's rest, while it runs
   sound: TimerSoundId; // played when the rest is up
   onEdit: () => void;
@@ -30,23 +33,22 @@ export function RestRow({
   return running ? (
     <ActiveRest rest={running} sound={sound} onEdit={onEdit} onStop={onStop} onRung={onRung} />
   ) : (
-    <IdleRest seconds={seconds} onEdit={onEdit} />
+    <IdleRest seconds={seconds} rested={rested} onEdit={onEdit} />
   );
 }
 
-function IdleRest({ seconds, onEdit }: { seconds: number; onEdit: () => void }) {
+function IdleRest({ seconds, rested, onEdit }: { seconds: number; rested?: number; onEdit: () => void }) {
   return (
     <View style={styles.idleRow}>
       <View style={styles.line} />
       <Pressable
         style={({ pressed }) => [styles.idlePill, pressed && styles.idlePressed]}
         onPress={onEdit}
-        hitSlop={{ top: 8, bottom: 8 }}
+        hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
         accessibilityRole="button"
-        accessibilityLabel={`Rest ${formatRest(seconds)}. Change rest time`}
+        accessibilityLabel={`${rested !== undefined ? `Rested ${formatRest(rested)}. ` : ""}Rest ${formatRest(seconds)}. Change rest time`}
       >
-        <Timer size={12} color={C.textFaint} />
-        <Text style={styles.idleText}>{formatRest(seconds)}</Text>
+        <Text style={styles.idleText}>{rested !== undefined ? `rested ${formatRest(rested)}` : formatRest(seconds)}</Text>
       </Pressable>
       <View style={styles.line} />
     </View>
@@ -90,17 +92,24 @@ function ActiveRest({
   }, [now, rest, sound, onRung]);
 
   const progress = Math.min(1, elapsed / Math.max(1, rest.target));
+  // Before the target: the time left. Past it: how long you've rested, counting up.
+  const left = rest.target - elapsed;
 
   return (
     <Pressable
       style={[styles.active, over && styles.activeOver]}
       onPress={onStop}
       accessibilityRole="button"
-      accessibilityLabel={`Resting ${formatClock(elapsed)} of ${formatRest(rest.target)}. Tap when you're done resting`}
+      accessibilityLabel={
+        over
+          ? `Resting ${formatClock(elapsed)} of ${formatRest(rest.target)}. Tap when you're done resting`
+          : `Resting with ${formatClock(left)} left of ${formatRest(rest.target)}. Tap when you're done resting`
+      }
     >
       <View style={[styles.fill, over && styles.fillOver, { width: `${progress * 100}%` }]} />
       <Timer size={16} color={over ? C.signal : C.accent} />
-      <Text style={[styles.time, over && styles.timeOver]}>{formatClock(elapsed)}</Text>
+      <Text style={[styles.time, over && styles.timeOver]}>{formatClock(over ? elapsed : left)}</Text>
+      {!over && <Text style={styles.left}>left</Text>}
       {/* Its own button inside the row: the rest of the row still ends the rest. */}
       <Pressable
         style={({ pressed }) => [styles.targetPill, pressed && styles.targetPressed]}
@@ -121,11 +130,11 @@ function ActiveRest({
 }
 
 const styles = StyleSheet.create({
-  idleRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 2 },
-  line: { flex: 1, height: 1, backgroundColor: C.raised },
-  idlePill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: R.pill },
+  idleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  line: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: C.raised },
+  idlePill: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: R.pill },
   idlePressed: { backgroundColor: C.raised },
-  idleText: { ...T.num, color: C.textFaint, fontSize: 13 },
+  idleText: { ...T.num, color: C.textFaint, fontSize: 12 },
 
   active: {
     flexDirection: "row",
@@ -145,6 +154,7 @@ const styles = StyleSheet.create({
   fillOver: { backgroundColor: "rgba(233, 162, 59, 0.16)" },
   time: { ...T.num, fontSize: 20, color: C.accent },
   timeOver: { color: C.signal },
+  left: { color: C.textSoft, fontSize: 13, marginLeft: -2 },
   targetPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: R.pill, backgroundColor: C.raised },
   targetPressed: { backgroundColor: C.selected },
   target: { color: C.textSoft, fontSize: 13 },

@@ -13,7 +13,7 @@ import {
   TextInputProps,
   View,
 } from "react-native";
-import { C, HIT, R } from "../constants/theme";
+import { C, HIT, R, T } from "../constants/theme";
 
 // Shared building blocks for the welcome, log-in and sign-up screens, so all
 // three look like one product.
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, padding: 24, paddingTop: 64, paddingBottom: 40 },
   back: { position: "absolute", top: 20, left: 16, zIndex: 1, padding: 4 },
   heading: { marginBottom: 28 },
-  title: { color: C.text, fontSize: 30, fontWeight: "700" },
+  title: { ...T.title },
   subtitle: { color: C.textMuted, fontSize: 15, marginTop: 6, lineHeight: 21 },
   field: { marginBottom: 16 },
   label: { color: C.textSoft, fontSize: 13, fontWeight: "500", marginBottom: 6 },

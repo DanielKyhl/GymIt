@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
   suggested: { color: C.signal, fontSize: 10, fontWeight: "600", width: 70, textAlign: "center" },
 
   planCard: { backgroundColor: C.card, borderRadius: 20, borderWidth: 1, borderColor: C.raised, padding: 20 },
-  planLabel: { color: C.signal, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
+  planLabel: { ...T.label, color: C.signal },
   planName: { color: C.text, fontSize: 28, fontWeight: "700", marginTop: 4, marginBottom: 12 },
   planList: { gap: 6, marginBottom: 14 },
   planExercise: { color: C.textSoft, fontSize: 14 },

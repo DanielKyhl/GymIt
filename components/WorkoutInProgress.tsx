@@ -20,6 +20,7 @@ import { C, HIT, R, T } from "../constants/theme";
 import {
   ActiveWorkout,
   elapsedSeconds,
+  endRest,
   formatClock,
   formatRest,
   historyBests,
@@ -46,6 +47,7 @@ import {
   getBodyWeight,
   getDefaultRest,
   getDefaultUnit,
+  getShowRpe,
   getTemplates,
   getTimerSound,
   getWeeklyGoal,
@@ -125,6 +127,12 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
   const [menu, setMenu] = useState<OpenMenu | null>(null);
   const [restEdit, setRestEdit] = useState<{ exIndex: number; seconds: number } | null>(null);
   const [timerSound, setTimerSound] = useState<TimerSoundId | null>(null);
+  // The RPE column, unless it's turned off in Settings. Read again each time
+  // the sheet opens, so a change made with the workout tucked away shows.
+  const [showRpe, setShowRpe] = useState(true);
+  useEffect(() => {
+    if (sheetOpen) getShowRpe().then(setShowRpe);
+  }, [sheetOpen]);
   // Hold an exercise's name to move it (components/ExerciseReorder.tsx).
   const reorder = useRef<ReorderHandle>(null);
   // Set once the workout is ended or discarded, so a pending autosave can't
@@ -603,7 +611,25 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
           <Timer size={16} color={C.accent} />
           <ElapsedClock startedAt={active.startedAt} />
         </View>
+        <Pressable
+          style={({ pressed }) => [styles.finishBtn, pressed && styles.finishBtnPressed]}
+          onPress={handleEnd}
+          hitSlop={HIT}
+          accessibilityRole="button"
+          accessibilityLabel="Finish workout"
+        >
+          <Text style={styles.finishText}>Finish</Text>
+        </Pressable>
       </View>
+
+      {/* One segment per set, lit once it's ticked: how much is left, at a glance. */}
+      {totalSets > 0 && (
+        <View style={[styles.rail, totalSets > 30 && styles.railTight]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          {active.exercises.flatMap((ex, i) =>
+            ex.sets.map((s, j) => <View key={`${i}-${j}`} style={[styles.railSeg, s.done && styles.railSegDone]} />)
+          )}
+        </View>
+      )}
 
       <ReorderArea ref={reorder} rows={reorderRows} onMove={moveTo} style={styles.scroll}>
         <NumberPadScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
@@ -658,12 +684,14 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
                   <View style={styles.row}>
                     <Text style={[styles.colHead, styles.colSet]}>Set</Text>
                     <Text style={[styles.colHead, styles.colPrev]}>Previous</Text>
-                    <Text style={[styles.colHead, styles.colWeight, styles.center]}>{unit}</Text>
-                    <Text style={[styles.colHead, styles.colReps, styles.center]}>Reps</Text>
-                    <View style={[styles.colRpe, styles.rpeHead]}>
-                      <Text style={[styles.colHead, styles.colHeadInline]}>RPE</Text>
-                      <RpeHelpButton size={12} />
-                    </View>
+                    <Text style={[styles.colHead, showRpe ? styles.colWeight : styles.colWeightWide, styles.center]}>{unit}</Text>
+                    <Text style={[styles.colHead, showRpe ? styles.colReps : styles.colRepsWide, styles.center]}>Reps</Text>
+                    {showRpe && (
+                      <View style={[styles.colRpe, styles.rpeHead]}>
+                        <Text style={[styles.colHead, styles.colHeadInline]}>RPE</Text>
+                        <RpeHelpButton size={12} />
+                      </View>
+                    )}
                     <View style={styles.colCheck} />
                   </View>
                 )}
@@ -723,7 +751,7 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
                             )}
                           </View>
                           <NumberInput
-                            style={[styles.input, styles.colWeight]}
+                            style={[styles.input, showRpe ? styles.colWeight : styles.colWeightWide]}
                             placeholder={p?.weight ? String(p.weight) : "0"}
                             placeholderTextColor={C.textFaint}
                             value={set.weight}
@@ -735,7 +763,7 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
                             accessibilityLabel={`${ex.name} set ${setIndex + 1} weight`}
                           />
                           <NumberInput
-                            style={[styles.input, styles.colReps]}
+                            style={[styles.input, showRpe ? styles.colReps : styles.colRepsWide]}
                             decimals={false}
                             placeholder={p ? String(p.reps) : "0"}
                             placeholderTextColor={C.textFaint}
@@ -746,17 +774,19 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
                             order={exIndex * 1000 + setIndex * 2 + 1}
                             accessibilityLabel={`${ex.name} set ${setIndex + 1} reps`}
                           />
-                          <RpeCell
-                            value={set.rpe}
-                            onOpen={(anchor) =>
-                              setMenu({
-                                anchor,
-                                align: "right",
-                                title: "How hard was that set?",
-                                items: rpeItems(set.rpe, (rpe) => updateSet(exIndex, setIndex, { rpe })),
-                              })
-                            }
-                          />
+                          {showRpe && (
+                            <RpeCell
+                              value={set.rpe}
+                              onOpen={(anchor) =>
+                                setMenu({
+                                  anchor,
+                                  align: "right",
+                                  title: "How hard was that set?",
+                                  items: rpeItems(set.rpe, (rpe) => updateSet(exIndex, setIndex, { rpe })),
+                                })
+                              }
+                            />
+                          )}
                           <CheckButton done={set.done} onToggle={() => toggleDone(exIndex, setIndex)} />
                         </View>
                       </SwipeToDelete>
@@ -766,10 +796,11 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
                       {(running || rest > 0) && (
                         <RestRow
                           seconds={rest}
+                          rested={set.done ? set.rested : undefined}
                           running={running}
                           sound={timerSound ?? DEFAULT_TIMER_SOUND}
                           onEdit={() => editRest(exIndex, running ? running.target : rest)}
-                          onStop={() => update((a) => ({ ...a, rest: null }))}
+                          onStop={() => update((a) => endRest(a, Date.now()))}
                           onRung={() =>
                             update((a) =>
                               a.rest && a.rest.startedAt === running?.startedAt ? { ...a, rest: { ...a.rest, rung: true } } : a
@@ -793,6 +824,17 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
             );
           })}
 
+          {/* With every set ticked, finishing is the next thing to do. */}
+          {totalSets > 0 && doneSets === totalSets && (
+            <Pressable
+              style={({ pressed }) => [styles.finishFull, pressed && styles.finishFullPressed]}
+              onPress={handleEnd}
+              accessibilityRole="button"
+            >
+              <Text style={styles.endText}>Finish workout</Text>
+            </Pressable>
+          )}
+
           <Pressable style={styles.addExerciseBtn} onPress={() => setShowAdd(true)} accessibilityRole="button">
             <Plus size={18} color={C.accent} />
             <Text style={styles.addExerciseText}>Add exercise</Text>
@@ -803,10 +845,6 @@ export function WorkoutInProgress({ id, onClose }: { id: string; onClose: () => 
           </Pressable>
         </NumberPadScrollView>
       </ReorderArea>
-
-      <Pressable style={styles.endButton} onPress={handleEnd} accessibilityRole="button">
-        <Text style={styles.endText}>Finish workout</Text>
-      </Pressable>
 
       <DropdownMenu
         anchor={menu?.anchor ?? null}
@@ -840,7 +878,14 @@ const styles = StyleSheet.create({
   centered: { justifyContent: "center", alignItems: "stretch", gap: 16, padding: 20 },
   message: { color: C.textMuted, fontSize: 15, textAlign: "center", marginVertical: 12 },
 
-  header: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 4, marginBottom: 12 },
+  header: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 4, marginBottom: 12 },
+  finishBtn: { backgroundColor: C.raised, borderRadius: R.pill, paddingHorizontal: 14, paddingVertical: 8 },
+  finishBtnPressed: { backgroundColor: C.selected },
+  finishText: { color: C.accent, fontSize: 14, fontWeight: "600" },
+  rail: { flexDirection: "row", gap: 3, paddingHorizontal: 4, marginBottom: 12 },
+  railTight: { gap: 2 },
+  railSeg: { flex: 1, height: 4, borderRadius: 2, backgroundColor: C.raised },
+  railSegDone: { backgroundColor: C.accent },
   headerText: { flex: 1 },
   name: { color: C.text, fontSize: 22, fontWeight: "700" },
   nameInput: { borderBottomWidth: 1, borderBottomColor: C.raised, paddingVertical: 2 },
@@ -852,13 +897,13 @@ const styles = StyleSheet.create({
   timer: { ...T.num, fontSize: 20, color: C.accent },
 
   scroll: { flex: 1 },
-  scrollContent: { gap: 12, paddingBottom: 16 },
+  scrollContent: { gap: 12, paddingBottom: 40 },
 
   card: { backgroundColor: C.card, borderRadius: R.lg, padding: 14 },
   supersetCard: { borderLeftWidth: 3, borderLeftColor: C.signal },
   cardHeader: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginBottom: 10 },
   cardTitle: { flex: 1, paddingTop: 4 },
-  supersetLabel: { color: C.signal, fontSize: 11, fontWeight: "600", textTransform: "uppercase", marginBottom: 2 },
+  supersetLabel: { ...T.label, color: C.signal, marginBottom: 2 },
   exerciseName: { color: C.text, fontSize: 17, fontWeight: "600" },
   bwNote: { color: C.textMuted, fontSize: 12, marginTop: 2 },
   menuBtn: { width: 36, height: 32, borderRadius: R.sm, alignItems: "center", justifyContent: "center" },
@@ -879,6 +924,9 @@ const styles = StyleSheet.create({
   colPrev: { flex: 1 },
   colWeight: { width: 60 },
   colReps: { width: 50 },
+  // Without the RPE column, weight and reps take its room.
+  colWeightWide: { width: 80 },
+  colRepsWide: { width: 62 },
   colRpe: { width: 40 },
   colCheck: { width: 36 },
   colHead: { color: C.textFaint, fontSize: 11, fontWeight: "600", textTransform: "uppercase", marginBottom: 6 },
@@ -918,5 +966,7 @@ const styles = StyleSheet.create({
   discardBtn: { alignItems: "center", paddingVertical: 12 },
   discardText: { color: C.danger, fontSize: 14 },
   endButton: { backgroundColor: C.accent, borderRadius: R.md, padding: 16, alignItems: "center", marginTop: 8, marginBottom: 24 },
+  finishFull: { backgroundColor: C.accent, borderRadius: R.md, padding: 16, alignItems: "center" },
+  finishFullPressed: { opacity: 0.85 },
   endText: { color: C.onAccent, fontSize: 16, fontWeight: "600" },
 });

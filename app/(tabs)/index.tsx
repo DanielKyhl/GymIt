@@ -5,7 +5,6 @@ import { BodyWeightPrompt } from "../../components/BodyWeightPrompt";
 import { LevelCard } from "../../components/LevelCard";
 import { useShowTips, useTipTarget } from "../../components/Tips";
 import { WeeklyRecap } from "../../components/WeeklyRecap";
-import { useAuth } from "../../context/AuthContext";
 import { useWorkoutSheet } from "../../context/WorkoutSheet";
 import { relativeDay } from "../../lib/format";
 import { computeXP, levelInfo, thisWeekCount } from "../../lib/gamification";
@@ -33,7 +32,6 @@ import { C, HIT, T } from "../../constants/theme";
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { logout } = useAuth();
   // A workout under way sits in the sheet, and its bar shows above the tabs.
   const { workout, start } = useWorkoutSheet();
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -130,14 +128,9 @@ export default function HomeScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Text style={styles.title}>GymIt</Text>
-        <View style={styles.headerRight}>
-          <Pressable ref={settingsRef} onPress={() => router.push("/settings")} hitSlop={HIT} accessibilityLabel="Settings">
-            <Settings size={22} color={C.text} />
-          </Pressable>
-          <Pressable onPress={logout}>
-            <Text style={styles.logout}>Log out</Text>
-          </Pressable>
-        </View>
+        <Pressable ref={settingsRef} onPress={() => router.push("/settings")} hitSlop={HIT} accessibilityLabel="Settings">
+          <Settings size={22} color={C.text} />
+        </Pressable>
       </View>
 
       {!workout && suggestion && (
@@ -252,14 +245,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
   },
-  title: { color: C.text, fontSize: 28, fontWeight: "bold" },
-  logout: { color: C.textMuted, fontSize: 14 },
-  headerRight: { flexDirection: "row", alignItems: "center", gap: 16 },
+  title: { ...T.title },
   hero: {
     backgroundColor: C.card, borderRadius: 20, borderWidth: 1, borderColor: C.raised,
     padding: 20, marginBottom: 12,
   },
-  heroLabel: { color: C.signal, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
+  heroLabel: { ...T.label, color: C.signal },
   heroName: { color: C.text, fontSize: 30, fontWeight: "700", marginTop: 4 },
   heroMeta: { color: C.textMuted, fontSize: 13, marginTop: 4, marginBottom: 16 },
   heroBtn: {
@@ -278,7 +269,7 @@ const styles = StyleSheet.create({
   },
   achievementsText: { color: C.text, fontSize: 15, fontWeight: "500" },
   achievementsLabel: { flexDirection: "row", alignItems: "center", gap: 10 },
-  sectionTitle: { color: C.textMuted, fontSize: 13, marginBottom: 12, textTransform: "uppercase" },
+  sectionTitle: { ...T.label, marginBottom: 12 },
   sectionSpacer: { marginTop: 28 },
   list: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 12 },
   empty: { color: C.textMuted, fontSize: 15, textAlign: "center", marginTop: 20, marginBottom: 8 },

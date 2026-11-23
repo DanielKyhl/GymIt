@@ -1,7 +1,7 @@
 import { Check } from "lucide-react-native";
 import { ReactNode } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
-import { C, R } from "../constants/theme";
+import { C, R, T } from "../constants/theme";
 
 // Where on screen the button that opened the menu is.
 export type Anchor = { x: number; y: number; width: number; height: number };
@@ -112,10 +112,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 8,
   },
-  title: {
-    color: C.textFaint, fontSize: 12, fontWeight: "600", textTransform: "uppercase",
-    letterSpacing: 0.5, paddingHorizontal: 14, paddingTop: 6, paddingBottom: 4,
-  },
+  title: { ...T.label, color: C.textFaint, paddingHorizontal: 14, paddingTop: 6, paddingBottom: 4 },
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 11, minHeight: 46 },
   pressed: { backgroundColor: C.raised },
   badge: { width: 28, height: 28, borderRadius: R.sm, backgroundColor: C.raised, alignItems: "center", justifyContent: "center" },
