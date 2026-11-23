@@ -526,6 +526,7 @@ test("rest timer: type your own time, change it mid-rest, and ring without pausi
     await onScreen(page.getByLabel("Mark set done", { exact: true })).last().click();
     const running = onScreen(page.getByLabel(/^Resting /));
     await expect(running).toHaveCount(1);
+    await expect(running.getByText(/^00:0\d$/)).toBeVisible(); // it counts up from 00:00, not down from 01:45
     await running.getByLabel("Rest 1:45. Change rest time").click();
     // Shorter, but still ahead of the clock (a rest cut to less than you've
     // already rested is over at once, and doesn't ring).

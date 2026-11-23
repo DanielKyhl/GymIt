@@ -10,9 +10,9 @@ import { TimerSoundId } from "../lib/timerSounds";
 // The rest after a set: before the next set, or after an exercise's last set,
 // before the next exercise. Idle, it's a hairline showing the rest length, or
 // once that rest is over, how long you actually rested (tap to change the
-// length). Once the set above is ticked it lights up and counts down the time
-// left, then up past the target, so you see how long you really rested; its
-// length can still be changed while it runs.
+// length). Once the set above is ticked it lights up and counts up from 00:00,
+// past the target too, so you see how long you've really rested; its length
+// can still be changed while it runs.
 export function RestRow({
   seconds,
   rested,
@@ -92,24 +92,17 @@ function ActiveRest({
   }, [now, rest, sound, onRung]);
 
   const progress = Math.min(1, elapsed / Math.max(1, rest.target));
-  // Before the target: the time left. Past it: how long you've rested, counting up.
-  const left = rest.target - elapsed;
 
   return (
     <Pressable
       style={[styles.active, over && styles.activeOver]}
       onPress={onStop}
       accessibilityRole="button"
-      accessibilityLabel={
-        over
-          ? `Resting ${formatClock(elapsed)} of ${formatRest(rest.target)}. Tap when you're done resting`
-          : `Resting with ${formatClock(left)} left of ${formatRest(rest.target)}. Tap when you're done resting`
-      }
+      accessibilityLabel={`Resting ${formatClock(elapsed)} of ${formatRest(rest.target)}. Tap when you're done resting`}
     >
       <View style={[styles.fill, over && styles.fillOver, { width: `${progress * 100}%` }]} />
       <Timer size={16} color={over ? C.signal : C.accent} />
-      <Text style={[styles.time, over && styles.timeOver]}>{formatClock(over ? elapsed : left)}</Text>
-      {!over && <Text style={styles.left}>left</Text>}
+      <Text style={[styles.time, over && styles.timeOver]}>{formatClock(elapsed)}</Text>
       {/* Its own button inside the row: the rest of the row still ends the rest. */}
       <Pressable
         style={({ pressed }) => [styles.targetPill, pressed && styles.targetPressed]}
@@ -154,7 +147,6 @@ const styles = StyleSheet.create({
   fillOver: { backgroundColor: "rgba(233, 162, 59, 0.16)" },
   time: { ...T.num, fontSize: 20, color: C.accent },
   timeOver: { color: C.signal },
-  left: { color: C.textSoft, fontSize: 13, marginLeft: -2 },
   targetPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: R.pill, backgroundColor: C.raised },
   targetPressed: { backgroundColor: C.selected },
   target: { color: C.textSoft, fontSize: 13 },
